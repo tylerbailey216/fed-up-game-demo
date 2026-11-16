@@ -127,7 +127,7 @@ func _draw() -> void:
 	if cargo and cargo.on_foot:
 		panel(Rect2(420,605,440,65))
 		caption(Vector2(438,630),"ON FOOT / WASD MOVE / SHIFT RUN",18,GOLD,true)
-		caption(Vector2(438,656),"F return package / C rotate camera" if not cargo.carrying.is_empty() else "X enter truck / C rotate camera",16)
+		caption(Vector2(438,656),"F return box / C view / Q,E orbit" if not cargo.carrying.is_empty() else "X enter / C view / Q,E orbit / Wheel zoom",15)
 
 func compact_layout() -> bool:
 	return size.x/maxf(1,size.y)<1.6 or DisplayServer.is_touchscreen_available()

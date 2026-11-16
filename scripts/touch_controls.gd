@@ -56,11 +56,18 @@ func _input(event:InputEvent) -> void:
 					"upright":game.van.recover_upright()
 					"stick":stick=(pos-regions.stick.get_center())/80
 				get_viewport().set_input_as_handled();break
+			var h:=size.y/scale_factor
+			var world_top:=330 if h>=850 else (130 if h<480 else 250)
+			if not fingers.has(event.index) and game.cargo and game.cargo.on_foot and pos.y>world_top and pos.y<h-180:
+				fingers[event.index]="orbit";get_viewport().set_input_as_handled()
 		else:
 			if fingers.get(event.index)=="stick":stick=Vector2.ZERO
 			fingers.erase(event.index)
 	elif event is InputEventScreenDrag and fingers.get(event.index)=="stick":
 		stick=(event.position/scale_factor-regions.stick.get_center())/80
+	elif event is InputEventScreenDrag and fingers.get(event.index)=="orbit":
+		game.cargo.actor.orbit_camera(-event.relative.x/scale_factor*.009)
+		get_viewport().set_input_as_handled()
 	else:return
 	update_actions()
 
@@ -79,6 +86,7 @@ func _draw() -> void:
 	var walking:bool=game.cargo and game.cargo.on_foot
 	var labels:Dictionary={"gas":"MOVE" if walking else "GAS","brake":"BACK" if walking else "BRAKE","hand":"RUN" if walking else "HANDBRAKE","camera":"CAMERA","map":"GPS MAP","options":"OPTIONS","exit":"ENTER" if walking else "EXIT / WALK","upright":"RIGHT TRUCK"}
 	if walking and not game.cargo.carrying.is_empty():labels.exit="RETURN BOX"
+	if walking:labels.camera=["CLOSE VIEW","HIGH VIEW","OVERHEAD"][game.cargo.actor.camera_view]
 	for key in regions:
 		var rect:Rect2=regions[key]
 		if key=="upright" and not game.van.overturned:continue

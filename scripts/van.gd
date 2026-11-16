@@ -53,6 +53,16 @@ var wall_ride_time := 0.0
 var wall_ride_normal := Vector3.ZERO
 var collision_cooldown := 0.0
 var collision_serial := 0
+var crash_serial := 0
+var crash_contact_active := false
+var crash_clear_time := 0.0
+var crash_origin := Vector3.ZERO
+var delivery_collision_rules := false
+var crash_guard := BoxShape3D.new()
+var camera_high := false
+var camera_orbit := 0.0
+var camera_zoom := 1.0
+var camera_rig := preload("res://scripts/camera_rig.gd").new()
 var collision_kind := "bump"
 var collision_level := 0.0
 const DEMO_RADIUS := 500.0
@@ -115,8 +125,8 @@ func simulate_crash(delta: float) -> void:
 	if up_dot<0.2 and not flip_registered:
 		flip_registered = true
 		flip_count += 1
-		wrecked = wrecked or flip_count>=3
-		notify_driver("TRUCK TOTALLED - start a new truck" if wrecked else "ROLLOVER %d / 3 - recover once settled" % flip_count)
+		if not delivery_collision_rules: wrecked = wrecked or flip_count>=3
+		notify_driver("TRUCK TOTALLED - start a new truck" if wrecked else ("ROLLOVER - recover once settled / LOAD SECURED" if delivery_collision_rules else "ROLLOVER %d / 3 - recover once settled" % flip_count))
 	var still := roll_body.linear_velocity.length()<0.8 and roll_body.angular_velocity.length()<0.6
 	roll_stable_time = roll_stable_time+delta if still else 0.0
 	roll_settled = roll_time>0.9 and (roll_stable_time>0.35 or roll_body.sleeping)
@@ -199,12 +209,32 @@ func outside_driveable_world() -> bool:
 	return not position.is_finite() or not rotation.is_finite() or not velocity.is_finite() or not is_finite(speed) or position.y< -3 or position.y>35 or Vector2(position.x,position.z).length()>DEMO_RADIUS
 
 func register_collision(impact_speed: float, closing_speed: float) -> void:
-	if closing_speed < 0.8 or collision_cooldown > 0:
-		return
+	if closing_speed < 0.8:return
+	# Audio may repeat during scraping. Mission damage counts one contact episode.
+	if not crash_contact_active:
+		crash_serial+=1;crash_contact_active=true;crash_clear_time=0;crash_origin=global_position
+	if collision_cooldown > 0:return
 	collision_serial += 1
 	collision_cooldown = 0.4
 	collision_level = clampf(closing_speed/20.0,0.18,1)
 	collision_kind = "crash" if impact_speed>=ROLLOVER_SPEED and closing_speed>=12 else ("scrape" if impact_speed>=ROLLOVER_SPEED and closing_speed>=4 else "bump")
+
+func update_crash_contact(delta:float) -> void:
+	if not crash_contact_active or overturned or wrecked or driver_on_foot:return
+	if global_position.distance_squared_to(crash_origin)<6.25:
+		crash_clear_time=0;return
+	# A small clearance hull keeps wall jitter and neighboring barrier segments
+	# in the same crash. Its bottom clears ordinary ground and road surfaces.
+	crash_guard.size=Vector3(2.9,2.8,5.9)
+	var query:=PhysicsShapeQueryParameters3D.new();query.shape=crash_guard
+	query.transform=Transform3D(global_basis,global_position+Vector3.UP*1.8)
+	query.collision_mask=1;query.exclude=[get_rid()]
+	if is_instance_valid(roll_body):query.exclude.append(roll_body.get_rid())
+	if not get_world_3d().direct_space_state.intersect_shape(query,1).is_empty():
+		crash_clear_time=0;return
+	crash_clear_time+=delta
+	if crash_clear_time>=.65 and global_position.distance_to(crash_origin)>=2.5:
+		crash_contact_active=false;crash_clear_time=0
 
 func begin_wall_ride(impact_speed: float, closing_speed: float) -> bool:
 	if location_world:
@@ -307,7 +337,7 @@ func recover_upright() -> bool:
 	rotation.y = recovered_heading
 	set_view(false)
 	engine_on = impact_engine_was_on and not wrecked and fuel_gallons > 0
-	notify_driver("Truck totalled - new truck required" if wrecked else "Recovered - flips %d / 3" % flip_count)
+	notify_driver("Truck totalled - new truck required" if wrecked else ("Recovered - load secured" if delivery_collision_rules else "Recovered - flips %d / 3" % flip_count))
 	return true
 
 func mapped_recovery_position(at: Vector3) -> Vector3:
@@ -326,6 +356,7 @@ func mapped_recovery_position(at: Vector3) -> Vector3:
 	return location_world.spawn_position
 
 func new_truck() -> void:
+	crash_contact_active=false;crash_clear_time=0
 	dispose_roll_body()
 	flip_count = 0
 	wrecked = false
@@ -416,6 +447,15 @@ func set_view(inside: bool) -> void:
 	if not driver_on_foot:
 		camera.make_current()
 
+func cycle_camera() -> void:
+	if cockpit:
+		camera_high=false;set_view(false)
+	elif not camera_high:
+		camera_high=true;set_view(false)
+	else:
+		camera_high=false;set_view(true)
+	camera_orbit=0
+
 func reset_vehicle() -> void:
 	# Position reset must not erase rollover damage or bypass the recovery wait.
 	if overturned:
@@ -464,14 +504,18 @@ func _process(delta: float) -> void:
 	# truck's transform. Turning exposes its flank and countersteering settles it.
 	var desired_heading := rotation.y-yaw_rate*1.1
 	chase_heading = lerp_angle(chase_heading,desired_heading,1.0-exp(-3.0*delta))
-	var offset := Basis(Vector3.UP,chase_heading)*Vector3(-steering*1.4,5.3,10.5)
+	var offset := Basis(Vector3.UP,chase_heading+camera_orbit)*Vector3(-steering*1.4,8.5 if camera_high else 5.3,13.5 if camera_high else 10.5)*camera_zoom
 	chase_position = chase_position.lerp(global_position+offset,1.0-exp(-7.0*delta))
-	camera.global_position = chase_position
-	camera.look_at(global_position+Vector3(0,1.8,0)+planar_velocity*0.09)
+	var focus:=global_position+Vector3(0,1.8,0)+planar_velocity*0.09
+	var excluded:Array[RID]=[get_rid()]
+	if is_instance_valid(roll_body):excluded.append(roll_body.get_rid())
+	camera.global_position = camera_rig.resolve(get_world_3d().direct_space_state,focus,chase_position,excluded)
+	camera.look_at(focus)
 
 func _physics_process(delta: float) -> void:
 	if not active:
 		return
+	update_crash_contact(delta)
 	# Run before disabled/rolled early returns too: damage must never strand a
 	# vehicle under the world or let the camera pass through the skyline shell.
 	if outside_driveable_world():

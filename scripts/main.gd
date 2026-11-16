@@ -510,7 +510,7 @@ func build_ui() -> void:
 	camera_shortcut = Button.new()
 	camera_shortcut.position = Vector2(1100,20)
 	camera_shortcut.size = Vector2(153,34)
-	camera_shortcut.tooltip_text = "Switch cockpit / chase [C]"
+	camera_shortcut.tooltip_text = "Cycle cockpit / chase / raised view [C]. Right-drag to orbit; wheel to zoom."
 	camera_shortcut.focus_mode = Control.FOCUS_NONE
 	for state in ["normal","pressed","focus","hover"]:
 		camera_shortcut.add_theme_stylebox_override(state,StyleBoxEmpty.new())
@@ -570,9 +570,9 @@ func resize_menu_buttons(node:Node,compact:bool) -> void:
 
 func toggle_camera() -> void:
 	if cargo and cargo.on_foot:
-		cargo.actor.camera_angle += PI/2
+		cargo.actor.cycle_camera()
 		return
-	van.set_view(not van.cockpit)
+	van.cycle_camera()
 
 func toggle_options() -> void:
 	if options.visible:
@@ -759,7 +759,7 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	if event.keycode==KEY_F and cargo and cargo.on_foot:
 		cargo.deposit()
 		return
-	dashboard_key(event.keycode)
+	if not (cargo and cargo.on_foot and event.keycode in [KEY_Q,KEY_E]):dashboard_key(event.keycode)
 	if event.keycode == KEY_C:
 		toggle_camera()
 	if event.keycode == KEY_X and cargo:
@@ -770,6 +770,15 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		van.recover_upright()
 
 func _input(event: InputEvent) -> void:
+	if driving and not paused and not options.visible:
+		var walking:bool=cargo and cargo.on_foot
+		if event is InputEventMouseMotion and Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT):
+			if walking:cargo.actor.orbit_camera(-event.relative.x*.008)
+			elif not van.cockpit:van.camera_orbit=wrapf(van.camera_orbit-event.relative.x*.008,-PI,PI)
+		if event is InputEventMouseButton and event.pressed and event.button_index in [MOUSE_BUTTON_WHEEL_UP,MOUSE_BUTTON_WHEEL_DOWN]:
+			var amount:float=-.1 if event.button_index==MOUSE_BUTTON_WHEEL_UP else .1
+			if walking:cargo.actor.camera_zoom=clampf(cargo.actor.camera_zoom+amount,.65,1.6)
+			elif not van.cockpit:van.camera_zoom=clampf(van.camera_zoom+amount,.65,1.6)
 	# Tab is a global dashboard shortcut, even while a GUI slider/button has focus.
 	if event is InputEventKey and event.pressed and not event.echo:
 		if event.keycode == KEY_TAB or (event.keycode == KEY_ESCAPE and options and options.visible):
@@ -781,6 +790,8 @@ func update_hud(speed: float, gear: String, distance: float) -> void:
 		if recovery_panel:
 			recovery_panel.visible = (van.overturned or van.flip_count>0 or van.wrecked) and not (cargo and cargo.on_foot and not cargo.complete)
 			recovery_status.text = "TOTALLED - ENGINE DISABLED (3 / 3)" if van.wrecked else "ROLLOVERS %d / 3%s" % [van.flip_count," - WAIT FOR TRUCK TO SETTLE" if van.overturned and not van.roll_settled else ""]
+			if cargo and not cargo.spilled:
+				recovery_status.text="COLLISIONS %d / 3 / LOAD SECURED%s" % [cargo.collision_count," / RIGHT TRUCK [U]" if van.roll_settled else " / WAIT FOR TRUCK TO SETTLE"]
 			if outerbelt and van.overturned and not van.flip_registered:
 				recovery_status.text="HEAVY IMPACT - WAIT FOR TRUCK TO SETTLE" if not van.roll_settled else "TRUCK SETTLED - RECOVER [U]"
 			upright_button.visible = van.overturned

@@ -8,6 +8,9 @@ var sprite:Sprite3D
 var held:Node3D
 var phase:=0.0
 var camera_angle:=0.45
+var camera_view:=0
+var camera_zoom:=1.0
+var camera_rig:=preload("res://scripts/camera_rig.gd").new()
 var frames:Dictionary={}
 var shown_frame:AtlasTexture
 var facing:=0.0
@@ -40,10 +43,10 @@ func _ready() -> void:
 			var texture:=AtlasTexture.new();texture.atlas=AXIAL_SHEET
 			texture.region=Rect2(centers[row][column]-100,floori(row*AXIAL_SHEET.get_height()/4.0)+12,200,288)
 			texture.filter_clip=true;frames[animation].append(texture)
-	sprite=Sprite3D.new();sprite.billboard=BaseMaterial3D.BILLBOARD_FIXED_Y
+	sprite=Sprite3D.new();sprite.billboard=BaseMaterial3D.BILLBOARD_ENABLED
 	sprite.shaded=false;sprite.alpha_cut=SpriteBase3D.ALPHA_CUT_DISCARD;sprite.alpha_scissor_threshold=.18
 	sprite.texture_filter=BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
-	sprite.position.y=1.0;visual.add_child(sprite)
+	sprite.position.y=.025;visual.add_child(sprite)
 	show_frame("turn",4)
 	# Visibility is the shared carrying state; the illustration already contains its parcel.
 	held=Node3D.new();visual.add_child(held);held.hide()
@@ -58,6 +61,7 @@ func show_frame(animation:String,index:int) -> void:
 	var texture:AtlasTexture=frames[animation][index%frames[animation].size()]
 	if texture==shown_frame:return
 	shown_frame=texture;sprite.texture=texture;sprite.pixel_size=2.0/texture.region.size.y
+	sprite.offset=Vector2(0,texture.region.size.y/2)
 
 func set_enabled(value:bool) -> void:
 	enabled=value;visible=value;visual.visible=value;set_physics_process(value)
@@ -65,9 +69,26 @@ func set_enabled(value:bool) -> void:
 	if value:camera.make_current();update_camera(1.0)
 
 func update_camera(weight:float) -> void:
-	var offset:=Basis(Vector3.UP,camera_angle)*Vector3(0,4.4,6.2)
-	camera.global_position=camera.global_position.lerp(global_position+offset,weight)
-	camera.look_at(global_position+Vector3.UP*1.0)
+	var offsets:Array[Vector3]=[Vector3(0,4.4,6.2),Vector3(0,8,8),Vector3(0,13,2)]
+	var offset:=Basis(Vector3.UP,camera_angle)*offsets[camera_view]*camera_zoom
+	var focus:=global_position+Vector3.UP*1.0
+	var excluded:Array[RID]=[get_rid()]
+	var space:=get_world_3d().direct_space_state
+	var desired:=global_position+offset
+	var safe:=camera_rig.resolve(space,focus,desired,excluded)
+	if safe.distance_to(desired)>.3:
+		# Prefer an overhead view when the truck or a wall hides the worker.
+		var overhead:=camera_rig.resolve(space,focus,global_position+Basis(Vector3.UP,camera_angle)*Vector3(0,13,1),excluded)
+		if overhead.distance_to(focus)>safe.distance_to(focus):safe=overhead
+	var smoothed:=camera.global_position.lerp(safe,weight)
+	camera.global_position=camera_rig.resolve(space,focus,smoothed,excluded)
+	camera.look_at(focus)
+
+func cycle_camera() -> void:
+	camera_view=(camera_view+1)%3
+
+func orbit_camera(amount:float) -> void:
+	camera_angle=wrapf(camera_angle+amount,-PI,PI)
 
 func update_illustration(moving:bool,running:bool) -> void:
 	var relative:=wrapf(facing-camera_angle,-PI,PI)
@@ -86,6 +107,8 @@ func update_illustration(moving:bool,running:bool) -> void:
 
 func _physics_process(delta:float) -> void:
 	if not enabled or not game.driving:return
+	if Input.is_physical_key_pressed(KEY_Q):orbit_camera(delta*1.6)
+	if Input.is_physical_key_pressed(KEY_E):orbit_camera(-delta*1.6)
 	var input:=Vector2(Input.get_axis("steer_left","steer_right"),Input.get_axis("accelerate","brake_reverse")).limit_length()
 	var direction:=Basis(Vector3.UP,camera_angle)*Vector3(input.x,0,input.y)
 	var running:=Input.is_action_pressed("sprint")

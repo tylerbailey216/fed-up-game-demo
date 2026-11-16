@@ -27,7 +27,8 @@ func _ready() -> void:
 	stages=JSON.parse_string(FileAccess.get_file_as_string("res://data/stages.json")).stages
 	quota=int(stages[stage_index].packages)
 	actor=preload("res://scripts/delivery_worker.gd").new();actor.game=game;add_child(actor);actor.set_enabled(false)
-	seen_collision=game.van.collision_serial
+	game.van.delivery_collision_rules=true
+	seen_collision=game.van.crash_serial
 
 func player_position() -> Vector3:
 	return actor.global_position if on_foot else game.van.global_position
@@ -75,7 +76,7 @@ func next_stage() -> void:
 	stage_index=(stage_index+1)%stages.size()
 	quota=int(stages[stage_index].packages)
 	spilled=false;complete=false;recovered=0;spawned=0;damage=0;collision_count=0;pickup_cooldown=0
-	game.van.cargo_open=false;game.van.new_truck();seen_collision=game.van.collision_serial
+	game.van.cargo_open=false;game.van.new_truck();seen_collision=game.van.crash_serial
 	game.van.notify_driver("STAGE %d / %s / %d PACKAGES" % [stage_index+1,stages[stage_index].name,quota])
 
 func toggle_foot() -> void:
@@ -153,8 +154,8 @@ func recover_package(item:Dictionary) -> void:
 func _physics_process(delta:float) -> void:
 	if not game.driving:return
 	armed=game.outerbelt or game.highway.entered
-	if seen_collision!=game.van.collision_serial:
-		seen_collision=game.van.collision_serial
+	if seen_collision!=game.van.crash_serial:
+		seen_collision=game.van.crash_serial
 		if armed:damage_hit(game.van.collision_level)
 	if game.van.wrecked and not on_foot and (not game.van.overturned or game.van.roll_settled):toggle_foot()
 	pickup_cooldown=maxf(0,pickup_cooldown-delta)

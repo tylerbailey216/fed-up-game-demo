@@ -49,6 +49,23 @@ func run(game:Node) -> void:
 					for i in 3:await get_tree().process_frame
 					get_viewport().get_texture().get_image().save_png("res://docs/worker-"+direction[0]+("-carry" if carrying else "-walk")+".png")
 			actor.held.hide()
+			game.van.position=actor.position+Vector3(0,0,3.5);game.van.rotation.y=0
+			for i in 5:await get_tree().process_frame
+			actor.camera_angle=0;actor.camera_view=0;actor.update_illustration(false,false);actor.update_camera(1)
+			for i in 3:await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png("res://docs/camera-truck-obstruction.png")
+			actor.camera_angle=PI/2
+			for mode in 3:
+				actor.camera_view=mode;actor.update_illustration(false,false);actor.update_camera(1)
+				for i in 3:await get_tree().process_frame
+				get_viewport().get_texture().get_image().save_png("res://docs/camera-on-foot-%d.png" % mode)
+	game.cargo.on_foot=false;game.cargo.actor.set_enabled(false);game.van.driver_on_foot=false
+	game.van.position=Vector3(260,.15,0);game.van.rotation.y=0;game.van.camera_manual=false
+	game.van.camera_high=false;game.van.set_view(false)
+	for mode in 2:
+		game.van.camera_high=bool(mode)
+		for i in 60:await get_tree().process_frame
+		get_viewport().get_texture().get_image().save_png("res://docs/camera-driving-%d.png" % mode)
 	var file:=FileAccess.open("res://docs/presentation-profile-"+("baseline" if baseline else "current")+".json",FileAccess.WRITE)
 	file.store_string(JSON.stringify(report,"  "))
 	await game.quit_demo()
