@@ -18,3 +18,5 @@ The Cleveland and Independence locations are stylized game prototypes. Terrain a
 Original user-supplied reference sheets and the handoff PDF remain excluded from the repository and browser export. The runtime worker atlas was prepared with ImageGen from the user-supplied character animation sheet. The Cleveland key art was generated with ImageGen using the supplied character, truck and cockpit references under project art direction. Runtime files are assets/art/presentation/worker-animations.png and cleveland-key-art.png.
 
 Bangers by Vernon Adams and Barlow Condensed by Jeremy Tribby are distributed under the SIL Open Font License 1.1. Font files and complete notices are included in presentation/bangers-OFL.txt and presentation/barlowcondensed-OFL.txt. Sources: https://github.com/google/fonts/tree/main/ofl/bangers and https://github.com/google/fonts/tree/main/ofl/barlowcondensed .
+
+assets/art/presentation/worker-front-back.png was generated through ImageGen to extend the supplied worker design with front/back walking and package-carrying animations.

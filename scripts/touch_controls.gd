@@ -52,7 +52,7 @@ func _input(event:InputEvent) -> void:
 					"camera":game.toggle_camera()
 					"map":game.dashboard.expanded_map=not game.dashboard.expanded_map
 					"options":game.toggle_options()
-					"exit":if game.cargo:game.cargo.toggle_foot()
+					"exit":if game.cargo:game.cargo.interact()
 					"upright":game.van.recover_upright()
 					"stick":stick=(pos-regions.stick.get_center())/80
 				get_viewport().set_input_as_handled();break
@@ -78,6 +78,7 @@ func _draw() -> void:
 	draw_set_transform(Vector2.ZERO,0,Vector2.ONE*size.x/720)
 	var walking:bool=game.cargo and game.cargo.on_foot
 	var labels:Dictionary={"gas":"MOVE" if walking else "GAS","brake":"BACK" if walking else "BRAKE","hand":"RUN" if walking else "HANDBRAKE","camera":"CAMERA","map":"GPS MAP","options":"OPTIONS","exit":"ENTER" if walking else "EXIT / WALK","upright":"RIGHT TRUCK"}
+	if walking and not game.cargo.carrying.is_empty():labels.exit="RETURN BOX"
 	for key in regions:
 		var rect:Rect2=regions[key]
 		if key=="upright" and not game.van.overturned:continue

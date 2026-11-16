@@ -756,11 +756,14 @@ func _unhandled_key_input(event: InputEvent) -> void:
 			start_button.grab_focus()
 	if not driving or paused:
 		return
+	if event.keycode==KEY_F and cargo and cargo.on_foot:
+		cargo.deposit()
+		return
 	dashboard_key(event.keycode)
 	if event.keycode == KEY_C:
 		toggle_camera()
 	if event.keycode == KEY_X and cargo:
-		cargo.toggle_foot()
+		cargo.interact()
 	if event.keycode == KEY_R:
 		reset_van()
 	if event.keycode == KEY_U:

@@ -38,6 +38,17 @@ func run(game:Node) -> void:
 		var result:Dictionary={"view":setting[0],"fps":120000/total,"p95_ms":samples[113],"worst_ms":samples[-1],"draw_calls":calls/120,"primitives":primitives/120,"physics_ms":physics/120}
 		report.samples.append(result);print("PRESENTATION PROFILE ",JSON.stringify(result))
 		get_viewport().get_texture().get_image().save_png("res://docs/presentation-"+setting[0]+("-baseline" if baseline else "-current")+".png")
+		if setting[0]=="worker" and not baseline:
+			var actor:Node=game.cargo.actor
+			actor.camera_angle=0
+			actor.camera.global_position=actor.position+Vector3(0,2.2,5.4);actor.camera.look_at(actor.position+Vector3.UP)
+			for direction in [["back",0.0],["front",PI],["left",PI/2],["right",-PI/2]]:
+				for carrying in [false,true]:
+					actor.held.visible=carrying;actor.facing=direction[1];actor.phase=0
+					actor.update_illustration(true,false)
+					for i in 3:await get_tree().process_frame
+					get_viewport().get_texture().get_image().save_png("res://docs/worker-"+direction[0]+("-carry" if carrying else "-walk")+".png")
+			actor.held.hide()
 	var file:=FileAccess.open("res://docs/presentation-profile-"+("baseline" if baseline else "current")+".json",FileAccess.WRITE)
 	file.store_string(JSON.stringify(report,"  "))
 	await game.quit_demo()

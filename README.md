@@ -10,15 +10,17 @@ The repository contains source; the Pages link runs the exported game. A WebGL 2
 
 Choose **Train / Public Square, Cleveland**. Follow the training ring, take the right exit about 75 meters ahead of spawn, and push past orange barrels into downtown. Public Square and a stylized Terminal Tower/Tower City are included. Independence's I-480/I-77 motorway remains a separate menu option. Older fictional city maps are no longer offered in the menu.
 
-The first two registered collisions outside training keep the load secured. The third disables the truck, opens its rear doors and ejects the entire stage quota once. Packages never continue leaking while driving. Walk to collect each package and carry it back to the truck or purple Cleveland depot. Recover the fixed quota to finish: stage 1 has 12 packages, stage 2 has 16, and stage 3 has 20. The next-stage button supplies a fresh truck and fixed new load; after stage 3 it offers a replay. Route reset cannot bypass recovery. Three rollovers also retain the existing vehicle-disable rule.
+The first two registered collisions outside training keep the load secured. The third disables the truck, opens its rear doors and ejects the entire stage quota once. Packages never continue leaking while driving. Walk to collect each package, carry it to the open rear of the truck or purple Cleveland depot, and press **F** or tap **RETURN BOX** to stow it. The package stays in your hands until that action; entering a return zone does not automatically take it. Returned boxes remain visible in the cargo bay or depot. Recover the fixed quota to finish: stage 1 has 12 packages, stage 2 has 16, and stage 3 has 20. The next-stage button supplies a fresh truck and fixed new load; after stage 3 it offers a replay. Route reset cannot bypass recovery. Three rollovers also retain the existing vehicle-disable rule.
 
 Phone/tablet: left stick steers; GAS/BRAKE on the right; HANDBRAKE drifts. Steering and pedals support separate simultaneous fingers. On foot the stick moves and RUN sprints. CAMERA, GPS MAP, OPTIONS and EXIT/ENTER are touch controls. Vehicle functions and audio levels are under OPTIONS. Rotation/resizing reflows the UI.
 
-Desktop: WASD/arrows drive/walk; Space handbrake; C camera; X exit/enter; Shift run; U right a settled truck; R reset before spilling cargo; Esc pause; Tab dashboard/audio; M map. Q/E indicators, H hazards, L lights, K high beam, I ignition, P parking brake, T cruise, B horn, F refuel while stopped. Speed is mph, distance miles, fuel US gallons.
+Desktop: WASD/arrows drive/walk; Space handbrake; C camera; X exit/enter (or return held box); Shift run; F return package on foot; U right a settled truck; R reset before spilling cargo; Esc pause; Tab dashboard/audio; M map. Q/E indicators, H hazards, L lights, K high beam, I ignition, P parking brake, T cruise, B horn, F refuel while stopped in the truck. Speed is mph, distance miles, fuel US gallons.
 
 ## Develop locally
 
 Open `project.godot` in **Godot 4.5.1 Standard** (GDScript, Compatibility renderer). The original development PC also has `Launch Demo.cmd`, `Launch Independence.cmd` and `Open Editor.cmd`; its portable engine is excluded from Git.
+
+The two game launchers prepare changed assets before opening the game. This also rebuilds imports when launching a source mirror from D: or another folder; the machine-specific `.godot` cache is not backed up. Startup import logs are under `tools/startup-import*.log`. Reopen an already-running game after an update.
 
 Browser export:
 

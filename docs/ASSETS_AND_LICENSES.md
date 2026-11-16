@@ -8,6 +8,8 @@ Finished presentation assets under `assets/art/presentation/`: `cleveland-key-ar
 
 Fonts: `Bangers-Regular.ttf` by Vernon Adams and Barlow Condensed Medium/Bold by Jeremy Tribby, downloaded from the official google/fonts repository by `tools/fetch_presentation_fonts.py`. `bangers-OFL.txt` and `barlowcondensed-OFL.txt` contain the full SIL Open Font License 1.1 notices.
 
+`assets/art/presentation/worker-front-back.png` (1254×1254 RGBA) extends the supplied worker design with front/back walking and carrying frames. Generated through ImageGen using the prepared worker atlas as the character/style reference. Four rows of four frames; runtime regions keep a fixed body scale and foot baseline. Existing side animations remain in use; camera-relative facing selects the matching direction. This is project artwork with no general reuse license granted here.
+
 The four supplied PNG sheets and handoff PDF remain user-provided design references with unspecified redistribution rights; exclude them from shipping builds. FedUp is fictional branding. Avoid substituting real delivery-company logos.
 
 Godot runtime: Godot Engine contributors, MIT license. Official source and license: https://github.com/godotengine/godot/blob/4.5.1-stable/LICENSE.txt . Include the engine license with distributed builds. Tools/runtime files are local development dependencies, excluded from version control.

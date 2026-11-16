@@ -80,9 +80,9 @@ func next_stage() -> void:
 
 func toggle_foot() -> void:
 	if on_foot:
+		if not carrying.is_empty():game.van.notify_driver("Return your package first / F at truck rear or purple depot");return
 		if game.van.wrecked:game.van.notify_driver("Truck disabled - return packages to truck or purple depot");return
 		if actor.position.distance_to(game.van.position)>5:game.van.notify_driver("Get closer to the truck to enter");return
-		deposit()
 		on_foot=false;actor.set_enabled(false);game.van.driver_on_foot=false;game.van.parking_brake=false;game.van.engine_on=true;game.van.set_view(false)
 		return
 	if absf(game.van.speed)>1 and not game.van.wrecked:game.van.notify_driver("Stop before leaving the truck");return
@@ -107,19 +107,47 @@ func toggle_foot() -> void:
 	actor.global_position=at;safe_foot_position=at;actor.velocity=Vector3.ZERO;actor.set_enabled(true)
 	game.van.notify_driver("ON FOOT - WASD move / Shift run / X enter truck")
 
+func return_target() -> String:
+	if not on_foot:return ""
+	var rear:Vector3=game.van.to_global(Vector3(0,0,3.6))
+	var offset:Vector3=actor.global_position-rear
+	if Vector2(offset.x,offset.z).length()<2.3 and absf(offset.y)<3:return "truck"
+	if not game.outerbelt and actor.global_position.distance_to(game.highway.depot)<3.8:return "depot"
+	return ""
+
+func interact() -> void:
+	if on_foot and not carrying.is_empty():deposit()
+	else:toggle_foot()
+
+func secure_package(item:Dictionary,target:String) -> void:
+	item.state="recovered"
+	if is_instance_valid(item.body):
+		var body:RigidBody3D=item.body
+		body.freeze=true;body.collision_layer=0;body.collision_mask=0
+		var slot:=recovered
+		if target=="truck":
+			body.reparent(game.van.body,false)
+			body.position=Vector3(-.5+(slot%2)*.9,.92+floori(slot/6.0)*.53,2.05-(floori(slot/2.0)%3)*.6)
+		else:
+			body.position=game.highway.depot+Vector3(-1.4+(slot%5)*.65,.28+floori(slot/10.0)*.52,-1.0+(floori(slot/5.0)%2)*.6)
+		body.rotation=Vector3.ZERO;body.show()
+	recovered+=1
+
 func deposit() -> void:
 	if carrying.is_empty():return
-	carrying.state="recovered";carrying={};recovered+=1;actor.held.hide()
+	var target:=return_target()
+	if target.is_empty():game.van.notify_driver("Carry package to the open truck rear or purple depot / F to return");return
+	secure_package(carrying,target);carrying={};actor.held.hide();pickup_cooldown=.4
 	game.van.notify_driver("Package secured - %d / %d" % [recovered,quota])
 
 func recover_package(item:Dictionary) -> void:
 	if item.state!="loose":return
-	if is_instance_valid(item.body):item.body.queue_free()
-	item.body=null
 	if on_foot:
+		if is_instance_valid(item.body):
+			item.body.freeze=true;item.body.collision_layer=0;item.body.collision_mask=0;item.body.hide()
 		item.state="carried";carrying=item;actor.held.show()
 	else:
-		item.state="recovered";recovered+=1
+		secure_package(item,"truck")
 	pickup_cooldown=.25
 
 func _physics_process(delta:float) -> void:
@@ -133,7 +161,6 @@ func _physics_process(delta:float) -> void:
 	var at:=player_position()
 	if on_foot:
 		if actor.is_on_floor():safe_foot_position=actor.position
-		if not carrying.is_empty() and (at.distance_to(game.van.position)<4.5 or (not game.outerbelt and at.distance_to(game.highway.depot)<4.5)):deposit()
 	for item in packages:
 		if item.state!="loose" or not is_instance_valid(item.body):continue
 		var body:RigidBody3D=item.body
@@ -148,5 +175,5 @@ func objective() -> String:
 	if complete:return "STAGE %d COMPLETE / %d OF %d RECOVERED" % [stage_index+1,recovered,quota]
 	if not armed:return "TRAINING / Push past orange barrels to enter downtown"
 	if not spilled:return "STAGE %d / %d PACKAGES SECURED / COLLISIONS %d OF 3" % [stage_index+1,quota,collision_count]
-	if on_foot and not carrying.is_empty():return "CARRYING PACKAGE / Return to truck or purple depot"
+	if on_foot and not carrying.is_empty():return "CARRYING PACKAGE / F or RETURN to stow" if not return_target().is_empty() else "CARRYING PACKAGE / Walk to truck rear or purple depot"
 	return "STAGE %d / RECOVER %d OF %d / ON FOOT" % [stage_index+1,recovered,quota]

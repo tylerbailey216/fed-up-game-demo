@@ -6,6 +6,8 @@ The truck GLB has a hollow cargo bay and two rear-door pivots. The first two reg
 
 The playable worker uses a transparent illustrated animation atlas prepared from the supplied character sheet, with walk/run/carry cycles, directional idle and rotating follow camera. The original sheet remains local. The finished loading page and title menu share Cleveland key art generated from the supplied worker, truck and cockpit references. Bangers and Barlow Condensed font files include their OFL licenses.
 
+On-foot repair: the training ring and downtown use one continuous ground collider, removing overlapping floors that could consume all character sliding attempts. Walking tests cross the training exit and a mapped Public Square footway in both directions. Front/back walking and carrying use a dedicated animation atlas; side movement retains the supplied side cycles. F or RETURN BOX explicitly returns held cargo at the truck rear or depot; no automatic proximity deposit occurs. The existing package body is stowed visibly rather than spawning a replacement. Both native launchers import changed assets before starting, so a D: source mirror can rebuild its local Godot cache instead of failing at font preloads.
+
 Responsive layouts include portrait phone, portrait/landscape tablet and desktop. The illustrated desktop cockpit retains uniform scaling. Smaller screens use a separate live instrument layout. The actual 3D camera projection follows viewport aspect; multi-finger controls track steering and pedals independently. Menus scroll on short screens. The rear mirror does not render in compact mode to reduce work.
 
 ## Validation performed

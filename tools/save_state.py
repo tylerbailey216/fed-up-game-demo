@@ -67,7 +67,7 @@ def save(message):
     stamp={'state_id':initial,'saved_at':datetime.datetime.now(datetime.timezone.utc).isoformat()}
     path=ROOT/'data/build_version.json'
     if not path.exists() or json.loads(path.read_text()).get('state_id')!=initial:path.write_text(json.dumps(stamp,indent=2))
-    run(GIT+['add','.gitignore','.github','assets','data','scenes','scripts','tools','web','export_presets.cfg','project.godot','README.md','docs'])
+    run(GIT+['add','.gitignore','.github','assets','data','scenes','scripts','tools','web','export_presets.cfg','project.godot','README.md','docs','Launch Demo.cmd','Launch Independence.cmd','Open Editor.cmd'])
     if run(GIT+['diff','--cached','--name-only']):run(GIT+['commit','-m',message])
     commit=run(GIT+['rev-parse','HEAD'])
     write_status('exporting',state_id=initial,commit=commit)

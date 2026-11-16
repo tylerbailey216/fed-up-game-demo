@@ -11,7 +11,10 @@ var camera_angle:=0.45
 var frames:Dictionary={}
 var shown_frame:AtlasTexture
 var facing:=0.0
+var facing_direction:="back"
+var shown_animation:=""
 const SHEET=preload("res://assets/art/presentation/worker-animations.png")
+const AXIAL_SHEET=preload("res://assets/art/presentation/worker-front-back.png")
 const REGIONS={
 	"turn":[Rect2(104,31,151,278),Rect2(344,31,157,278),Rect2(570,31,136,278),Rect2(774,31,177,278),Rect2(1005,31,159,278),Rect2(1224,31,165,278)],
 	"idle":[Rect2(43,330,121,194),Rect2(194,330,124,194)],
@@ -28,6 +31,15 @@ func _ready() -> void:
 		frames[animation]=[]
 		for region in REGIONS[animation]:
 			var texture:=AtlasTexture.new();texture.atlas=SHEET;texture.region=region;texture.filter_clip=true;frames[animation].append(texture)
+	# Equal body scale and baseline across all front/back locomotion frames.
+	var centers:Array=[[180,472.5,784,1100],[166,471.5,786,1099],[183,473,786,1100],[166,471.5,784.5,1099.5]]
+	for row in 4:
+		var animation:String=["walk_front","walk_back","carry_front","carry_back"][row]
+		frames[animation]=[]
+		for column in 4:
+			var texture:=AtlasTexture.new();texture.atlas=AXIAL_SHEET
+			texture.region=Rect2(centers[row][column]-100,floori(row*AXIAL_SHEET.get_height()/4.0)+12,200,288)
+			texture.filter_clip=true;frames[animation].append(texture)
 	sprite=Sprite3D.new();sprite.billboard=BaseMaterial3D.BILLBOARD_FIXED_Y
 	sprite.shaded=false;sprite.alpha_cut=SpriteBase3D.ALPHA_CUT_DISCARD;sprite.alpha_scissor_threshold=.18
 	sprite.texture_filter=BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
@@ -42,6 +54,7 @@ func _ready() -> void:
 	set_physics_process(false)
 
 func show_frame(animation:String,index:int) -> void:
+	shown_animation=animation
 	var texture:AtlasTexture=frames[animation][index%frames[animation].size()]
 	if texture==shown_frame:return
 	shown_frame=texture;sprite.texture=texture;sprite.pixel_size=2.0/texture.region.size.y
@@ -57,16 +70,19 @@ func update_camera(weight:float) -> void:
 	camera.look_at(global_position+Vector3.UP*1.0)
 
 func update_illustration(moving:bool,running:bool) -> void:
-	if moving:
-		show_frame("carry" if held.visible else ("run" if running else "walk"),int(phase/TAU*4))
-		sprite.flip_h=velocity.dot(camera.global_basis.x)< -.1
+	var relative:=wrapf(facing-camera_angle,-PI,PI)
+	var angle:=absf(relative)
+	facing_direction="back" if angle<PI/4 else ("front" if angle>3*PI/4 else ("left" if relative>0 else "right"))
+	sprite.flip_h=false
+	var frame:=int(phase/TAU*4) if moving else 1
+	if facing_direction in ["front","back"]:
+		if moving or held.visible:show_frame(("carry_" if held.visible else "walk_")+facing_direction,frame)
+		else:show_frame("turn",0 if facing_direction=="front" else 4)
+	elif moving or held.visible:
+		show_frame("carry" if held.visible else ("run" if running else "walk"),frame)
+		sprite.flip_h=facing_direction=="left"
 	else:
-		sprite.flip_h=false
-		if held.visible:show_frame("hold",0)
-		else:
-			var relative:=wrapf(facing-camera_angle,-PI,PI)
-			var angle:=absf(relative)
-			show_frame("turn",4 if angle<.4 else (3 if angle<1.1 else ((2 if relative>0 else 5) if angle<2 else (1 if angle<2.7 else 0))))
+		show_frame("turn",2);sprite.flip_h=facing_direction=="right"
 
 func _physics_process(delta:float) -> void:
 	if not enabled or not game.driving:return
