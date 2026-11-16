@@ -1,0 +1,22 @@
+.godot/
+tools/*.zip
+tools/*.exe
+tools/userdata/
+tools/localdata/
+build/
+*.log
+*.blend1
+*.blend2
+tools/web_templates/
+tools/*_userdata/
+tools/*_localdata/
+__pycache__/
+/Comic Truck*.png*
+/Driving Simulator*.png*
+/FedUp *.png*
+/*.pdf
+docs/*.png
+docs/*.png.import
+docs/external-sync-status.json
+docs/external-sync.log
+tools/webqa/

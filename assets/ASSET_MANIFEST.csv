@@ -1,0 +1,21 @@
+asset_id,class,description,source_or_author,license,path,stage,owner,notes
+van_proxy,model,Procedural white step van fallback,Project original,Project original,scripts/main.gd,fallback,project,Used when GLB is unavailable
+van_exterior,model,Original detailed step van generated in Blender,Project original,Project original,assets/models/fedup_van.glb,prototype,project,Source in assets/source/fedup_van.blend; generator tools/build_van.py
+highway,world,Procedural loop barriers lights skyline overpasses trees clouds,Project original,Project original,scripts/highway.gd,prototype,project,Shared flat materials and MultiMesh scenery batches
+hud,ui,Live text and procedural panels,Project original,Project original,scripts/main.gd,prototype,project,Fuel explicitly not simulated
+cockpit,ui,Vector dashboard steering wheel gauges and route diagram,Project original,Project original,scripts/cockpit.gd,prototype,project,RPM explicitly estimated; no imported art
+comic_materials,shader,Original toon ink sky and contact-shadow materials,Project original,Project original,assets/shaders,art-pass,project,Compatibility renderer; no screen-space dependency
+city_facades,world,Original facade grids cornices and stepped towers,Project original,Project original,scripts/city_art.gd,art-pass,project,Static visuals batch by shared material
+menu_art,ui,Original comic menu composition and typography,Project original,Project original,scripts/menu_art.gd,art-pass,project,SystemFont only; no bundled commercial fonts
+rear_view,ui,Live rear camera feed,Project original,Project original,scripts/rear_mirror.gd,implemented,project,224x320 every fourth rendered frame in cockpit
+cockpit_illustration_v2,texture,Transparent detailed cab trim and dashboard illustration,ImageGen with project art direction,Generated for this project,assets/art/cockpit_illustrated_v2.png,art-pass-v2,project,User cockpit reference used for style; live instruments and mirror remain separate
+skyline_illustration_v2,texture,Original fictional illustrated city panorama,ImageGen with project art direction,Generated for this project,assets/art/skyline_illustrated_v2.png,art-pass-v2,project,Distant repeated impostor backdrop; foreground stays 3D
+procedural_audio,audio,Fourteen original engine vehicle nature and UI WAV sounds including tire squeal and collision variants,Project original,Project original,assets/audio,implemented,project,Rebuild with tools/build_audio.py; no third-party recordings
+navigation,ui,Live local ring route and destination map,Project original,Project original,scripts/navigation.gd,implemented,project,Offline fictional waypoints and current-speed ETA
+dashboard_controls,ui,Functional fuel temperature signals and HUD audio tabs,Project original,Project original,scripts/dashboard_options.gd,implemented,project,Simplified simulation; saves local preferences
+concept_pack,reference,User handoff PDF and four PNG sheets,User supplied,Unspecified,project root,reference,user,Do not ship as runtime assets
+godot,runtime,Godot 4.5.1 standard Windows x64,Godot contributors,MIT,tools,development,third-party,Include engine license when distributing
+live_traffic,world,Original cars barrels signals street district and interactive traffic,Project original,Project original,scripts/traffic_district.gd,implemented,project,Procedural meshes and force driven cars; existing original audio reused
+tire_trails,effect,Original contact strips and timed fade shader,Project original,Project original,scripts/tire_marks.gd,implemented,project,Fixed-size MultiMesh pool with no external textures
+independence_map,geographic database,Independence I-480 I-77 road and building extract,OpenStreetMap contributors,ODbL 1.0,assets/maps/independence.json,geographic prototype,project,Source XML and derived database licensed ODbL; see assets/maps/README.md
+independence_safety,geographic database,External motorway edge sections and estimated crossing audit,OpenStreetMap contributors plus project derivation,ODbL 1.0,assets/maps/independence_safety.json,prototype,project,Rebuild with tools/build_road_safety.py; original rail meshes and physics code are project authored

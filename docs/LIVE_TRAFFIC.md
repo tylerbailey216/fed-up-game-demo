@@ -1,0 +1,19 @@
+# Live traffic district
+
+From the starting point, drive about 75 m along the loop and take the signed right exit through the orange barrels. The optional district connects directly at the same road elevation; there is no loading screen. Stay on the ring for quiet driving or return through the same opening whenever you choose. The orange dot on the loop map marks the exit; in the district, GPS switches to a street grid with actual car positions and signal states. N still selects the old loop waypoints; city mode is free roam, without a destination ETA.
+
+Twelve original physical cars run on two intersecting circuits before the player enters. Four low-mass construction barrels can be shoved and tipped. Crossing the connector beyond them calls the signal: north-south amber for 2 seconds, an all-red second, then east-west green. The subsequent cycle is 10 seconds east-west green, 2 amber, 1 all-red, 12 north-south green, 2 amber, 1 all-red. These are arcade demo timings. The other crossings are unsignalized.
+
+Cars use force-driven motion, local obstacle sensing, signal braking and rolling/steering wheels. A blocked lane creates queues; impatient drivers can sound their horns. The truck transfers impulses and continuous pushing force to cars and barrels. Cars also collide with each other and with the truck. Running a red displays a warning and records the crossing; no invisible wall, automatic braking or rule penalty prevents it. Player-caused obstructions and displaced bodies persist when returning to the loop or menu during the session. R/new-truck recovery resets the player, not the surrounding world.
+
+The existing truck impact sounds, body reactions and severe-collision rollover/damage system also apply to traffic. Lightweight barrels do not trigger the truck's high-speed rollover. Cars have positional horn/impact audio following master volume/mute. Tab/Esc pause freezes the scene, including signal timing and vehicle AI. Returning to the menu freezes traffic until driving resumes.
+
+This is the first finite open-driving district, not an unlimited city. Cars follow local circuits and steer back after displacement; they do not perform global rerouting or lane changes. Their pitch/roll axes are constrained, so truck rollovers are supported but AI car flips/deformation are not. Collisions can create genuine queues or gridlock. Nearby 3D buildings have solid cores; the distant illustrated skyline remains scenery. No pedestrians, police, missions, save-game world persistence or traffic-rule scoring have been added. Only a traffic vehicle that falls below the world is recovered to its route; ordinary obstructions do not trigger despawning.
+
+Off-road grass and the plaza now share road-height collision, so the truck can cross street edges in either direction without getting trapped below a road lip. The finite demo ends at 500 m from the loop center, before the illustrated skyline shell. Reaching that boundary returns the truck to its last clear road position, with a message. The same guard catches below-world or non-finite motion, including rolled/disabled trucks. It preserves fuel, damage, ignition, trip distance and surrounding world state, stops runaway motion and avoids an occupied recovery location. R remains available for an explicit starting-position reset.
+
+Run the focused regression:
+
+`tools\Godot_v4.5.1-stable_win64_console.exe --headless --path . --fixed-fps 60 -- --traffic-test`
+
+It exercises pre-entry traffic, physical barrel entry, returning to the loop, signal clearance/red queues/green release, running a red, lane blockage, pushing an unpowered car, car-to-car momentum transfer, high-speed truck/car rollover, pause, menu persistence and continued flow. Test setups place vehicles deliberately, then use actual physics/input for the interactions. Render previews use `--traffic-capture`; see `traffic-gate.png`, `traffic-intersection.png` and `TRAFFIC_RENDER_SAMPLE.txt`.
