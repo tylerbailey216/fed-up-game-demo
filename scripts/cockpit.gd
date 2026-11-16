@@ -357,8 +357,8 @@ func draw_status() -> void:
 	var flash: bool = fmod(vehicle.blink_time,1.0) < 0.5
 	var green := Color("7ee875")
 	var origin := Vector2(587,569) if inside else Vector2(1030,517)
-	caption(origin,"◀",24,green if flash and (vehicle.indicator == -1 or vehicle.hazards) else Color("364339"))
-	caption(origin+Vector2(139,0),"▶",24,green if flash and (vehicle.indicator == 1 or vehicle.hazards) else Color("364339"))
+	shape([origin+Vector2(0,-10),origin+Vector2(19,-22),origin+Vector2(19,2)],green if flash and (vehicle.indicator == -1 or vehicle.hazards) else Color("364339"),2)
+	shape([origin+Vector2(158,-10),origin+Vector2(139,-22),origin+Vector2(139,2)],green if flash and (vehicle.indicator == 1 or vehicle.hazards) else Color("364339"),2)
 	var status: Array[String] = []
 	if vehicle.hazards:
 		status.append("HAZARDS")

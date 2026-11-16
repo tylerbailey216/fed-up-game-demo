@@ -8,7 +8,8 @@ STATUS=SOURCE/'docs/external-sync-status.json'
 EXCLUDED={'.godot','.git','__pycache__','.history'}
 def eligible(path):
     rel=path.relative_to(SOURCE)
-    return not any(p in EXCLUDED or p.endswith('_userdata') or p.endswith('_localdata') or p in {'userdata','localdata'} for p in rel.parts) and rel.as_posix() not in {'docs/external-sync-status.json','docs/external-sync.log'}
+    if path.suffix=='.log':return False
+    return not any(p in EXCLUDED or p.endswith('_userdata') or p.endswith('_localdata') or p in {'userdata','localdata'} for p in rel.parts) and rel.as_posix() not in {'docs/external-sync-status.json','docs/external-sync.log','docs/save-state-status.json'}
 def digest(path):
     h=hashlib.sha256()
     with path.open('rb') as f:

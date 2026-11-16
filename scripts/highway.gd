@@ -31,7 +31,7 @@ func block(parent: Node3D, pos: Vector3, size: Vector3, color: Color, solid := f
 func _ready() -> void:
 	# Grass is now drivable at the road collision elevation. Its visible surface
 	# sits slightly below asphalt to avoid coplanar flicker at road edges.
-	var terrain := block(self,Vector3(0,-0.34,0),Vector3(2200,0.6,2200),Color("7f9465"),true)
+	var terrain := block(self,Vector3(325 if training_mode else 0,-0.34,0),Vector3(2850 if training_mode else 2200,0.6,2200),Color("7f9465"),true)
 	var terrain_body := terrain.get_child(0) as StaticBody3D
 	(terrain_body.get_child(0) as CollisionShape3D).position.y = 0.04
 	var length := TAU * RADIUS / SEGMENTS
@@ -157,12 +157,28 @@ func build_greenery(rng: RandomNumberGenerator) -> void:
 	sphere.height = 2.0
 	sphere.radial_segments = 8
 	sphere.rings = 4
-	batch_mesh(sphere,crowns,Color("35562c"),true)
-	batch_mesh(sphere,midtones,Color("739539"),true)
-	batch_mesh(sphere,highlights,Color("b1c453"))
-	batch_mesh(sphere,shrubs,Color("78973c"),true)
+	batch_foliage(sphere,crowns,Color("35562c"),true,650)
+	batch_foliage(sphere,midtones,Color("739539"),true,210)
+	batch_foliage(sphere,highlights,Color("b1c453"),false,210)
+	batch_foliage(sphere,shrubs,Color("78973c"),true,300)
 	for color in [Color("35562c"),Color("739539"),Color("b1c453"),Color("78973c")]:
 		art.material(color,color != Color("b1c453")).set_shader_parameter("leaf_sway",0.06)
+
+func batch_foliage(mesh:Mesh,transforms:Array[Transform3D],color:Color,outlined:bool,distance:float) -> void:
+	var chunks:Dictionary={}
+	for transform in transforms:
+		var cell:=Vector2i(floori(transform.origin.x/96),floori(transform.origin.z/96))
+		if not chunks.has(cell):chunks[cell]=[]
+		chunks[cell].append(transform)
+	for cell in chunks:
+		var origin:=Vector3(cell.x*96,0,cell.y*96)
+		var typed:Array[Transform3D]=[]
+		for transform in chunks[cell]:
+			var local:Transform3D=transform;local.origin-=origin;typed.append(local)
+		var instance:=batch_mesh(mesh,typed,color,outlined)
+		instance.position=origin
+		instance.visibility_range_end=distance
+		instance.visibility_range_end_margin=30
 
 func build_clouds(rng: RandomNumberGenerator) -> void:
 	var clouds: Array[Transform3D] = []

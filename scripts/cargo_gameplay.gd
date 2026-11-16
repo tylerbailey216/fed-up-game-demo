@@ -1,5 +1,8 @@
 extends Node3D
-const TOTAL:=12
+var stages:Array=[]
+var stage_index:=0
+var quota:=12
+var collision_count:=0
 var game:Node
 var actor:CharacterBody3D
 var packages:Array[Dictionary]=[]
@@ -10,8 +13,6 @@ var damage:=0.0
 var on_foot:=false
 var carrying:Dictionary={}
 var seen_collision:=0
-var release_time:=0.0
-var last_drop:=Vector3.ZERO
 var safe_foot_position:=Vector3.ZERO
 var complete:=false
 var armed:=false
@@ -23,6 +24,8 @@ func pause_packages(value:bool) -> void:
 
 func _ready() -> void:
 	process_mode=Node.PROCESS_MODE_PAUSABLE
+	stages=JSON.parse_string(FileAccess.get_file_as_string("res://data/stages.json")).stages
+	quota=int(stages[stage_index].packages)
 	actor=preload("res://scripts/delivery_worker.gd").new();actor.game=game;add_child(actor);actor.set_enabled(false)
 	seen_collision=game.van.collision_serial
 
@@ -30,13 +33,13 @@ func player_position() -> Vector3:
 	return actor.global_position if on_foot else game.van.global_position
 
 func spill() -> void:
-	if spilled:return
-	spilled=true;game.van.cargo_open=true;last_drop=game.van.position
-	for i in 6:drop_package()
-	game.van.notify_driver("LOAD SPILLED! Recover packages - drive slowly or exit with X")
+	if spilled or collision_count<3:return
+	spilled=true;game.van.cargo_open=true
+	for i in quota:drop_package()
+	game.van.notify_driver("THIRD COLLISION - TRUCK DISABLED / Recover %d packages" % quota)
 
 func drop_package() -> void:
-	if spawned>=TOTAL:return
+	if not spilled or spawned>=quota:return
 	var van:Node=game.van
 	var body:=RigidBody3D.new();body.mass=4;body.continuous_cd=true;body.linear_damp=.6;body.angular_damp=.8
 	body.process_mode=Node.PROCESS_MODE_PAUSABLE
@@ -47,17 +50,33 @@ func drop_package() -> void:
 	preload("res://scripts/package_visual.gd").build(body,.6,game.highway.art)
 	add_child(body)
 	var fan:float=float(spawned%6)/5.0*2-1
-	body.global_position=van.body.to_global(Vector3(fan*.7,1.2,3.05+float(spawned%3)*.45))
-	body.linear_velocity=van.planar_velocity*.65+van.global_basis*Vector3(fan*7,3.5+float(spawned%3),6)
+	var row:float=floorf(spawned/6.0)
+	body.global_position=van.body.to_global(Vector3(fan*.7,1.2+row*.56,3.05+float(spawned%3)*.54))
+	body.linear_velocity=van.planar_velocity*.5+van.global_basis*Vector3(fan*(5+row),3.5+float(spawned%3),5+row*1.6)
 	body.angular_velocity=Vector3(1+fan,fan*3,fan*2)
 	packages.append({"body":body,"state":"loose","id":spawned})
 	spawned+=1
 
-func damage_hit(level:float) -> void:
-	damage=clampf(damage+maxf(4,level*32),0,100)
-	if damage>=100:
-		game.van.wrecked=true;game.van.engine_on=false
-		game.van.notify_driver("TRUCK DISABLED - finish collecting on foot")
+func damage_hit(_level:float) -> void:
+	if spilled or complete:return
+	collision_count+=1
+	damage=minf(100,collision_count/3.0*100)
+	if collision_count==3:
+		game.van.wrecked=true;game.van.engine_on=false;game.van.cruise=false
+		spill()
+	else:game.van.notify_driver("COLLISION %d / 3 - LOAD SECURED" % collision_count)
+
+func next_stage() -> void:
+	if not complete:return
+	for item in packages:
+		if is_instance_valid(item.body):item.body.queue_free()
+	packages.clear();carrying={};actor.held.hide();actor.set_enabled(false)
+	on_foot=false;game.van.driver_on_foot=false
+	stage_index=(stage_index+1)%stages.size()
+	quota=int(stages[stage_index].packages)
+	spilled=false;complete=false;recovered=0;spawned=0;damage=0;collision_count=0;pickup_cooldown=0
+	game.van.cargo_open=false;game.van.new_truck();seen_collision=game.van.collision_serial
+	game.van.notify_driver("STAGE %d / %s / %d PACKAGES" % [stage_index+1,stages[stage_index].name,quota])
 
 func toggle_foot() -> void:
 	if on_foot:
@@ -91,7 +110,7 @@ func toggle_foot() -> void:
 func deposit() -> void:
 	if carrying.is_empty():return
 	carrying.state="recovered";carrying={};recovered+=1;actor.held.hide()
-	game.van.notify_driver("Package secured - %d / %d" % [recovered,TOTAL])
+	game.van.notify_driver("Package secured - %d / %d" % [recovered,quota])
 
 func recover_package(item:Dictionary) -> void:
 	if item.state!="loose":return
@@ -108,11 +127,7 @@ func _physics_process(delta:float) -> void:
 	armed=game.outerbelt or game.highway.entered
 	if seen_collision!=game.van.collision_serial:
 		seen_collision=game.van.collision_serial
-		if armed:damage_hit(game.van.collision_level);spill()
-	if spilled and spawned<TOTAL:
-		release_time+=delta
-		if game.van.position.distance_to(last_drop)>45 or release_time>5 or game.van.wrecked or on_foot:
-			drop_package();last_drop=game.van.position;release_time=0
+		if armed:damage_hit(game.van.collision_level)
 	if game.van.wrecked and not on_foot and (not game.van.overturned or game.van.roll_settled):toggle_foot()
 	pickup_cooldown=maxf(0,pickup_cooldown-delta)
 	var at:=player_position()
@@ -126,12 +141,12 @@ func _physics_process(delta:float) -> void:
 			body.position=game.van.safe_position+Vector3(4,1,0);body.linear_velocity=Vector3.ZERO
 		if pickup_cooldown>0 or (on_foot and not carrying.is_empty()):continue
 		if at.distance_to(body.position)<(2 if on_foot else 3.2) and (on_foot or absf(game.van.speed)<6):recover_package(item)
-	if recovered==TOTAL and not complete:
-		complete=true;game.van.cargo_open=false;game.van.notify_driver("ALL 12 PACKAGES RECOVERED - delivery saved!")
+	if spilled and recovered==quota and not complete:
+		complete=true;game.van.cargo_open=false;game.van.notify_driver("STAGE %d COMPLETE / ALL %d PACKAGES SECURED" % [stage_index+1,quota])
 
 func objective() -> String:
-	if complete:return "DELIVERY SAVED / 12 OF 12 RECOVERED"
+	if complete:return "STAGE %d COMPLETE / %d OF %d RECOVERED" % [stage_index+1,recovered,quota]
 	if not armed:return "TRAINING / Push past orange barrels to enter downtown"
-	if not spilled:return "LOAD SECURED / Truck condition %d%%" % roundi(100-damage)
+	if not spilled:return "STAGE %d / %d PACKAGES SECURED / COLLISIONS %d OF 3" % [stage_index+1,quota,collision_count]
 	if on_foot and not carrying.is_empty():return "CARRYING PACKAGE / Return to truck or purple depot"
-	return "RECOVER PACKAGES %d / %d / %s" % [recovered,TOTAL,"ON FOOT" if on_foot else "DRIVE SLOWLY TO COLLECT"]
+	return "STAGE %d / RECOVER %d OF %d / ON FOOT" % [stage_index+1,recovered,quota]

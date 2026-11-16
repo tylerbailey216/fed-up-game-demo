@@ -3,35 +3,55 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
-<meta name="theme-color" content="#21172f">
-<meta name="description" content="FedUp Driver: drive, spill cargo and recover packages in a stylized Cleveland demo. Desktop, phone and tablet browser controls.">
-<title>FedUp Driver · Cleveland Demo</title>
+<meta name="theme-color" content="#20132e">
+<meta name="description" content="FedUp Driver. Your truck. Your city. A Cleveland delivery adventure.">
+<title>FedUp Driver · Cleveland</title>
+<link rel="preload" href="presentation/cleveland-key-art.png" as="image" fetchpriority="high">
+<link rel="preload" href="presentation/Bangers-Regular.ttf" as="font" type="font/ttf" crossorigin>
 <style>
-html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#17131f;color:#fff0d2;font-family:Arial,sans-serif;overscroll-behavior:none;touch-action:none}
-canvas{display:block;outline:none;touch-action:none}
-#loading{position:fixed;inset:0;display:grid;place-content:center;text-align:center;padding:24px;background:#21172f;z-index:2}
-h1{font-size:clamp(36px,7vw,62px);font-style:italic;margin:0;color:#ffca55}
-p{max-width:480px;line-height:1.5}progress{width:min(80vw,420px);accent-color:#ffca55;margin:auto}
-#error{color:#ffbdb1;white-space:pre-wrap}
+@font-face{font-family:Comic;src:url('presentation/Bangers-Regular.ttf')}@font-face{font-family:Route;src:url('presentation/BarlowCondensed-Medium.ttf')}
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#20132e;color:#fff3d9;overscroll-behavior:none;touch-action:none}canvas{display:block;outline:none;touch-action:none}
+#loading{position:fixed;inset:0;z-index:2;display:grid;align-content:center;gap:clamp(12px,3vh,32px);padding:clamp(20px,4vw,64px);background:radial-gradient(ellipse at 85% 30%,#58326d 0,transparent 57%),repeating-linear-gradient(125deg,transparent 0 80px,#ffffff03 80px 82px),#20132e;transition:opacity .24s ease}
+#loading::before{content:'';position:absolute;inset:12px;border:1px solid #a887bb35;pointer-events:none}#loading.leaving{opacity:0;pointer-events:none}
+.layout{width:min(1376px,100%);margin:auto;display:grid;grid-template-columns:minmax(270px,.77fr) minmax(0,1.55fr);gap:clamp(24px,4vw,64px);align-items:center;position:relative}
+.identity{position:relative}.eyebrow{font:clamp(14px,1.4vw,20px) Route,sans-serif;letter-spacing:.2em;text-transform:uppercase;color:#dfbbee;margin:0 0 12px;display:flex;gap:12px;align-items:center}.eyebrow::before{content:'';width:28px;height:4px;background:#f58b21;transform:skew(-24deg)}
+h1{margin:0;line-height:.83;transform:rotate(-3deg);font-family:Comic,Impact,sans-serif;letter-spacing:.005em;text-shadow:5px 6px 0 #100d17;-webkit-text-stroke:1px #130c1c}h1 .fedup{font-size:clamp(72px,8.1vw,136px);display:block;color:#fff5e3}h1 .up{color:#ff941e}h1 .driver{display:block;font-size:clamp(62px,7.2vw,122px);color:#ffd04d;letter-spacing:.035em;margin-left:8px;margin-top:12px}
+.route{display:inline-flex;align-items:center;gap:10px;margin:28px 0 0;padding:9px 14px 9px 10px;background:#5c2e87;box-shadow:4px 4px 0 #100d17;border:2px solid #9d70b2;transform:skew(-8deg);font:20px Route,sans-serif;letter-spacing:.06em;text-transform:uppercase}.route span{transform:skew(8deg)}.route svg{width:18px;height:24px;fill:#ffd04d}
+.tagline{font:clamp(18px,1.7vw,25px)/1.35 Route,sans-serif;color:#e8d7ec;margin:24px 0 0;max-width:290px}
+.illustration{margin:0;position:relative;transform:rotate(1deg);border:5px solid #100d17;box-shadow:0 0 0 2px #c79439,10px 12px 0 #100d1799;line-height:0;background:#392044}.illustration img{display:block;width:100%;height:auto;aspect-ratio:3/2;object-fit:contain}.illustration::before{content:'';position:absolute;left:-9px;top:-9px;width:65px;height:7px;background:#ffce44;transform:rotate(-2deg);box-shadow:0 0 0 2px #100d17}.stamp{position:absolute;right:12px;bottom:12px;padding:9px 14px;background:#21142ff2;border:2px solid #f6bd47;box-shadow:3px 3px #100d17;font:18px Comic,Impact,sans-serif;line-height:1;letter-spacing:.08em;transform:rotate(-2deg);color:#fff1cf}
+.loading-area{position:relative;width:min(1376px,100%);margin:auto;display:grid;grid-template-columns:1fr auto;gap:12px 24px;align-items:end}.status{font:clamp(18px,1.7vw,25px) Comic,Impact,sans-serif;letter-spacing:.055em;margin:0}.percent{font:24px Comic,Impact,sans-serif;color:#ffd04d;font-variant-numeric:tabular-nums}.track{grid-column:1/-1;background:#100d17;border:2px solid #c49c55;padding:5px;box-shadow:4px 4px 0 #0c0911;height:27px;overflow:hidden;transform:skew(-9deg)}.fill{height:100%;width:0;background:repeating-linear-gradient(115deg,#ffcc48 0 18px,#f59b24 18px 22px);transition:width .15s linear}.track.indeterminate .fill{width:28%;animation:drive 1.5s ease-in-out infinite alternate}@keyframes drive{to{transform:translateX(250%)}}
+.footnote{font:16px/1.35 Route,sans-serif;color:#c7b5d0;margin:0;max-width:600px}.edition{font:15px Route,sans-serif;letter-spacing:.13em;color:#ab89b8;white-space:nowrap}#error{grid-column:1/-1;display:none;margin:0;padding:12px 16px;background:#3c1b31;border-left:4px solid #ff9869;font:18px Route,sans-serif;line-height:1.3}#retry{display:none;color:#1a1220;background:#ffd04d;border:3px solid #100d17;padding:10px 24px;font:20px Comic,Impact,sans-serif;min-height:48px;cursor:pointer}
+@media(max-aspect-ratio:1/1){#loading{padding:24px 24px 30px;gap:22px}.layout{display:flex;flex-direction:column;gap:24px;align-items:stretch}.eyebrow{font-size:14px;margin-bottom:10px}.identity{text-align:center}h1{display:flex;justify-content:center;align-items:baseline;gap:10px;line-height:.9;transform:rotate(-3deg)}h1 .fedup{font-size:clamp(54px,13.5vw,94px)}h1 .driver{font-size:clamp(44px,11.7vw,82px);margin:0}.route{font-size:16px;margin-top:20px;padding:5px 10px}.route svg{height:18px}.tagline{display:none}.illustration{border-width:4px;margin:0 3px}.stamp{font-size:13px;padding:6px 9px;bottom:8px;right:8px}.loading-area{gap:10px}.status{font-size:20px}.percent{font-size:22px}.track{height:25px}.footnote{font-size:15px}.edition{display:none}}
+@media(max-height:480px) and (min-aspect-ratio:1/1){#loading{padding:20px 38px;gap:16px}.layout{grid-template-columns:.8fr 1.4fr;gap:32px;max-width:1100px}.illustration{max-height:56vh;aspect-ratio:3/2;justify-self:center}.illustration img{height:100%;width:auto;max-height:54vh}.eyebrow{font-size:12px;margin-bottom:8px}h1 .fedup{font-size:64px}h1 .driver{font-size:54px;margin-top:8px}.route{font-size:15px;margin-top:18px;padding:4px 8px}.tagline{display:none}.stamp{font-size:13px}.loading-area{gap:6px 18px}.status{font-size:19px}.track{height:20px;padding:3px}.footnote{font-size:13px}.edition{font-size:12px}}
+@media(prefers-reduced-motion:reduce){*,*::before{animation:none!important;transition:none!important}.track.indeterminate .fill{width:100%;opacity:.6}}
 </style>
 $GODOT_HEAD_INCLUDE
 </head>
 <body>
-<canvas id="canvas" tabindex="0">This demo needs a browser with WebGL 2 and WebAssembly.</canvas>
-<div id="loading"><h1>FedUp / DRIVER</h1><p>Cleveland delivery demo<br>Loading the city… first load may take a moment.</p><progress id="progress"></progress><p id="error"></p><noscript>Please enable JavaScript to play.</noscript></div>
+<canvas id="canvas" tabindex="0">This game needs a browser with WebGL 2 and WebAssembly.</canvas>
+<main id="loading" aria-label="FedUp Driver is loading">
+ <div class="layout">
+  <header class="identity"><p class="eyebrow">Cleveland delivery adventure</p><h1 aria-label="FedUp Driver"><span class="fedup">Fed<span class="up">Up</span></span><span class="driver">DRIVER</span></h1><div class="route"><svg viewBox="0 0 24 32" aria-hidden="true"><path d="M12 0C5 0 1 5 1 11c0 8 11 21 11 21s11-13 11-21C23 5 19 0 12 0Zm0 6a5 5 0 1 1 0 10 5 5 0 0 1 0-10Z"/></svg><span>Public Square / Tower City</span></div><p class="tagline">Your truck. Your city.<br>Every package counts.</p></header>
+  <figure class="illustration"><img src="presentation/cleveland-key-art.png" width="1536" height="1024" alt="The FedUp delivery worker holding a package beside the FedUp truck in Cleveland Public Square" fetchpriority="high"><figcaption class="stamp">SIGNED. SEALED. ALMOST DELIVERED.</figcaption></figure>
+ </div>
+ <section class="loading-area" aria-label="Download progress"><p class="status" id="status" aria-live="polite">Packing your route…</p><span class="percent" id="percent" aria-hidden="true">—</span><div class="track indeterminate" id="track" role="progressbar" aria-label="Loading game" aria-valuemin="0" aria-valuemax="100"><div class="fill" id="fill"></div></div><p class="footnote" id="footnote">First delivery? The city downloads once. Keep this tab open while we get your truck ready.</p><span class="edition">BROWSER DEMO / CLEVELAND, OH</span><p id="error" role="alert"></p><button id="retry" type="button">TRY AGAIN</button><noscript>Please enable JavaScript to play.</noscript></section>
+</main>
 <script src="$GODOT_URL"></script>
 <script>
 const config=$GODOT_CONFIG;
 const engine=new Engine(config);
 const missing=Engine.getMissingFeatures({threads:$GODOT_THREADS_ENABLED});
-const error=document.querySelector('#error');
-if(missing.length){error.textContent='This browser is missing: '+missing.join(', ');}
+const status=document.querySelector('#status'),track=document.querySelector('#track'),fill=document.querySelector('#fill'),percent=document.querySelector('#percent'),error=document.querySelector('#error');
+function fail(message){status.textContent='Your route couldn’t open';track.classList.remove('indeterminate');error.style.display='block';error.textContent=message;document.querySelector('#retry').style.display='block';document.querySelector('#footnote').textContent='Check your connection and try again.';}
+document.querySelector('#retry').addEventListener('click',()=>location.reload());
+if(missing.length){fail('This browser is missing: '+missing.join(', '));}
 else{
- engine.startGame({onProgress:(current,total)=>{const p=document.querySelector('#progress');if(total){p.max=total;p.value=current;}}})
- .then(()=>document.querySelector('#loading').remove())
- .catch(e=>{error.textContent='Could not start the demo: '+e.message;console.error(e);});
+ engine.startGame({onProgress:(current,total)=>{if(total>0){const value=Math.min(100,Math.round(current/total*100));track.classList.remove('indeterminate');track.setAttribute('aria-valuenow',value);fill.style.width=value+'%';percent.textContent=value+'%';status.textContent=value<100?'Bringing Cleveland to life…':'Starting your truck…';}}})
+ .then(()=>requestAnimationFrame(()=>requestAnimationFrame(()=>{const loading=document.querySelector('#loading');loading.classList.add('leaving');setTimeout(()=>loading.remove(),260);})))
+ .catch(e=>{fail('Could not start the game: '+e.message);console.error(e);});
 }
 window.addEventListener('contextmenu',event=>event.preventDefault());
+fetch('version.json',{cache:'no-store'}).then(r=>r.json()).then(v=>{document.querySelector('.edition').textContent='CLEVELAND / BUILD '+v.state_id;document.documentElement.dataset.build=v.state_id;}).catch(()=>{});
 </script>
 </body>
 </html>

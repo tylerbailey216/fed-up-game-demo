@@ -13,6 +13,8 @@ var exhaust_puff_time := 0.0
 var exhaust_cooldown := 0.0
 var previous_throttle := 0.0
 var exhaust_bursts := 0
+var headlight_was_on:=false
+var headlight_update:=0.0
 
 func _ready() -> void:
 	find_wheels(van.body)
@@ -159,8 +161,14 @@ func _physics_process(delta: float) -> void:
 		lamps["signal"+str(side)].albedo_color = Color("ffd04b") if signal_on else Color("7e421a")
 		lamps["rear"+str(side)].albedo_color = Color("ff4540") if van.brake_load > 0 else Color("9b242c")
 	# The cel-shaded world uses an explicit, inexpensive road illumination pool.
+	var lit:bool=van.headlights and van.active
+	headlight_update+=delta
+	if not lit and not headlight_was_on:return
+	if lit and headlight_was_on and headlight_update<.05:return
+	headlight_update=0
 	for material in get_parent().highway.art.cache.values():
 		material.set_shader_parameter("headlight_position",van.global_position)
 		material.set_shader_parameter("headlight_forward",-van.global_basis.z)
 		material.set_shader_parameter("headlight_strength",1.0 if van.headlights and van.active else 0.0)
 		material.set_shader_parameter("headlight_range",65.0 if van.high_beam else 35.0)
+	headlight_was_on=lit

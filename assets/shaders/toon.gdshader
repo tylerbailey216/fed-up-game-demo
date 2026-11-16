@@ -2,6 +2,7 @@ shader_type spatial;
 render_mode unshaded;
 uniform vec4 base_color : source_color = vec4(1.0);
 uniform bool asphalt = false;
+uniform bool use_vertex_color = false;
 uniform bool distant_haze = true;
 uniform float shade_strength = 1.0;
 uniform vec3 headlight_position = vec3(0.0);
@@ -22,7 +23,7 @@ void fragment() {
     float sun = dot(normalize(world_normal), normalize(vec3(-0.45, 0.82, 0.32)));
     float band = sun > 0.6 ? 1.0 : (sun > 0.0 ? 0.83 : 0.62);
     vec3 shadow = mix(vec3(0.69, 0.76, 0.89), vec3(1.0), band);
-    vec3 color = base_color.rgb * mix(vec3(1.0), band * shadow, shade_strength);
+    vec3 color = (use_vertex_color ? COLOR.rgb : base_color.rgb) * mix(vec3(1.0), band * shadow, shade_strength);
     if (asphalt) {
         float grain = fract(sin(dot(floor(world_pos.xz * 5.0), vec2(12.9898, 78.233))) * 43758.5453);
         color += (grain - 0.5) * 0.006;
@@ -31,6 +32,7 @@ void fragment() {
         color -= wear * 0.012;
     }
     float distance_to_eye = length(world_pos - CAMERA_POSITION_WORLD);
+    if (headlight_strength > 0.0) {
     vec3 relative = world_pos-headlight_position;
     float along = dot(relative,headlight_forward);
     float side = length(relative-headlight_forward*along);
@@ -39,6 +41,7 @@ void fragment() {
     beam *= smoothstep(2.0,5.0,along)*(1.0-smoothstep(headlight_range*0.65,headlight_range,along));
     beam *= step(0.4,world_normal.y)*headlight_strength;
     color += vec3(0.23,0.20,0.10)*beam;
+    }
     float haze = distant_haze ? smoothstep(210.0, 1000.0, distance_to_eye) * 0.62 : 0.0;
     ALBEDO = mix(color, vec3(0.53, 0.70, 0.78), haze);
 }

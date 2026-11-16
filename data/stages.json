@@ -1,0 +1,7 @@
+{
+  "stages": [
+    {"name":"Public Square Pickup", "packages":12},
+    {"name":"Tower City Run", "packages":16},
+    {"name":"Cleveland Overtime", "packages":20}
+  ]
+}

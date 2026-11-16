@@ -114,6 +114,11 @@ func _ready() -> void:
 	audio_manager.nature_volume = nature_volume
 	audio_manager.process_mode = Node.PROCESS_MODE_PAUSABLE
 	add_child(audio_manager)
+	if "--presentation-check" in args:
+		var review:=preload("res://scripts/presentation_checks.gd").new()
+		add_child(review)
+		await review.run(self)
+		return
 	if "--delivery-test" in args or "--delivery-capture" in args:
 		var tests:=preload("res://scripts/delivery_tests.gd").new()
 		add_child(tests)
@@ -332,6 +337,12 @@ func build_van() -> void:
 		highway.art.apply_to_model(visual)
 		for side in [-1,1]:
 			add_brand(body,Vector3(side*1.18,2.12,0.63),side*PI/2,100,0.009)
+		for pivot in visual.find_children("RearDoorPivot_*","Node3D",true,false):
+			var rear:=Label3D.new();rear.font=preload("res://assets/fonts/BarlowCondensed-Bold.ttf");rear.font_size=84;rear.pixel_size=.009
+			rear.text="Fed" if str(pivot.name).ends_with("L") else "Up"
+			rear.modulate=Color("60318a") if rear.text=="Fed" else Color("f28c26")
+			rear.position=Vector3(.55 if rear.text=="Fed" else -.55,2.27,.08)
+			rear.outline_size=1;pivot.add_child(rear)
 		return
 	highway.block(body,Vector3(0,1.75,0.6),Vector3(2.3,2.7,3.4),Color("f2eee3"))
 	highway.block(body,Vector3(0,1.45,-1.65),Vector3(2.3,2.1,1.7),Color("f2eee3"))
@@ -451,24 +462,27 @@ func build_ui() -> void:
 	var choices := VBoxContainer.new()
 	choices.add_theme_constant_override("separation",8)
 	margin.add_child(choices)
-	menu_title = text_label("LET'S DRIVE.",36)
+	menu_title = text_label("LET'S DELIVER.",40)
+	menu_title.add_theme_font_override("font",preload("res://assets/fonts/Bangers-Regular.ttf"))
 	choices.add_child(menu_title)
-	choices.add_child(text_label("INDEPENDENCE / I-480 + I-77\nMapped roads / estimated elevations" if outerbelt else "PUBLIC SQUARE / TOWER CITY\nTrain, cross the barrels, explore Cleveland",16))
+	choices.add_child(text_label("INDEPENDENCE / I-480 + I-77\nOHIO MOTORWAY" if outerbelt else "PUBLIC SQUARE + TOWER CITY\nCLEVELAND, OHIO",24))
 	start_button = button("Drive Independence, Ohio / I-480" if outerbelt else "Train / Public Square, Cleveland",start_drive,choices)
+	var primary:=StyleBoxFlat.new();primary.bg_color=Color("ffcb47");primary.border_color=Color("130d1b");primary.set_border_width_all(3);primary.set_corner_radius_all(3);primary.shadow_color=Color("130d1b");primary.shadow_size=3
+	for state in ["normal","hover","pressed","focus"]:start_button.add_theme_stylebox_override(state,primary)
+	start_button.add_theme_color_override("font_color",Color("23152f"));start_button.add_theme_color_override("font_hover_color",Color("23152f"));start_button.add_theme_color_override("font_focus_color",Color("23152f"))
 	map_button = button("Drive Public Square, Cleveland" if outerbelt else "Drive Independence, Ohio / I-480",func(): switch_location(true),choices)
-	button("Reset van",reset_van,choices)
-	button("Window size: 1280 × 720",func(): set_resolution(Vector2i(1280,720)),choices)
-	button("Window size: 1920 × 1080",func(): set_resolution(Vector2i(1920,1080)),choices)
-	button("Fullscreen / windowed",toggle_fullscreen,choices)
-	button("Main menu",return_to_menu,choices)
 	button("Dashboard / Audio [Tab]",toggle_options,choices)
-	button("Quit",quit_demo,choices)
+	button("Fullscreen / windowed",toggle_fullscreen,choices)
 	if not legacy_test:
 		var credit := LinkButton.new()
 		credit.text = "Map data: © OpenStreetMap contributors / ODbL"
 		credit.uri = "https://www.openstreetmap.org/copyright"
 		choices.add_child(credit)
-	choices.add_child(text_label("WASD / arrows · Space brake\nC camera · R reset · Esc pause\nOriginal comic-style art / offline play",14))
+	choices.add_child(text_label("Drive the city. Recover every package.\n3 collisions / One delivery to save.",20))
+	choices.add_child(text_label("WASD drive / X walk / C camera\nTouch controls on phones and tablets",18))
+	if FileAccess.file_exists("res://data/build_version.json"):
+		var version:Dictionary=JSON.parse_string(FileAccess.get_file_as_string("res://data/build_version.json"))
+		choices.add_child(text_label("BUILD "+str(version.state_id),14))
 	hud.hide()
 	start_button.grab_focus()
 	if DisplayServer.get_name() != "headless":
@@ -514,29 +528,33 @@ func build_ui() -> void:
 	upright_button = button("RIGHT TRUCK / RECOVER [U]",func(): van.recover_upright(),recovery_panel)
 	new_truck_button = button("START WITH A NEW TRUCK",func():
 		if cargo and not cargo.complete: return
-		if cargo and cargo.on_foot:
-			van.wrecked = false
-			cargo.actor.position = van.position + Vector3(3,0,0)
-			cargo.toggle_foot()
+		if cargo:
+			cargo.next_stage()
+			return
 		van.new_truck(),recovery_panel)
 	recovery_panel.hide()
 	touch_controls=preload("res://scripts/touch_controls.gd").new()
 	touch_controls.game=self
 	hud.add_child(touch_controls)
 	touch_controls.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	get_viewport().disable_3d=true
 
 func responsive_layout() -> void:
 	var actual:=get_window().size
 	if actual.x<1 or actual.y<1:return
 	var aspect:=float(actual.x)/actual.y
+	# Bound 3D pixel cost on large/retina windows; 2D artwork and HUD stay native.
+	get_viewport().scaling_3d_scale=clampf(sqrt(1280.0*800.0/(float(actual.x)*actual.y)),.65,1.0)
 	get_window().content_scale_aspect=Window.CONTENT_SCALE_ASPECT_EXPAND
 	get_window().content_scale_size=Vector2i(720,roundi(720/aspect)) if aspect<1.6 else Vector2i(roundi(720*aspect),720)
 	if not menu:return
 	var logical:=Vector2(get_window().content_scale_size)
 	var compact:=aspect<1.6
 	menu.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
-	menu.position=Vector2(24,112) if compact else Vector2(logical.x/2+180,30)
-	menu.size=Vector2(logical.x-48,logical.y-136) if compact else Vector2(420,660)
+	var hero_width:=minf(656,logical.y*.3*1.5)
+	var menu_y:=141+hero_width/1.5+28
+	menu.position=Vector2(24,menu_y) if compact else Vector2(logical.x/2+140,30)
+	menu.size=Vector2(logical.x-48,logical.y-menu_y-24) if compact else Vector2(460,660)
 	resize_menu_buttons(menu,compact)
 	if options:
 		options.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
@@ -545,8 +563,8 @@ func responsive_layout() -> void:
 
 func resize_menu_buttons(node:Node,compact:bool) -> void:
 	if node is Button:
-		node.custom_minimum_size.y=88 if compact else 36
-		node.add_theme_font_size_override("font_size",25 if compact else 16)
+		node.custom_minimum_size.y=80 if compact else 64
+		node.add_theme_font_size_override("font_size",27 if compact else 25)
 		if OS.has_feature("web") and (node.text.begins_with("Window size") or node.text=="Quit"):node.hide()
 	for child in node.get_children():resize_menu_buttons(child,compact)
 
@@ -622,25 +640,22 @@ func dashboard_key(key: int) -> void:
 
 func apply_menu_theme() -> void:
 	var theme := Theme.new()
-	var face := SystemFont.new()
-	face.font_names = PackedStringArray(["Arial","Liberation Sans"])
-	face.font_weight = 700
-	theme.default_font = face
-	theme.default_font_size = 16
+	theme.default_font=preload("res://assets/fonts/BarlowCondensed-Medium.ttf")
+	theme.default_font_size=21
 	var panel := StyleBoxFlat.new()
-	panel.bg_color = Color(0.06,0.065,0.11,0.97)
+	panel.bg_color = Color("23172f")
 	panel.border_color = Color("ffd044")
 	panel.set_border_width_all(3)
-	panel.set_corner_radius_all(13)
+	panel.set_corner_radius_all(5)
 	panel.shadow_color = Color(0,0,0,0.7)
 	panel.shadow_size = 7
 	theme.set_stylebox("panel","PanelContainer",panel)
 	for state in ["normal","hover","pressed","focus"]:
 		var style := StyleBoxFlat.new()
-		style.bg_color = Color("282b3b") if state == "normal" else Color("613b87")
-		style.border_color = Color("5e586a") if state == "normal" else Color("ffd044")
+		style.bg_color = Color("48265f") if state == "normal" else Color("6b3886")
+		style.border_color = Color("9371a5") if state == "normal" else Color("ffd044")
 		style.set_border_width_all(2)
-		style.set_corner_radius_all(6)
+		style.set_corner_radius_all(3)
 		if state == "focus":
 			style.bg_color = Color(0,0,0,0)
 		theme.set_stylebox(state,"Button",style)
@@ -680,6 +695,7 @@ func switch_location(start_on_load := false) -> void:
 	get_tree().reload_current_scene()
 
 func start_drive() -> void:
+	get_viewport().disable_3d=false
 	var entering := not driving
 	driving = true
 	paused = false
@@ -697,6 +713,7 @@ func start_drive() -> void:
 	hud.show()
 
 func return_to_menu() -> void:
+	get_viewport().disable_3d=true
 	get_tree().paused = false
 	paused = false
 	driving = false
@@ -729,6 +746,7 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		return
 	if event.keycode == KEY_ESCAPE and driving:
 		paused = not paused
+		get_viewport().disable_3d=paused
 		get_tree().paused = paused
 		menu.visible = paused
 		menu_art.visible = paused
@@ -765,6 +783,10 @@ func update_hud(speed: float, gear: String, distance: float) -> void:
 			upright_button.visible = van.overturned
 			upright_button.disabled = not van.roll_settled
 			new_truck_button.visible = van.wrecked and (not cargo or cargo.complete)
+			if cargo:new_truck_button.text="NEXT STAGE / %d PACKAGES" % int(cargo.stages[(cargo.stage_index+1)%cargo.stages.size()].packages)
+			if cargo and cargo.complete:
+				recovery_status.text="STAGE %d COMPLETE / ALL %d PACKAGES SECURED" % [cargo.stage_index+1,cargo.quota]
+				if cargo.stage_index==cargo.stages.size()-1:new_truck_button.text="ALL STAGES COMPLETE / PLAY AGAIN"
 			var compact:bool=dashboard.compact_layout()
 			var recovery_scale:=minf(hud.size.x/1280,hud.size.y/720) if not compact else hud.size.x/720
 			recovery_panel.scale = Vector2.ONE*recovery_scale

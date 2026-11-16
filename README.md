@@ -4,13 +4,13 @@ One Godot 4.5.1 project for desktop, phone and tablet browsers. The world render
 
 **Play:** https://tylerbailey216.github.io/fed-up-game-demo/
 
-The link becomes available after GitHub Pages is enabled and the first **Build and publish browser demo** workflow succeeds. The repository contains source; the Pages link runs the exported game. A WebGL 2 / WebAssembly browser is required. First load downloads approximately 43 MB. Physical iPhone/Android performance still needs device testing.
+The repository contains source; the Pages link runs the exported game. A WebGL 2 / WebAssembly browser is required. First load downloads approximately 50 MB, including the illustrated loading artwork. Physical iPhone/Android performance still needs device testing.
 
 ## Play
 
 Choose **Train / Public Square, Cleveland**. Follow the training ring, take the right exit about 75 meters ahead of spawn, and push past orange barrels into downtown. Public Square and a stylized Terminal Tower/Tower City are included. Independence's I-480/I-77 motorway remains a separate menu option. Older fictional city maps are no longer offered in the menu.
 
-After the first collision outside training, rear doors open and packages spill out. Six boxes eject immediately; the remaining loose cargo drops along your route. Drive slowly near boxes to recover them. Stop and exit to collect on foot. Repeated impacts or three rollovers disable the truck, forcing foot collection. Carry one box at a time back to the truck or purple Cleveland depot. Recover all twelve to finish; route reset cannot bypass recovery.
+The first two registered collisions outside training keep the load secured. The third disables the truck, opens its rear doors and ejects the entire stage quota once. Packages never continue leaking while driving. Walk to collect each package and carry it back to the truck or purple Cleveland depot. Recover the fixed quota to finish: stage 1 has 12 packages, stage 2 has 16, and stage 3 has 20. The next-stage button supplies a fresh truck and fixed new load; after stage 3 it offers a replay. Route reset cannot bypass recovery. Three rollovers also retain the existing vehicle-disable rule.
 
 Phone/tablet: left stick steers; GAS/BRAKE on the right; HANDBRAKE drifts. Steering and pedals support separate simultaneous fingers. On foot the stick moves and RUN sprints. CAMERA, GPS MAP, OPTIONS and EXIT/ENTER are touch controls. Vehicle functions and audio levels are under OPTIONS. Rotation/resizing reflows the UI.
 
@@ -45,8 +45,10 @@ godot --headless --fixed-fps 60 -- --location-switch-test
 godot --headless --fixed-fps 60 -- --outerbelt-test --safety
 ```
 
-The delivery test exercises the barrel gateway, first physical collision, opening doors, recovery, damage-triggered foot mode, walking, completion, responsive menu bounds and simultaneous touch actions. `--delivery-capture` saves desktop/portrait/tablet screenshots. `tools/browser_smoke.cjs` tests the exported game in Chrome with Playwright under `tools/webqa`.
+The delivery test exercises the barrel gateway, three separate physical impacts, secured cargo on impacts 1–2, one fixed spill on impact 3, no later spawning, walking collection, all three stage quotas, responsive menu bounds and simultaneous touch actions. `--outerbelt --delivery-test` checks the motorway mission too. `--presentation-check` captures the finished menus, city and worker and records native render timings. `tools/browser_smoke.cjs --hardware` checks the exported game, illustrated loader, responsive layouts and simultaneous touch controls in Chrome with Playwright under `tools/webqa`.
 
 Cleveland is a stylized flat street/building blockout derived from OpenStreetMap, with simplified access and traffic rules. Motorway elevations are estimates. Maps are © OpenStreetMap contributors, ODbL 1.0; see `assets/maps/README.md`. Engine and asset notices: `web/THIRD_PARTY_NOTICES.md`, `docs/ASSETS_AND_LICENSES.md`.
 
 On the original PC, `python tools/sync_external.py --watch` maintains the verified, versioned mirror at `D:\FedUp Driver`. Previous changed files are preserved in `.history`; deletions are not propagated. This local backup tool is separate from the browser game. Status: `docs/external-sync-status.json`.
+
+`python tools/save_state.py --message "Describe the change"` imports and checks both missions and map switching, stamps a source build ID, commits, exports the local browser version, verifies the D: mirror, pushes GitHub, and waits for the live Pages build to match. `--watch` performs that workflow after source files have stopped changing for 20 seconds. Failed checks leave the previous online build available. Check `docs/save-state-status.json` for the exact phase and build ID. The online `version.json` identifies the deployed source state and Git commit. The watcher runs while its process remains open; start it again after restarting the PC.

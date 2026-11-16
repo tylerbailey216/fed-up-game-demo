@@ -17,12 +17,16 @@ var surfaces:Dictionary={}
 var solid_faces:=PackedVector3Array()
 var depot:=Vector3(962,0,-43)
 var barriers:Node3D # Compatibility: the separate motorway owns its barriers.
+var road_grid:Dictionary={}
+var road_names:Array[String]=[]
+var scenery_material:ShaderMaterial
 
 func _ready() -> void:
 	training_mode=true
 	super._ready()
 	map_data=JSON.parse_string(FileAccess.get_file_as_string("res://assets/maps/cleveland.json"))
-	block(self,OFFSET+Vector3(0,-0.3,0),Vector3(1500,0.6,1500),Color("aaa998"),true)
+	# The extended training terrain covers downtown too. A second overlapping
+	# floor can exhaust the character solver's slides and obscure asphalt.
 	var closest:=INF
 	for road in map_data.roads:
 		var path:Array=[]
@@ -32,13 +36,13 @@ func _ready() -> void:
 			road_segment(path[i-1],path[i],road.width,road.foot)
 			if not road.foot:
 				var length:float=path[i-1].distance_to(path[i])
-				for j in maxi(1,ceili(length/8)):road_samples.append(path[i-1].lerp(path[i],float(j)/maxi(1,ceili(length/8))))
+				for j in maxi(1,ceili(length/8)):add_road_sample(path[i-1].lerp(path[i],float(j)/maxi(1,ceili(length/8))),road.name)
 		if "Superior" in road.name and not road.foot:
 			for p in path:
 				var score:float=p.distance_to(Vector3(420,0,-75))
 				if score<closest:closest=score;entry=p
 	road_segment(Vector3(250,0,-75),entry,14,false)
-	for i in 30:road_samples.append(Vector3(250,0,-75).lerp(entry,i/29.0))
+	for i in 30:add_road_sample(Vector3(250,0,-75).lerp(entry,i/29.0),"Cleveland training exit")
 	for park in map_data.parks:flat_polygon(park.polygon,0.018,"779b59")
 	for building in map_data.buildings:building_mesh(building)
 	finish_surfaces()
@@ -49,10 +53,13 @@ func _ready() -> void:
 	prepare_map(Rect2(305,125,670,365))
 
 func triangle(a:Vector3,b:Vector3,c:Vector3,color:String,solid:=false) -> void:
-	var key:=color+"@"+str(Vector2i(floori(a.x/128),floori(a.z/128)))
+	var cell:=Vector2i(floori(a.x/128),floori(a.z/128))
+	var key:=str(cell.x)+","+str(cell.y)
+	var origin:=Vector3(cell.x*128,0,cell.y*128)
 	if not surfaces.has(key):
 		var tool:=SurfaceTool.new();tool.begin(Mesh.PRIMITIVE_TRIANGLES);surfaces[key]=tool
-	for p in [a,b,c]:surfaces[key].add_vertex(p)
+	for p in [a,b,c]:
+		surfaces[key].set_color(Color(color));surfaces[key].add_vertex(p-origin)
 	if solid:solid_faces.append_array(PackedVector3Array([a,b,c]))
 
 func quad(a:Vector3,b:Vector3,c:Vector3,d:Vector3,color:String,solid:=false) -> void:
@@ -63,6 +70,11 @@ func road_segment(a:Vector3,b:Vector3,width:float,foot:bool) -> void:
 	var side:=Vector3(-(b-a).z,0,(b-a).x).normalized()*width/2
 	var up:=Vector3.UP*(0.022 if foot else 0.012)
 	quad(a-side+up,a+side+up,b+side+up,b-side+up,"c9bfaa" if foot else "505461")
+	if not foot:
+		var outward:=side.normalized()*2.2
+		var step_up:=Vector3.UP*.012
+		quad(a-side-outward+up+step_up,a-side+up+step_up,b-side+up+step_up,b-side-outward+up+step_up,"b8ad96")
+		quad(a+side+up+step_up,a+side+outward+up+step_up,b+side+outward+up+step_up,b+side+up+step_up,"b8ad96")
 	if not foot and width>8:
 		var dir:Vector3=(b-a).normalized()
 		for j in int(a.distance_to(b)/10):
@@ -77,14 +89,19 @@ func flat_polygon(polygon:Array,height:float,color:String) -> void:
 		var vs:Array=[]
 		for j in 3:
 			var p:=poly[indices[i+j]];vs.append(Vector3(p.x,height,p.y)+OFFSET)
-		triangle(vs[0],vs[1],vs[2],color)
+		if (vs[1]-vs[0]).cross(vs[2]-vs[0]).y>0:triangle(vs[0],vs[2],vs[1],color)
+		else:triangle(vs[0],vs[1],vs[2],color)
 
 func building_mesh(building:Dictionary) -> void:
 	if building.name=="Terminal Tower":return
 	var height:float=building.height
 	flat_polygon(building.polygon,height,"979387")
-	var poly:Array=building.polygon
-	var color: String="a99f8c" if height>60 else "b5a68f"
+	var poly:Array=building.polygon.duplicate()
+	var signed_area:=0.0
+	for i in poly.size():signed_area+=poly[i][0]*poly[(i+1)%poly.size()][1]-poly[(i+1)%poly.size()][0]*poly[i][1]
+	if signed_area<0:poly.reverse()
+	var palette:Array[String]=["bea98c","ad785f","a7a7a0","d0bea0","a79a8d","a9b8b7"]
+	var color:String=palette[absi(hash(str(poly[0])))%palette.size()]
 	for i in poly.size():
 		var a:=Vector3(poly[i][0],0,poly[i][1])+OFFSET
 		var b:=Vector3(poly[(i+1)%poly.size()][0],0,poly[(i+1)%poly.size()][1])+OFFSET
@@ -92,16 +109,23 @@ func building_mesh(building:Dictionary) -> void:
 		if a.distance_to(b)>9:
 			for floor_index in range(1,mini(60,int(height/4))):
 				var y:=floor_index*4.0
-				var normal:=Vector3(-(b-a).z,0,(b-a).x).normalized()*0.04
-				quad(a+Vector3.UP*y+normal,b+Vector3.UP*y+normal,b+Vector3.UP*(y+1.8)+normal,a+Vector3.UP*(y+1.8)+normal,"435d68")
+				var normal:=Vector3((b-a).z,0,-(b-a).x).normalized()*0.06
+				quad(a+Vector3.UP*y+normal,a+Vector3.UP*(y+1.8)+normal,b+Vector3.UP*(y+1.8)+normal,b+Vector3.UP*y+normal,"395967")
+		var normal:=Vector3((b-a).z,0,-(b-a).x).normalized()*.09
+		for y in [0.22,3.4,height-0.5]:
+			quad(a+Vector3.UP*y+normal,a+Vector3.UP*(y+.23)+normal,b+Vector3.UP*(y+.23)+normal,b+Vector3.UP*y+normal,"e0d1b4" if y>1 else "403b3c")
 
 func finish_surfaces() -> void:
+	scenery_material=art.material(Color.WHITE).duplicate()
+	scenery_material.set_shader_parameter("use_vertex_color",true)
+	art.cache["downtown_vertex_colors"]=scenery_material
 	for key in surfaces:
 		var tool:SurfaceTool=surfaces[key];tool.generate_normals()
 		var mesh:=MeshInstance3D.new();mesh.mesh=tool.commit()
-		var color:String=key.split("@")[0]
-		mesh.material_override=art.material(Color(color),false,color=="505461")
-		mesh.visibility_range_end=900
+		var cell:=Vector2i(int(key.split(",")[0]),int(key.split(",")[1]))
+		mesh.position=Vector3(cell.x*128,0,cell.y*128)
+		mesh.material_override=scenery_material
+		mesh.visibility_range_end=1800
 		add_child(mesh)
 	var body:=StaticBody3D.new();var shape:=CollisionShape3D.new();var collision:=ConcavePolygonShape3D.new()
 	collision.backface_collision=true;collision.set_faces(solid_faces);shape.shape=collision
@@ -123,11 +147,16 @@ func build_terminal() -> void:
 	label(center+Vector3(0,9,-29),"TOWER CITY\nTERMINAL TOWER",0,0.065)
 
 func label(at:Vector3,text:String,yaw:=0.0,pixel:=0.025) -> void:
-	var node:=Label3D.new();node.text=text;node.font_size=48;node.pixel_size=pixel;node.position=at;node.rotation.y=yaw;node.modulate=Color("ffe0a0");add_child(node)
+	var node:=Label3D.new();node.text=text;node.font=preload("res://assets/fonts/BarlowCondensed-Bold.ttf");node.font_size=48;node.pixel_size=pixel;node.position=at;node.rotation.y=yaw;node.modulate=Color("ffe0a0");add_child(node)
 
 func build_street_details() -> void:
 	label(Vector3(295,5,-88),"DOWNTOWN CLEVELAND\nPUBLIC SQUARE / TOWER CITY",-PI/2)
-	label(OFFSET+Vector3(0,4,0),"PUBLIC SQUARE",0,0.04)
+	block(self,Vector3(295.08,5,-88),Vector3(.18,3.0,13),Color("253b3d"))
+	for z in [-93,-83]:block(self,Vector3(295.08,2,z),Vector3(.18,4,.18),Color("353441"))
+	var square_sign:=Vector3(975,1.65,-48)
+	block(self,square_sign,Vector3(4.4,1.15,.15),Color("253b3d"))
+	for x in [-1.7,1.7]:block(self,square_sign+Vector3(x,-.75,0),Vector3(.09,1.5,.09),Color("353441"))
+	label(square_sign+Vector3(0,0,.09),"PUBLIC SQUARE",0,.008)
 	label(depot+Vector3(0,3,0),"FedUp RECOVERY DEPOT",0,0.018)
 	block(self,depot+Vector3(0,0.04,0),Vector3(7,0.06,7),Color("765494"))
 	var rng:=RandomNumberGenerator.new();rng.seed=44114
@@ -148,15 +177,24 @@ func _physics_process(_delta:float) -> void:
 
 func has_road_near(at:Vector3,distance:=7.0) -> bool:
 	if at.x<300:return absf(Vector2(at.x,at.z).length()-260)<8
-	for p in road_samples:
-		if p.distance_squared_to(at)<distance*distance:return true
+	var cell:=Vector2i(floori(at.x/32),floori(at.z/32))
+	for x in range(cell.x-1,cell.x+2):
+		for z in range(cell.y-1,cell.y+2):
+			for index in road_grid.get(Vector2i(x,z),[]):
+				if road_samples[index].distance_squared_to(at)<distance*distance:return true
 	return false
+
+func add_road_sample(at:Vector3,road_name:String) -> void:
+	var cell:=Vector2i(floori(at.x/32),floori(at.z/32))
+	if not road_grid.has(cell):road_grid[cell]=[]
+	road_grid[cell].append(road_samples.size());road_samples.append(at);road_names.append(road_name)
 
 func nearest_road(at:Vector3) -> Dictionary:
 	var result:Dictionary={"name":"Downtown Cleveland","point":spawn_position,"distance":INF}
-	for p in road_samples:
+	for index in road_samples.size():
+		var p:=road_samples[index]
 		var d:float=p.distance_to(at)
-		if d<result.distance:result.point=p;result.distance=d
+		if d<result.distance:result.point=p;result.distance=d;result.name=road_names[index]
 	return result
 
 func map_point(at:Vector3,rect:Rect2) -> Vector2:
