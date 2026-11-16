@@ -486,7 +486,7 @@ func build_ui() -> void:
 	shortcuts.position = Vector2(550,18)
 	hud.add_child(shortcuts)
 	for entry in [["M  GPS",func(): dashboard_key(KEY_M)],["N  Destination",func(): navigation.next_target()],["Tab  Dashboard",toggle_options]]:
-		if outerbelt and entry[0]=="N  Destination": entry[0]="N  Road info"
+		if not legacy_test and entry[0]=="N  Destination": entry[0]="N  Road info"
 		var shortcut := Button.new()
 		shortcut.text = entry[0]
 		shortcut.custom_minimum_size = Vector2(130,34)

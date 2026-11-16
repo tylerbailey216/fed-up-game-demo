@@ -148,19 +148,26 @@ func draw_compact() -> void:
 	var factor:=size.x/720
 	var h:=size.y/factor
 	draw_set_transform(Vector2.ZERO,0,Vector2.ONE*factor)
-	panel(Rect2(16,16,688,78))
-	caption(Vector2(32,48),"FedUp",28,CREAM,true)
-	caption(Vector2(162,45),location_name(),16,GOLD,true)
-	if cargo:caption(Vector2(32,77),cargo.objective(),14,CYAN)
+	var wide:=h<480
+	panel(Rect2(16,12 if wide else 16,688,56 if wide else 78))
+	caption(Vector2(32,37 if wide else 48),"FedUp",22 if wide else 28,CREAM,true)
+	caption(Vector2(162,36 if wide else 45),location_name(),14 if wide else 20,GOLD,true)
+	if cargo:caption(Vector2(32,57 if wide else 77),cargo.objective(),12 if wide else 18,CYAN)
 	if show_gps and vehicle.location_world:
 		var rect:=Rect2(378,110,326,210 if h>=850 else 150) if not expanded_map else Rect2(24,254 if h>=850 else 108,672,minf(440,h-660) if h>=850 else h-310)
-		if h<480:rect=Rect2(538,100,166,100) if not expanded_map else Rect2(170,100,534,100)
+		if wide:rect=Rect2(538,80,166,90) if not expanded_map else Rect2(170,122,534,90)
 		panel(rect,Color("202f36"))
 		vehicle.location_world.draw_map(self,rect,cargo.player_position() if cargo else vehicle.position)
 		draw_packages(rect)
 		caption(rect.position+Vector2(12,22),"GPS / GOLD = BOXES" if h<480 else "GPS / PACKAGES IN GOLD",10 if h<480 else 13,GOLD,true)
 		caption(rect.end-Vector2(rect.size.x-12,10),"© OSM contributors" if h<480 else "© OpenStreetMap contributors",9 if h<480 else 10)
 	var y:=h-360
+	if wide:
+		y=h-80
+		panel(Rect2(172,y,242,58))
+		caption(Vector2(184,y+25),"ON FOOT" if cargo and cargo.on_foot else "%03d mph / %s" % [roundi(speed),gear],22,GOLD,true)
+		caption(Vector2(184,y+46),"RETURN BOXES TO TRUCK" if cargo and cargo.on_foot else "FUEL %.1f GAL / %s" % [vehicle.fuel_gallons,"ON" if vehicle.engine_on else "OFF"],12)
+		return
 	if h<850:
 		y=h-190
 		panel(Rect2(196,y,346,102))
@@ -200,7 +207,7 @@ func draw_route() -> void:
 		if navigation and not navigation.enabled:
 			caption(rect.position+Vector2(12,22),"GPS OFF / G TO ENABLE",11,GOLD,true)
 			return
-		vehicle.location_world.draw_map(self,rect,vehicle.position)
+		vehicle.location_world.draw_map(self,rect,cargo.player_position() if cargo else vehicle.position)
 		draw_packages(rect)
 		caption(rect.position+Vector2(12,20),location_name(),11,GOLD,true)
 		caption(rect.position+Vector2(12,rect.size.y-10),"© OpenStreetMap contributors",10,CREAM)

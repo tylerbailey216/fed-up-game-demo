@@ -42,7 +42,7 @@ func next_target() -> void:
 
 func guidance() -> String:
 	if location_world:
-		return "Independence / free exploration"
+		return "Cleveland / Public Square" if location_world.get("is_downtown") else "Independence / free exploration"
 	if not enabled:
 		return "Navigation off"
 	if arrived:
