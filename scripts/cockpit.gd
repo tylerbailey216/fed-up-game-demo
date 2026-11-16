@@ -176,7 +176,10 @@ func draw_compact() -> void:
 		caption(Vector2(44,y+48),"%03d" % roundi(speed),43,CREAM,true)
 		caption(Vector2(144,y+46),"mph / "+gear,20,CYAN,true)
 		caption(Vector2(44,y+81),"FUEL %.1f GAL    ENGINE %s" % [vehicle.fuel_gallons,"ON" if vehicle.engine_on else "OFF"],16,GOLD)
-		caption(Vector2(342,y+40),"←   %s   →" % ("HAZARDS" if vehicle.hazards else "SIGNALS"),18,Color("73d998") if vehicle.blink_time<.5 else CREAM)
+		caption(Vector2(342,y+40),"HAZARDS" if vehicle.hazards else "TURN SIGNALS",18,CREAM)
+		var flash:=fmod(vehicle.blink_time,1.0)<.5
+		shape([Vector2(330,y+27),Vector2(342,y+19),Vector2(342,y+35)],Color("73d998") if flash and (vehicle.hazards or vehicle.indicator==-1) else Color("4b5159"),1)
+		shape([Vector2(665,y+27),Vector2(653,y+19),Vector2(653,y+35)],Color("73d998") if flash and (vehicle.hazards or vehicle.indicator==1) else Color("4b5159"),1)
 		caption(Vector2(342,y+73),"TRUCK CONDITION %d%%" % roundi(100-cargo.damage if cargo else 100),16)
 	if vehicle.notice_time>0:caption(Vector2(34,y+107),vehicle.notice.left(76),13,GOLD)
 

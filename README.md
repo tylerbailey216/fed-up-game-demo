@@ -25,6 +25,7 @@ Browser export:
 ```sh
 python tools/download_web_templates.py
 godot --headless --editor --import --quit
+godot --headless --script tools/export_licenses.gd
 godot --headless --export-release Web build/web/index.html
 python tools/package_web.py
 python -m http.server 8765 --directory build/web

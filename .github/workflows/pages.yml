@@ -30,6 +30,7 @@ jobs:
       - name: Export browser demo
         run: |
           mkdir -p build/web
+          Godot_v4.5.1-stable_linux.x86_64 --headless --script tools/export_licenses.gd
           Godot_v4.5.1-stable_linux.x86_64 --headless --export-release Web build/web/index.html
           python3 tools/package_web.py
       - uses: actions/configure-pages@v5

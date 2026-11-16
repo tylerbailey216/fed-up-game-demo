@@ -4,6 +4,8 @@ Game code, original artwork, procedural models and sound: FedUp Driver project. 
 
 Godot Engine 4.5.1: MIT license, included in LICENSE_GODOT.txt. Engine third-party component notices: https://github.com/godotengine/godot/blob/4.5.1-stable/COPYRIGHT.txt . Godot license information: https://godotengine.org/license/ .
 
+The complete compiled engine component copyright notices and license texts are included in GODOT_THIRD_PARTY.json.
+
 Map data © OpenStreetMap contributors, licensed under ODbL 1.0:
 https://www.openstreetmap.org/copyright
 https://opendatacommons.org/licenses/odbl/1-0/

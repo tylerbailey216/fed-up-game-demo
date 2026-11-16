@@ -20,3 +20,6 @@ docs/*.png.import
 docs/external-sync-status.json
 docs/external-sync.log
 tools/webqa/
+docs/*-smoke.json
+docs/independence-performance*.json
+docs/*RENDER_SAMPLE.txt
