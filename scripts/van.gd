@@ -88,6 +88,8 @@ var ground_tilt:=Vector2.ZERO
 var vegetation_contact:=0.0
 var surface_bump_serial:=0
 var surface_bump_strength:=0.0
+var contact_shadow:Node3D
+var stunts:=preload("res://scripts/vehicle_stunts.gd").new()
 var surface_sampler:=preload("res://scripts/vehicle_surface.gd").new()
 
 func pause_crash(paused: bool) -> void:
@@ -121,10 +123,12 @@ func dispose_roll_body() -> void:
 	set_drive_collision(true)
 
 func simulate_crash(delta: float) -> void:
+	stunts.consume_contact()
 	roll_time += delta
 	if not is_instance_valid(roll_body):
 		return
 	global_position = roll_body.global_position-Vector3(0,1.575,0)
+	stunts.update_shadow(delta)
 	var facing := -roll_body.global_basis.z
 	if Vector2(facing.x,facing.z).length()>0.25:
 		rotation.y = atan2(-facing.x,-facing.z)
@@ -258,24 +262,8 @@ func begin_wall_ride(impact_speed: float, closing_speed: float) -> bool:
 	notify_driver("BARRIER CLIMB - ease off and steer clear")
 	return true
 
-func begin_rollover(impact_speed: float, closing_speed: float, side: float,physical_impact := false) -> bool:
-	# Heavy impacts can pitch and settle upright; an oblique wheel-trip is what
-	# supplies roll torque. Speed alone no longer guarantees a counted flip.
-	if overturned or wrecked:
-		return false
-	var lateral_hit := closing_speed*absf(side)
-	if physical_impact:
-		if impact_speed<22.0 or closing_speed<12.0:return false
-	else:
-		if impact_speed<26.0 or closing_speed<16.0:return false
-		if lateral_hit<12.0 and closing_speed<24.0:return false
-	impact_engine_was_on = engine_on
-	var incoming := planar_velocity
-	if physical_impact:incoming.y=velocity.y
-	if wall_normal.length_squared()<0.5:
-		wall_normal = global_basis*(Vector3(signf(side),0,0) if absf(side)>0.05 else Vector3.BACK)
-	wall_normal = wall_normal.normalized()
-	roll_body = RigidBody3D.new()
+func create_motion_body(physical_impact:bool,stunt:=false) -> void:
+	roll_body = preload("res://scripts/stunt_body.gd").new() if stunt else RigidBody3D.new()
 	roll_body.mass = 3200
 	roll_body.center_of_mass_mode = RigidBody3D.CENTER_OF_MASS_MODE_CUSTOM
 	roll_body.center_of_mass = Vector3(0,-0.25,0)
@@ -298,6 +286,25 @@ func begin_rollover(impact_speed: float, closing_speed: float, side: float,physi
 			roll_body.add_child(shape)
 	roll_body.add_collision_exception_with(self)
 	set_drive_collision(false)
+
+func begin_rollover(impact_speed: float, closing_speed: float, side: float,physical_impact := false) -> bool:
+	# Heavy impacts can pitch and settle upright; an oblique wheel-trip is what
+	# supplies roll torque. Speed alone no longer guarantees a counted flip.
+	if overturned or wrecked:
+		return false
+	var lateral_hit := closing_speed*absf(side)
+	if physical_impact:
+		if impact_speed<22.0 or closing_speed<12.0:return false
+	else:
+		if impact_speed<26.0 or closing_speed<16.0:return false
+		if lateral_hit<12.0 and closing_speed<24.0:return false
+	impact_engine_was_on = engine_on
+	var incoming := planar_velocity
+	if physical_impact:incoming.y=velocity.y
+	if wall_normal.length_squared()<0.5:
+		wall_normal = global_basis*(Vector3(signf(side),0,0) if absf(side)>0.05 else Vector3.BACK)
+	wall_normal = wall_normal.normalized()
+	create_motion_body(physical_impact)
 	if physical_impact:
 		roll_body.linear_velocity=incoming
 		roll_body.angular_velocity=Vector3(0,yaw_rate,0)
@@ -425,6 +432,7 @@ func toggle_cruise() -> void:
 
 func _ready() -> void:
 	surface_sampler.van=self
+	stunts.van=self
 	floor_snap_length=.24
 	var shape := CollisionShape3D.new()
 	# Stadium footprint with vertical sides: rounded in plan without a capsule's
@@ -483,6 +491,9 @@ func recenter_camera() -> void:
 	notify_driver("CAMERA CENTERED / DRAG TO LOOK AROUND")
 
 func reset_vehicle() -> void:
+	if stunts.active:dispose_roll_body()
+	stunts.cancel()
+	surface_sampler.previous.clear()
 	# Position reset must not erase rollover damage or bypass the recovery wait.
 	if overturned:
 		recover_upright()
@@ -559,6 +570,10 @@ func _physics_process(delta: float) -> void:
 	blink_time += delta
 	collision_cooldown = maxf(0,collision_cooldown-delta)
 	wall_ride_time = maxf(0,wall_ride_time-delta)
+	if stunts.active:
+		stunts.tick(delta)
+		telemetry.emit(absf(speed)*3.6,gear_text() if not stunts.active else ("AIR" if not roll_body.supported else "LANDING"),distance)
+		return
 	if driver_on_foot and not overturned and not wrecked:
 		engine_on = false
 		speed = 0

@@ -135,7 +135,7 @@ func _physics_process(delta: float) -> void:
 	suspension += suspension_velocity*delta
 	suspension = suspension.clamp(Vector3(-0.1,-0.06,-0.12),Vector3(0.1,0.06,0.12))
 	van.body.rotation = suspension
-	if van.overturned and is_instance_valid(van.roll_body):
+	if (van.overturned or van.stunts.active) and is_instance_valid(van.roll_body):
 		van.body.global_transform = van.roll_body.global_transform*Transform3D(Basis.IDENTITY,Vector3(0,-1.575,0))
 	else:
 		van.body.position = Vector3.ZERO

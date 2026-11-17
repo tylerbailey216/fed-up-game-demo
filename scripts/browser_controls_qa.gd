@@ -20,6 +20,14 @@ func _physics_process(delta:float) -> void:
 	if not command.is_empty():
 		JavaScriptBridge.eval("window.fedupQACommand=''")
 		if command=="reset":reset()
+		elif command=="curb_prepare":
+			game.touch_controls.release_inputs();game.van.new_truck()
+			var start:=Vector3(250,0,-75);var direction:Vector3=(game.highway.entry-start).normalized()
+			var side:=Vector3(-direction.z,0,direction.x)
+			game.van.position=start.lerp(game.highway.entry,.16)+side*2.3+Vector3.UP*.15
+			game.van.rotation.y=atan2(-side.x,-side.z);game.van.set_view(false)
+		elif command=="curb_jump":
+			game.van.speed=28;game.van.planar_velocity=-game.van.global_basis.z*28
 		elif command=="light_hit":game.cargo.damage_hit(.18)
 		elif command=="energy_reset":game.cargo.damage=0;game.cargo.collision_count=0
 		elif command=="camera":
@@ -77,6 +85,10 @@ func _physics_process(delta:float) -> void:
 	var data:Dictionary={"build":JSON.parse_string(FileAccess.get_file_as_string("res://data/build_version.json")).state_id,"speed":game.van.speed,"position":[game.van.position.x,game.van.position.z],"on_foot":game.cargo.on_foot,"collected":game.cargo.recovered,"quota":game.cargo.quota,"restored":game.cargo.load_restored,"hands_empty":not game.cargo.actor.held.visible,"distance_to_truck":game.cargo.actor.position.distance_to(game.van.position),"reverse":game.touch_controls.reverse_selected,"regions":regions,"citizens":game.city_life.citizens.size(),"cars":game.traffic.cars.size()}
 	data["physics_ms"]=Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS)*1000
 	data["energy"]=game.dashboard.energy_fraction()
+	data["jump_active"]=game.van.stunts.active;data["jump_launches"]=game.van.stunts.launch_serial
+	data["jump_height"]=game.van.position.y;data["jump_airtime"]=game.van.stunts.peak_air_time
+	data["jump_landings"]=game.van.stunts.landing_serial;data["jump_closing"]=game.van.stunts.last_landing_speed
+	data["overturned"]=game.van.overturned
 	data["camera_yaw"]=game.van.camera_orbit;data["camera_pitch"]=game.van.camera_pitch;data["cockpit"]=game.van.cockpit
 	data["recovery_visible"]=game.recovery_back.visible
 	var recovery:Rect2=game.recovery_back.get_global_rect()

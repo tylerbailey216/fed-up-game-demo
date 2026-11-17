@@ -146,6 +146,8 @@ func entry_instruction(touch:=false) -> String:
 	return "TRUCK %d m / TAP ENTER WHEN BESIDE IT" % meters if touch else "TRUCK %d m / PRESS X WHEN BESIDE IT" % meters
 
 func toggle_foot() -> void:
+	if game.van.stunts.active:
+		game.van.notify_driver("WAIT UNTIL THE TRUCK LANDS");return
 	if on_foot:
 		if game.van.wrecked:
 			show_popup("TRUCK DISABLED / %d PACKAGES LEFT" % remaining_packages() if remaining_packages()>0 else "PACKAGES RETURNING / PLEASE WAIT")

@@ -63,7 +63,7 @@ func _process(delta: float) -> void:
 	level("engine_idle",engine*(0.28 if van.cockpit else 0.42),clampf(van.rpm/1000,0.65,3.5))
 	level("engine_load",engine*van.throttle_load*0.30,clampf(van.rpm/1100,0.65,3))
 	var rough:bool=van.ground_kind=="grass"
-	level("road",clampf(speed/35,0,1)*(.56 if rough else .42),(.68 if rough else .8)+speed/65)
+	level("road",float(not van.stunts.active or (is_instance_valid(van.roll_body) and van.roll_body.supported))*clampf(speed/35,0,1)*(.56 if rough else .42),(.68 if rough else .8)+speed/65)
 	level("tire_squeal",van.tire_squeal*0.52,0.9+speed/120)
 	level("wind",(0.10+speed/35*0.25)*nature_volume)
 	level("nature",0.32*nature_volume*(1-speed/50))

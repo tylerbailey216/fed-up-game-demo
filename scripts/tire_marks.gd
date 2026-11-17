@@ -51,7 +51,7 @@ func _physics_process(delta: float) -> void:
 		connected.fill(false)
 		seen_reset = van.reset_count
 		seen_recovery = van.offroad_recoveries
-	if van.overturned or not van.is_on_floor() or absf(van.speed)<2 or van.tire_squeal<0.12:
+	if van.overturned or van.stunts.active or not van.is_on_floor() or absf(van.speed)<2 or van.tire_squeal<0.12:
 		connected.fill(false)
 		return
 	var index := 0

@@ -92,6 +92,7 @@ func _ready() -> void:
 	shadow_material.shader = preload("res://assets/shaders/contact_shadow.gdshader")
 	shadow.material_override = shadow_material
 	van.add_child(shadow)
+	van.contact_shadow=shadow
 	van.reset_vehicle()
 	traffic = preload("res://scripts/downtown_traffic.gd").new() if not outerbelt and not legacy_test else preload("res://scripts/traffic_district.gd").new()
 	traffic.game = self
@@ -126,6 +127,11 @@ func _ready() -> void:
 		add_child(review)
 		await review.run(self)
 		return
+	if "--stunt-test" in args:
+		var jump_tests:=preload("res://scripts/stunt_tests.gd").new();add_child(jump_tests)
+		var failed:Array[String]=await jump_tests.run(self,"--stunt-capture" in args)
+		print("STUNT TEST PASS" if failed.is_empty() else "STUNT TEST FAIL: "+str(failed))
+		await quit_demo(0 if failed.is_empty() else 1);return
 	if "--delivery-test" in args or "--delivery-capture" in args:
 		var tests:=preload("res://scripts/delivery_tests.gd").new()
 		add_child(tests)

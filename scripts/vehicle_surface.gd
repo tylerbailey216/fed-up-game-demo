@@ -7,10 +7,11 @@ var previous:PackedFloat32Array=PackedFloat32Array()
 var previous_brush:=0.0
 
 func update(delta:float) -> void:
+	van.stunts.scan_curb(delta)
 	cooldown=maxf(0,cooldown-delta);clock+=delta
 	if clock<.05:return
 	clock=0
-	if van.overturned or van.wrecked:
+	if van.overturned or van.wrecked or van.stunts.active:
 		van.ground_tilt=Vector2.ZERO;previous.clear();return
 	var levels:=PackedFloat32Array();var sidewalk:=0
 	var space:PhysicsDirectSpaceState3D=van.get_world_3d().direct_space_state
