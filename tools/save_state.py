@@ -57,6 +57,7 @@ def verify_deployment(commit,identity):
 def save(message):
     initial=source_id();write_status('validating',state_id=initial)
     env=os.environ.copy();env['APPDATA']=str(ROOT/'tools/userdata');env['LOCALAPPDATA']=str(ROOT/'tools/localdata')
+    run(['python','tools/build_traffic_shaders.py'])
     run([GODOT,'--headless','--path','.', '--editor','--import','--quit'],env)
     initial=source_id()
     run([GODOT,'--headless','--path','.', '--fixed-fps','60','--','--delivery-test'],env)

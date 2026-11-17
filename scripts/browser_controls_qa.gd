@@ -20,7 +20,10 @@ func _physics_process(delta:float) -> void:
 	if not command.is_empty():
 		JavaScriptBridge.eval("window.fedupQACommand=''")
 		if command=="reset":reset()
+		elif command=="no_msaa":game.get_viewport().msaa_3d=Viewport.MSAA_DISABLED
+		elif command=="restore_msaa":game.get_viewport().msaa_3d=Viewport.MSAA_2X
 		elif command=="half_resolution":game.get_viewport().scaling_3d_scale=.5
+		elif command=="full_resolution":game.get_viewport().scaling_3d_scale=1.0
 		elif command=="short_view":game.get_viewport().get_camera_3d().far=550
 		elif command=="quiet_camera":game.cargo.actor.set_physics_process(false)
 		elif command=="hide_hud":
@@ -31,7 +34,11 @@ func _physics_process(delta:float) -> void:
 		elif command=="quiet_traffic":
 			game.traffic.set_physics_process(false)
 			for car in game.traffic.cars:car.set_physics_process(false);car.freeze=true
-		elif command=="quiet_audio":game.master_volume=0;game.audio_manager.master_volume=0
+		elif command=="quiet_audio":
+			game.master_volume=0;game.audio_manager.set_process(false)
+			for player in game.audio_manager.players.values():player.stop()
+			for car in game.traffic.cars:car.horn_player.stop();car.impact_player.stop()
+		elif command=="restore_audio":game.master_volume=.7;game.audio_manager.set_process(true)
 		elif command=="hide_citizens":
 			for person in game.city_life.citizens:person.hide();person.set_physics_process(false)
 		elif command=="spill":

@@ -218,23 +218,52 @@ func build_car(car: RigidBody3D, color: Color, variant: int) -> void:
 		mesh_box(car,Vector3(side*0.98,0.62,0),Vector3(0.04,0.1,2.3),Color("303746"))
 		mesh_box(car,Vector3(side*0.87,1.12,0),Vector3(0.05,0.06,0.3),Color("d2d6cd"))
 		mesh_box(car,Vector3(side*1.04,1.13,-0.72),Vector3(0.22,0.13,0.26),color)
-	# Merge static panels per material; retain independent rolling wheel pivots.
+	# One vertex-colored body preserves every panel color while avoiding a
+	# separate body/ink submission for each paint, glass and trim material.
+	# Wheel vertices carry axle data for the same roll/steer transform in both
+	# color and ink passes. The physical car and live brake lights stay separate.
 	var groups: Dictionary = {}
 	for child in car.get_children():
 		if child is MeshInstance3D:
 			var mat: Material = child.material_override
-			if not groups.has(mat):
-				groups[mat] = []
-			groups[mat].append(child)
-	for mat in groups:
+			var key:String="brakes" if mat==car.brake_material else "body"
+			if not groups.has(key):groups[key]=[]
+			groups[key].append(child)
+	for pivot in car.wheel_nodes:
+		for wheel in pivot.get_children():
+			if not wheel is MeshInstance3D:continue
+			wheel.set_meta("merge_transform",pivot.transform*wheel.transform)
+			wheel.set_meta("axle",Vector2(pivot.position.x,pivot.position.z))
+			wheel.set_meta("kind",1.0 if pivot.position.z<0 else 2.0)
+			groups.body.append(wheel)
+	for key in groups:
 		var surface := SurfaceTool.new()
 		surface.begin(Mesh.PRIMITIVE_TRIANGLES)
-		for panel in groups[mat]:
-			surface.append_from(panel.mesh,0,panel.transform)
+		for panel in groups[key]:
+			var tone:Color=Color.WHITE if key=="brakes" else panel.material_override.get_shader_parameter("base_color")
+			var pose:Transform3D=panel.get_meta("merge_transform",panel.transform)
+			var arrays:Array=panel.mesh.surface_get_arrays(0)
+			var vertices:PackedVector3Array=arrays[Mesh.ARRAY_VERTEX]
+			var normals:PackedVector3Array=arrays[Mesh.ARRAY_NORMAL]
+			var indices:PackedInt32Array=arrays[Mesh.ARRAY_INDEX]
+			for step in indices.size() if not indices.is_empty() else vertices.size():
+				var index:int=indices[step] if not indices.is_empty() else step
+				surface.set_color(tone)
+				surface.set_uv(panel.get_meta("axle",Vector2.ZERO))
+				surface.set_uv2(Vector2(panel.get_meta("kind",0.0),0))
+				surface.set_normal((pose.basis*normals[index]).normalized())
+				surface.add_vertex(pose*vertices[index])
 			panel.queue_free()
 		var merged := MeshInstance3D.new()
 		merged.mesh = surface.commit()
-		merged.material_override = mat
+		if key=="brakes":merged.material_override=car.brake_material
+		else:
+			var material:=ShaderMaterial.new();material.shader=preload("res://assets/shaders/traffic_toon.gdshader")
+			material.set_shader_parameter("use_vertex_color",true)
+			var ink:=ShaderMaterial.new();ink.shader=preload("res://assets/shaders/traffic_ink.gdshader")
+			material.next_pass=ink;car.visual_material=material
+			merged.material_override=material
+			merged.extra_cull_margin=.4
 		car.add_child(merged)
 
 func update_signals() -> void:

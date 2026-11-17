@@ -118,6 +118,23 @@ func check_mobile_reverse(game:Node) -> void:
 
 func check_city_life(game:Node) -> void:
 	check(game.city_life.citizens.size()==16 and game.traffic.cars.size()==14,"Downtown has sixteen citizens and fourteen interactive vehicles")
+	# Keep the rendering budget without dropping wheels or live brake lights.
+	for car in game.traffic.cars:
+		var meshes:Array=[]
+		for child in car.get_children():
+			if child is MeshInstance3D and not child.is_queued_for_deletion():meshes.append(child)
+		check(meshes.size()==2,"Traffic draws one detailed body/wheel mesh plus independent live brakes")
+		var axles:Dictionary={};var body_vertices:=0
+		for mesh in meshes:
+			if mesh.material_override!=car.visual_material:continue
+			var arrays:Array=mesh.mesh.surface_get_arrays(0)
+			var uv:PackedVector2Array=arrays[Mesh.ARRAY_TEX_UV]
+			var kinds:PackedVector2Array=arrays[Mesh.ARRAY_TEX_UV2]
+			for i in kinds.size():
+				if kinds[i].x>.5:axles[uv[i]]=true
+				else:body_vertices+=1
+		check(axles.size()==4 and body_vertices>0,"All four original wheel axles and body panels survive render merging")
+		check(is_equal_approx(float(car.visual_material.get_shader_parameter("wheel_roll")),car.wheel_roll) and is_equal_approx(float(car.visual_material.next_pass.get_shader_parameter("wheel_roll")),car.wheel_roll),"Traffic color and outline passes follow the same physical wheel rotation")
 	var nearby:=0
 	for citizen in game.city_life.citizens:
 		if citizen.position.distance_to(Vector3(290,0,-25))<120:nearby+=1

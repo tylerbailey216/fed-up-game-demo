@@ -29,6 +29,8 @@ Mobile direction selection is explicit: pull the stick down or tap GEAR: R, then
 
 ## Validation
 
+Traffic body panels and four rolling/steering wheels now share one colored mesh per car, with separate live brake lamps. Both ink and color shaders apply the same axle pose. The original car geometry and independent rigid-body collision/sensing behavior remain intact. See [PERFORMANCE_BUDGETS.md](PERFORMANCE_BUDGETS.md) for isolated benchmark results and the remaining frame-time limits; draw-call reductions are not a guarantee of smooth performance on every device.
+
 The delivery suite covers immediate pickup credit, no double credit, truck repair and completion, mobile reverse with gas already held, reverse after releasing only steering, the direction selector, multitouch forward steering and citizen contact/cooldown/recovery. It checks that the entrance has citizens and that the bounded population exists. Both motorway and map switching retain their existing checks.
 
 `--presentation-check --city-life-review` captures native PC/portrait/landscape city views, a driver/citizen art comparison and bounce/recovery states. `tools/browser_controls.cjs` uses real Chrome touch/keyboard events in 360x640 (DPR 2), 844x390 (DPR 2), 768x1024 and 1280x720 layouts. The opt-in `?qa=controls` fixture places a known spill in a straight test lane, publishes engine telemetry, and verifies all twelve pickups while the worker remains more than 20 m away from the truck. It also checks held-gas reverse and matching loader/engine build IDs. It does not substitute fixture setup for the actual input assertions. Ordinary play does not expose the fixture.

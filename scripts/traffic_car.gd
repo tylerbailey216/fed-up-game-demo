@@ -13,6 +13,9 @@ var wheel_roll := 0.0
 var horn_player: AudioStreamPlayer3D
 var impact_player: AudioStreamPlayer3D
 var brake_material: StandardMaterial3D
+var visual_material:ShaderMaterial
+var visual_roll:=INF
+var visual_steer:=INF
 
 func _ready() -> void:
 	mass = 1100
@@ -103,6 +106,16 @@ func _physics_process(delta: float) -> void:
 	for wheel in wheel_nodes:
 		wheel.rotation.x = wheel_roll
 		wheel.rotation.y = clampf(error,-0.4,0.4) if wheel.position.z<0 else 0.0
+	if visual_material:
+		var steer:float=clampf(error,-.4,.4)
+		if not is_equal_approx(visual_roll,wheel_roll):
+			visual_roll=wheel_roll
+			visual_material.set_shader_parameter("wheel_roll",wheel_roll)
+			visual_material.next_pass.set_shader_parameter("wheel_roll",wheel_roll)
+		if not is_equal_approx(visual_steer,steer):
+			visual_steer=steer
+			visual_material.set_shader_parameter("wheel_steer",steer)
+			visual_material.next_pass.set_shader_parameter("wheel_steer",steer)
 	# A car shoved off its lane steers back physically; no path-position snapping.
 	if position.y < -10:
 		linear_velocity = Vector3.ZERO
