@@ -262,6 +262,7 @@ func build_car(car: RigidBody3D, color: Color, variant: int) -> void:
 			material.set_shader_parameter("use_vertex_color",true)
 			var ink:=ShaderMaterial.new();ink.shader=preload("res://assets/shaders/traffic_ink.gdshader")
 			material.next_pass=ink;car.visual_material=material
+			highway.art.cache["traffic_"+str(car.get_instance_id())]=material
 			merged.material_override=material
 			merged.extra_cull_margin=.4
 		car.add_child(merged)

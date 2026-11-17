@@ -135,6 +135,12 @@ func check_city_life(game:Node) -> void:
 				else:body_vertices+=1
 		check(axles.size()==4 and body_vertices>0,"All four original wheel axles and body panels survive render merging")
 		check(is_equal_approx(float(car.visual_material.get_shader_parameter("wheel_roll")),car.wheel_roll) and is_equal_approx(float(car.visual_material.next_pass.get_shader_parameter("wheel_roll")),car.wheel_roll),"Traffic color and outline passes follow the same physical wheel rotation")
+	var headlights:bool=game.van.headlights
+	game.van.headlights=true;await frames(5)
+	check(float(game.traffic.cars[0].visual_material.get_shader_parameter("headlight_strength"))==1.0,"Merged traffic retains the truck's live headlight illumination")
+	game.van.headlights=false;await frames(5)
+	check(float(game.traffic.cars[0].visual_material.get_shader_parameter("headlight_strength"))==0.0,"Traffic headlight illumination switches off correctly")
+	game.van.headlights=headlights
 	var nearby:=0
 	for citizen in game.city_life.citizens:
 		if citizen.position.distance_to(Vector3(290,0,-25))<120:nearby+=1
