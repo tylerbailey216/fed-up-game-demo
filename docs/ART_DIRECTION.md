@@ -1,5 +1,9 @@
 # Comic highway art direction
 
+## Locked character direction
+
+[CHARACTER_STANDARD.md](CHARACTER_STANDARD.md) governs every human and extraterrestrial pedestrian. The established FedUp delivery driver is the master reference for proportions, black outlines, cel shading, faces, hands, clothing and footwear. Characters may vary in body, age, ethnicity, species, outfit and personality while sharing that illustration quality, animation conventions and comical nonlethal recovery rules. Frame sizes may vary; world scale and ground alignment must remain consistent. This standard takes precedence over older character brainstorming or placeholder treatments.
+
 This pass uses the supplied Comic Truck Driving Simulator HUD, Driving Simulator Asset Sheet, UI Asset Sheet and van turnaround as visual references. They remain reference files, not cropped shipping textures. Runtime art is original.
 
 ## Shared style

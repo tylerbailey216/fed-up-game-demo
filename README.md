@@ -26,6 +26,8 @@ The worker's normal locomotion uses 48 drawn poses: twelve each for front, back,
 
 ## Develop locally
 
+Character art direction is locked in [docs/CHARACTER_STANDARD.md](docs/CHARACTER_STANDARD.md): the existing driver defines the shared illustration style for every human and extraterrestrial citizen, with varied bodies/outfits, consistent animation and scale conventions, and nonlethal cartoon recovery. The document also separates the future pedestrian system from the currently implemented driver and vehicle traffic.
+
 Open `project.godot` in **Godot 4.5.1 Standard** (GDScript, Compatibility renderer). The original development PC also has `Launch Demo.cmd`, `Launch Independence.cmd` and `Open Editor.cmd`; its portable engine is excluded from Git.
 
 The two game launchers prepare changed assets before opening the game. This also rebuilds imports when launching a source mirror from D: or another folder; the machine-specific `.godot` cache is not backed up. Startup import logs are under `tools/startup-import*.log`. Reopen an already-running game after an update.
