@@ -63,9 +63,9 @@ The player's delivery truck keeps its established mission rules: impacts one and
 
 ## Implementation status and next gameplay slice
 
-This document locks the character design and behavior requirements. The current demo ships the playable driver and civilian vehicle traffic; the human/alien pedestrian cast and complete NPC reaction framework are not implemented yet. The driver's current runtime also does not implement every future NPC state listed above.
+This document locks the character design and behavior requirements. The first playable citizen slice now ships two illustrated human/alien designs, four-direction twelve-frame walking, crossing waits, surprise, safe physical tumbling/bouncing, recovery and route resumption. Sixteen citizens populate the approach and Public Square. See [CITY_LIFE.md](CITY_LIFE.md) for assets, prompts, testing and limits. The complete future framework, including dedicated running/turning and item interaction/carrying animations for citizens, remains unfinished; neither current citizen nor driver runtime implements every future state listed above.
 
-The next pedestrian implementation should start with one busy intersection: finished human and extraterrestrial citizens, sidewalk/crossing routines, signals, recoverable collisions and a few movable props. Verify the full recovery loop and performance there before expanding across downtown. Population estimates in the brainstorming notes are starting ideas, not measured limits. Incident reports and additional chain reactions remain optional later features.
+The entrance now has the initial busy local block, civilian cars, citizens, crossing signals and movable construction barrels. Continue reviewing the full recovery loop and measured performance before spreading dense crowds across the full mapped downtown. Population budgets are tuning choices, not guaranteed device limits. Incident reports and additional chain reactions remain optional later features.
 
 ## Version parity
 

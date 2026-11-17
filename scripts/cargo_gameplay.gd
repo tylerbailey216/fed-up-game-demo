@@ -25,6 +25,7 @@ var remaining_notice:=0
 var popup:=""
 var popup_time:=0.0
 var safety:=preload("res://scripts/package_safety.gd").new()
+var pickup_previous:=Vector3.ZERO
 
 func pause_packages(value:bool) -> void:
 	for item in packages:
@@ -157,6 +158,7 @@ func toggle_foot() -> void:
 	on_foot=true;game.van.driver_on_foot=true;game.van.parking_brake=true;game.van.engine_on=false;game.van.set_view(false)
 	actor.global_position=at;safe_foot_position=at;actor.velocity=Vector3.ZERO;actor.set_enabled(true)
 	actor.camera_angle=game.van.rotation.y;actor.facing=actor.camera_angle;actor.look_ahead=Vector3.ZERO;actor.update_camera(1)
+	pickup_previous=actor.global_position
 	game.van.notify_driver("ON FOOT - WASD move / Shift run / X enter truck")
 
 func interact() -> void:
@@ -175,11 +177,13 @@ func secure_package(item:Dictionary,target:String) -> void:
 		else:
 			body.position=game.highway.depot+Vector3(-1.4+(slot%5)*.65,.28+floori(slot/10.0)*.52,-1.0+(floori(slot/5.0)%2)*.6)
 		body.rotation=Vector3.ZERO;body.show()
-	recovered+=1
 
 func recover_package(item:Dictionary) -> void:
 	if item.state!="loose":return
 	item.state="returning"
+	# Credit contact immediately. The star flight is presentation, never a
+	# second pickup or a requirement to approach the rear of the truck.
+	recovered+=1
 	item.body.freeze=true;item.body.collision_layer=0;item.body.collision_mask=0;item.body.hide()
 	var effect:=preload("res://scripts/package_return.gd").new();effect.cargo=self;effect.item=item;add_child(effect)
 
@@ -228,7 +232,10 @@ func _physics_process(delta:float) -> void:
 		if item.state!="loose" or not is_instance_valid(item.body):continue
 		var body:RigidBody3D=item.body
 		# Contact-range pickup; the 60 Hz step cannot skip a box at sprint speed.
-		if on_foot and Vector2(at.x-body.position.x,at.z-body.position.z).length()<.95 and absf(at.y-body.position.y)<1.8:recover_package(item)
+		var start:Vector3=pickup_previous if pickup_previous.distance_to(at)<2 else at
+		var near:=Geometry2D.get_closest_point_to_segment(Vector2(body.global_position.x,body.global_position.z),Vector2(start.x,start.z),Vector2(at.x,at.z))
+		if on_foot and near.distance_to(Vector2(body.global_position.x,body.global_position.z))<1.15 and absf(at.y-body.global_position.y)<1.8:recover_package(item)
+	pickup_previous=at
 	if spilled and recovered==quota and not load_restored:restore_load()
 	update_checkpoint(delta)
 

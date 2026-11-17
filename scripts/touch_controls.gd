@@ -8,6 +8,7 @@ var regions:Dictionary={}
 var font:Font
 var camera_hold:=0.0
 var camera_recentered:=false
+var reverse_selected:=false
 
 func _ready() -> void:
 	mouse_filter=Control.MOUSE_FILTER_IGNORE
@@ -30,6 +31,7 @@ func layout() -> void:
 		regions.stick=Rect2(20,h-152,128,128)
 		regions.gas=Rect2(582,h-152,118,56);regions.brake=Rect2(582,h-84,118,56)
 		regions.hand=Rect2(430,h-70,126,42);regions.upright=Rect2(430,h-122,126,42)
+	regions["gear"]=regions.upright
 
 func release_inputs() -> void:
 	for action in ["accelerate","brake_reverse","steer_left","steer_right","handbrake","sprint"]:Input.action_release(action)
@@ -53,6 +55,8 @@ func _input(event:InputEvent) -> void:
 		if event.pressed:
 			var pos:Vector2=event.position/scale_factor
 			for key in regions:
+				if key=="upright" and not game.van.overturned:continue
+				if key=="gear" and (game.van.overturned or (game.cargo and game.cargo.on_foot)):continue
 				if not regions[key].has_point(pos):continue
 				fingers[event.index]=key
 				match key:
@@ -61,6 +65,7 @@ func _input(event:InputEvent) -> void:
 					"options":game.toggle_options()
 					"exit":if game.cargo:game.cargo.interact()
 					"upright":game.van.recover_upright()
+					"gear":reverse_selected=not reverse_selected
 					"stick":stick=(pos-regions.stick.get_center())/80
 				get_viewport().set_input_as_handled();break
 			var h:=size.y/scale_factor
@@ -83,6 +88,14 @@ func update_actions() -> void:
 	var walking:bool=game.cargo and game.cargo.on_foot
 	var move:=stick.limit_length()
 	var actions:Dictionary={"steer_left":maxf(0,-move.x),"steer_right":maxf(0,move.x),"accelerate":maxf(float("gas" in held),maxf(0,-move.y)),"brake_reverse":maxf(float("brake" in held),maxf(0,move.y)),"handbrake":float("hand" in held and not walking),"sprint":float("hand" in held and walking)}
+	if not walking:
+		# Pulling the stick selects reverse, including while another finger
+		# holds gas. Direction remains selected when the stick recenters.
+		if move.y>.4:reverse_selected=true
+		elif move.y<-.4:reverse_selected=false
+		var pedal:float=maxf(float("gas" in held),absf(move.y) if absf(move.y)>.24 else 0)
+		actions.accelerate=0.0 if reverse_selected else pedal
+		actions.brake_reverse=maxf(float("brake" in held),pedal if reverse_selected else 0.0)
 	for action in actions:
 		if actions[action]>.06:Input.action_press(action,actions[action])
 		else:Input.action_release(action)
@@ -92,10 +105,13 @@ func _draw() -> void:
 	draw_set_transform(Vector2.ZERO,0,Vector2.ONE*size.x/720)
 	var walking:bool=game.cargo and game.cargo.on_foot
 	var labels:Dictionary={"gas":"MOVE" if walking else "GAS","brake":"BACK" if walking else "BRAKE / REV","hand":"RUN" if walking else "HANDBRAKE","camera":"CAMERA","map":"GPS MAP","options":"OPTIONS","exit":"ENTER" if walking else "EXIT / WALK","upright":"RIGHT TRUCK"}
+	labels["gear"]="GEAR: R" if reverse_selected else "GEAR: D"
+	if reverse_selected and not walking:labels.gas="REVERSE"
 	if walking:labels.camera=["TRAVEL VIEW","WIDE VIEW","SURVEY VIEW"][game.cargo.actor.camera_view]
 	for key in regions:
 		var rect:Rect2=regions[key]
 		if key=="upright" and not game.van.overturned:continue
+		if key=="gear" and (walking or game.van.overturned):continue
 		var style:=StyleBoxFlat.new();style.bg_color=Color(.07,.08,.13,.83);style.border_color=Color("ffca55");style.set_border_width_all(2);style.set_corner_radius_all(18)
 		draw_style_box(style,rect)
 		if key=="stick":

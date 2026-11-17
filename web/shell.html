@@ -39,6 +39,7 @@ $GODOT_HEAD_INCLUDE
 <script src="$GODOT_URL"></script>
 <script>
 const config=$GODOT_CONFIG;
+if(new URLSearchParams(location.search).get('qa')==='controls')config.args=['--','--browser-controls-qa'];
 const engine=new Engine(config);
 const missing=Engine.getMissingFeatures({threads:$GODOT_THREADS_ENABLED});
 const status=document.querySelector('#status'),track=document.querySelector('#track'),fill=document.querySelector('#fill'),percent=document.querySelector('#percent'),error=document.querySelector('#error');
@@ -51,7 +52,7 @@ else{
  .catch(e=>{fail('Could not start the game: '+e.message);console.error(e);});
 }
 window.addEventListener('contextmenu',event=>event.preventDefault());
-fetch('version.json',{cache:'no-store'}).then(r=>r.json()).then(v=>{document.querySelector('.edition').textContent='CLEVELAND / BUILD '+v.state_id;document.documentElement.dataset.build=v.state_id;}).catch(()=>{});
+document.querySelector('.edition').textContent='CLEVELAND / BUILD __FEDUP_BUILD__';document.documentElement.dataset.build='__FEDUP_BUILD__';
 </script>
 </body>
 </html>

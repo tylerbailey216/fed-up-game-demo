@@ -42,6 +42,7 @@ func collect_stage(game:Node,capture:bool=false) -> void:
 			cargo.actor.position=item.body.position-Vector3.UP*.3;await frames(3)
 		cargo.actor.update_camera(1)
 		check(item.state=="returning" and not item.body.visible,"Walk-over pickup immediately becomes a sparkle return")
+		check(cargo.recovered==before+1,"Walk-over contact credits the package before its star flight reaches the truck")
 		check(cargo.carrying.is_empty() and not cargo.actor.held.visible,"Automatic collection never leaves a box in the driver's hands")
 		cargo.recover_package(item)
 		if capture and int(item.id)==0:
@@ -97,12 +98,45 @@ func check_mobile_reverse(game:Node) -> void:
 	game.van.speed=0;game.van.planar_velocity=Vector3.ZERO
 	touch(game,"stick",1,true,Vector2(0,75));await frames(120);touch(game,"stick",1,false)
 	check(game.van.speed< -1,"Pulling mobile stick down reverses the truck")
+	# Direction selection persists when a gas finger is already held.
+	game.van.speed=3;game.van.planar_velocity=Vector3(0,0,-3)
+	game.touch_controls.reverse_selected=false
+	touch(game,"gas",2,true);touch(game,"stick",1,true,Vector2(0,75))
+	await frames(160)
+	check(game.van.speed< -1 and not Input.is_action_pressed("accelerate"),"Pulling reverse overrides already-held gas and drives backward")
+	touch(game,"stick",1,false);await frames(30)
+	check(game.van.speed< -1 and Input.is_action_pressed("brake_reverse"),"Releasing the stick keeps held gas in the selected reverse gear")
+	touch(game,"gas",2,false)
+	touch(game,"gear",5,true);touch(game,"gear",5,false)
+	check(not game.touch_controls.reverse_selected,"Visible gear selector returns to forward drive")
 	touch(game,"stick",1,true,Vector2(70,0));touch(game,"gas",2,true)
 	check(Input.is_action_pressed("accelerate") and Input.is_action_pressed("steer_right"),"Two fingers steer and accelerate together")
 	touch(game,"stick",1,false)
 	check(Input.is_action_pressed("accelerate") and not Input.is_action_pressed("steer_right"),"Releasing steering preserves gas finger")
 	game.touch_controls.release_inputs();game.van.speed=0;game.van.planar_velocity=Vector3.ZERO
 	game.get_window().size=Vector2i(1280,720);game.responsive_layout();await frames(4)
+
+func check_city_life(game:Node) -> void:
+	check(game.city_life.citizens.size()==16 and game.traffic.cars.size()==14,"Downtown has sixteen citizens and fourteen interactive vehicles")
+	var nearby:=0
+	for citizen in game.city_life.citizens:
+		if citizen.position.distance_to(Vector3(290,0,-25))<120:nearby+=1
+	check(nearby>=4,"Citizens populate the entrance approach instead of only a distant city circuit")
+	var person:Node=game.city_life.citizens[0]
+	var previous:Vector3=person.position
+	game.van.position=Vector3(390,.15,-75);game.van.rotation.y=0
+	game.van.speed=8;game.van.planar_velocity=Vector3(0,0,-8)
+	person.position=game.van.position+Vector3(0,0,-3);person.cooldown=0;person.state="walk"
+	var hits:int=person.hits;var recoveries:int=person.recoveries
+	await frames(3)
+	check(person.hits==hits+1 and person.state=="tumble","Vehicle contact triggers a nonlethal citizen tumble")
+	person.react(Vector3.RIGHT,10)
+	check(person.hits==hits+1,"Recovery cooldown prevents repeated launches")
+	game.van.speed=0;game.van.planar_velocity=Vector3.ZERO
+	await frames(300)
+	check(person.recoveries>recoveries and person.state in ["walk","wait","surprise"],"Citizen bounces, lands, recovers and resumes the route")
+	check(person.position.is_finite() and person.position.y>-.2,"Citizen recovery leaves a grounded reachable character")
+	person.position=previous;person.velocity=Vector3.ZERO;person.last_position=previous
 
 func check_finish(game:Node,capture:bool) -> void:
 	var cargo:Node=game.cargo
@@ -297,12 +331,13 @@ func check_package_safety(game:Node) -> void:
 
 func run(game:Node,capture:bool) -> void:
 	game.start_drive();await frames(90)
+	await check_city_life(game)
 	await check_mobile_reverse(game)
 	game.van.reset_vehicle();await frames(60)
 	game.cargo.collision_count=0;game.cargo.damage=0;game.cargo.seen_collision=game.van.crash_serial
 	game.van.crash_contact_active=false
 	check(game.van.is_on_floor(),"Training spawn rests on road")
-	check(game.highway.map_data.roads.size()>500 and game.traffic.cars.size()==8,"Mapped downtown and traffic exist")
+	check(game.highway.map_data.roads.size()>500 and game.traffic.cars.size()==14,"Mapped downtown and traffic exist")
 	game.van.position=Vector3(260,.15,-75);game.van.rotation.y=-PI/2;game.van.speed=12
 	Input.action_press("accelerate");await frames(240);Input.action_release("accelerate")
 	check(game.highway.entered and game.van.position.x>285,"Actual construction-barrel gateway opens downtown: at=%s speed=%.2f impacts=%d" % [game.van.position,game.van.speed,game.cargo.collision_count])

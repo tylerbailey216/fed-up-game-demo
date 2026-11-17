@@ -1,6 +1,9 @@
 extends Node
 
 func run(game:Node) -> void:
+	if "--city-life-review" in OS.get_cmdline_user_args():
+		var review:=preload("res://scripts/city_life_review.gd").new();add_child(review)
+		await review.run(game);return
 	if "--foot-access-review" in OS.get_cmdline_user_args():
 		var review:=preload("res://scripts/foot_access_review.gd").new();add_child(review)
 		await review.run(game);return

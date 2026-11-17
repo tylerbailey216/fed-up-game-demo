@@ -38,6 +38,7 @@ var switching_location := false
 var cargo: Node3D
 var touch_controls: Node
 var legacy_test := false
+var city_life:Node3D
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -96,6 +97,8 @@ func _ready() -> void:
 	traffic.highway = highway
 	traffic.disabled_world = outerbelt
 	add_child(traffic)
+	if not outerbelt and not legacy_test:
+		city_life=preload("res://scripts/city_life.gd").new();city_life.game=self;add_child(city_life)
 	van.telemetry.connect(update_hud)
 	navigation = preload("res://scripts/navigation.gd").new()
 	navigation.location_world = null if legacy_test else highway
@@ -115,6 +118,8 @@ func _ready() -> void:
 	audio_manager.nature_volume = nature_volume
 	audio_manager.process_mode = Node.PROCESS_MODE_PAUSABLE
 	add_child(audio_manager)
+	if "--browser-controls-qa" in args and OS.has_feature("web"):
+		var fixture:=preload("res://scripts/browser_controls_qa.gd").new();fixture.game=self;add_child(fixture)
 	if "--presentation-check" in args:
 		var review:=preload("res://scripts/presentation_checks.gd").new()
 		add_child(review)

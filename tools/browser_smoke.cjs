@@ -12,7 +12,7 @@ let activeBrowser;
  page.on('console',m=>{console.log(m.type()+': '+m.text());if(m.type()==='error')errors.push(m.text());});
  let releaseEngine;
  const engineGate=new Promise(resolve=>releaseEngine=resolve);
- await page.route('**/index.js',async route=>{await engineGate;await route.continue();});
+ await page.route('**/game-*.js',async route=>{await engineGate;await route.continue();});
  const response=await page.goto(process.argv.find((arg,i)=>i>1&&/^https?:/.test(arg))||'http://127.0.0.1:8765/',{waitUntil:'commit'});
  if(!response.ok())throw new Error('HTTP '+response.status()+' at '+page.url());
  await page.locator('.illustration img').waitFor();
@@ -24,7 +24,7 @@ let activeBrowser;
   const fits=await page.evaluate(()=>[...document.querySelectorAll('.identity,.illustration,.loading-area')].every(e=>{const r=e.getBoundingClientRect();return r.x>=0&&r.y>=0&&r.right<=innerWidth&&r.bottom<=innerHeight;}));
   if(!fits)throw new Error(`Loading artwork overflows ${width}x${height}`);
  }
- releaseEngine();await page.waitForLoadState('domcontentloaded');await page.unroute('**/index.js');
+ releaseEngine();await page.waitForLoadState('domcontentloaded');await page.unroute('**/game-*.js');
  await page.setViewportSize({width:360,height:640});
  await page.locator('#canvas').waitFor();
  try{await page.waitForFunction(()=>!document.querySelector('#loading'),null,{timeout:90000});}
