@@ -24,6 +24,7 @@ var checkpoint_inside:=false
 var remaining_notice:=0
 var popup:=""
 var popup_time:=0.0
+var safety:=preload("res://scripts/package_safety.gd").new()
 
 func pause_packages(value:bool) -> void:
 	for item in packages:
@@ -36,6 +37,7 @@ func _ready() -> void:
 	actor=preload("res://scripts/delivery_worker.gd").new();actor.game=game;add_child(actor);actor.set_enabled(false)
 	game.van.delivery_collision_rules=true
 	seen_collision=game.van.crash_serial
+	safety.cargo=self
 	build_checkpoint()
 
 func build_checkpoint() -> void:
@@ -119,6 +121,7 @@ func next_stage() -> void:
 	quota=int(stages[stage_index].packages)
 	spilled=false;complete=false;recovered=0;spawned=0;damage=0;collision_count=0;load_restored=false
 	checkpoint_hold=0;checkpoint_inside=false;popup_time=0
+	safety.ready=false;safety.clock=0;safety.rescued=0;safety.audit_clock=0;safety.index=0
 	game.van.cargo_open=false;game.van.new_truck();seen_collision=game.van.crash_serial
 	game.van.active=true
 	game.van.notify_driver("STAGE %d / %s / %d PACKAGES" % [stage_index+1,stages[stage_index].name,quota])
@@ -143,6 +146,8 @@ func toggle_foot() -> void:
 			if is_instance_valid(game.van.roll_body):ray.exclude.append(game.van.roll_body.get_rid())
 			var hit:=get_world_3d().direct_space_state.intersect_ray(ray)
 			if hit.is_empty() or hit.normal.y<.85:continue
+			# Exit at road level, never on a wall/vehicle roof selected by the ray.
+			if not hit.collider is StaticBody3D or hit.position.y>game.van.position.y+.65:continue
 			at=hit.position+Vector3.UP*.08
 			var capsule:=CapsuleShape3D.new();capsule.radius=.34;capsule.height=1.7
 			var query:=PhysicsShapeQueryParameters3D.new();query.shape=capsule;query.transform=Transform3D(Basis.IDENTITY,at+Vector3.UP*.9);query.collision_mask=1|8
@@ -151,6 +156,7 @@ func toggle_foot() -> void:
 	if not found:game.van.notify_driver("No safe space beside truck - recover it first");return
 	on_foot=true;game.van.driver_on_foot=true;game.van.parking_brake=true;game.van.engine_on=false;game.van.set_view(false)
 	actor.global_position=at;safe_foot_position=at;actor.velocity=Vector3.ZERO;actor.set_enabled(true)
+	actor.camera_angle=game.van.rotation.y;actor.facing=actor.camera_angle;actor.look_ahead=Vector3.ZERO;actor.update_camera(1)
 	game.van.notify_driver("ON FOOT - WASD move / Shift run / X enter truck")
 
 func interact() -> void:
@@ -217,11 +223,10 @@ func _physics_process(delta:float) -> void:
 	var at:=player_position()
 	if on_foot:
 		if actor.is_on_floor():safe_foot_position=actor.position
+	safety.update(delta)
 	for item in packages:
 		if item.state!="loose" or not is_instance_valid(item.body):continue
 		var body:RigidBody3D=item.body
-		if body.position.y< -4 or body.position.x>1740 or body.position.x< -1300 or absf(body.position.z)>1200:
-			body.position=game.van.safe_position+Vector3(4,1,0);body.linear_velocity=Vector3.ZERO
 		# Contact-range pickup; the 60 Hz step cannot skip a box at sprint speed.
 		if on_foot and Vector2(at.x-body.position.x,at.z-body.position.z).length()<.95 and absf(at.y-body.position.y)<1.8:recover_package(item)
 	if spilled and recovered==quota and not load_restored:restore_load()

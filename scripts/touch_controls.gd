@@ -6,6 +6,8 @@ var stick:=Vector2.ZERO
 var enabled:=false
 var regions:Dictionary={}
 var font:Font
+var camera_hold:=0.0
+var camera_recentered:=false
 
 func _ready() -> void:
 	mouse_filter=Control.MOUSE_FILTER_IGNORE
@@ -33,10 +35,15 @@ func release_inputs() -> void:
 	for action in ["accelerate","brake_reverse","steer_left","steer_right","handbrake","sprint"]:Input.action_release(action)
 	fingers.clear();stick=Vector2.ZERO
 
-func _process(_delta:float) -> void:
+func _process(delta:float) -> void:
 	var active:bool=game.driving and not game.paused and not game.options.visible and not (game.cargo and game.cargo.complete) and (game.dashboard.compact_layout() or OS.has_feature("mobile") or "--touch" in OS.get_cmdline_user_args())
 	if enabled and not active:release_inputs()
 	enabled=active;visible=active
+	if active and "camera" in fingers.values() and game.cargo and game.cargo.on_foot:
+		camera_hold+=delta
+		if camera_hold>=.55 and not camera_recentered:
+			camera_recentered=true;game.cargo.actor.recenter_camera()
+	else:camera_hold=0;camera_recentered=false
 	if active:layout();queue_redraw()
 
 func _input(event:InputEvent) -> void:
@@ -66,7 +73,7 @@ func _input(event:InputEvent) -> void:
 	elif event is InputEventScreenDrag and fingers.get(event.index)=="stick":
 		stick=(event.position/scale_factor-regions.stick.get_center())/80
 	elif event is InputEventScreenDrag and fingers.get(event.index)=="orbit":
-		game.cargo.actor.orbit_camera(-event.relative.x/scale_factor*.009)
+		game.cargo.actor.orbit_camera(-event.relative.x/scale_factor*.009,event.relative.y/scale_factor*.006)
 		get_viewport().set_input_as_handled()
 	else:return
 	update_actions()
@@ -85,7 +92,7 @@ func _draw() -> void:
 	draw_set_transform(Vector2.ZERO,0,Vector2.ONE*size.x/720)
 	var walking:bool=game.cargo and game.cargo.on_foot
 	var labels:Dictionary={"gas":"MOVE" if walking else "GAS","brake":"BACK" if walking else "BRAKE / REV","hand":"RUN" if walking else "HANDBRAKE","camera":"CAMERA","map":"GPS MAP","options":"OPTIONS","exit":"ENTER" if walking else "EXIT / WALK","upright":"RIGHT TRUCK"}
-	if walking:labels.camera=["CLOSE VIEW","HIGH VIEW","OVERHEAD"][game.cargo.actor.camera_view]
+	if walking:labels.camera=["TRAVEL VIEW","WIDE VIEW","SURVEY VIEW"][game.cargo.actor.camera_view]
 	for key in regions:
 		var rect:Rect2=regions[key]
 		if key=="upright" and not game.van.overturned:continue
@@ -99,4 +106,7 @@ func _draw() -> void:
 			var label:String=labels[key]
 			while font.get_string_size(label,HORIZONTAL_ALIGNMENT_LEFT,-1,text_size).x>rect.size.x-14 and text_size>12:text_size-=1
 			var width:=font.get_string_size(label,HORIZONTAL_ALIGNMENT_LEFT,-1,text_size).x
-			draw_string(font,rect.get_center()+Vector2(-width/2,7),label,HORIZONTAL_ALIGNMENT_LEFT,-1,text_size,Color("fff0d2"))
+			draw_string(font,rect.get_center()+Vector2(-width/2,-1 if walking and key=="camera" else 7),label,HORIZONTAL_ALIGNMENT_LEFT,-1,text_size,Color("fff0d2"))
+			if walking and key=="camera":
+				var hint:="HOLD: LOOK AHEAD";var hint_size:=12 if rect.size.y<60 else 15
+				draw_string(font,rect.get_center()+Vector2(-font.get_string_size(hint,HORIZONTAL_ALIGNMENT_LEFT,-1,hint_size).x/2,14 if rect.size.y<60 else 17),hint,HORIZONTAL_ALIGNMENT_LEFT,-1,hint_size,Color("ffca55"))

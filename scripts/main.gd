@@ -772,6 +772,8 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	if not (cargo and cargo.on_foot and event.keycode in [KEY_Q,KEY_E]):dashboard_key(event.keycode)
 	if event.keycode == KEY_C:
 		toggle_camera()
+	if event.keycode == KEY_G and cargo and cargo.on_foot:
+		cargo.actor.recenter_camera()
 	if event.keycode == KEY_X and cargo:
 		cargo.interact()
 	if event.keycode == KEY_R:
@@ -783,7 +785,7 @@ func _input(event: InputEvent) -> void:
 	if driving and not paused and not options.visible:
 		var walking:bool=cargo and cargo.on_foot
 		if event is InputEventMouseMotion and Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT):
-			if walking:cargo.actor.orbit_camera(-event.relative.x*.008)
+			if walking:cargo.actor.orbit_camera(-event.relative.x*.008,event.relative.y*.005)
 			elif not van.cockpit:van.camera_orbit=wrapf(van.camera_orbit-event.relative.x*.008,-PI,PI)
 		if event is InputEventMouseButton and event.pressed and event.button_index in [MOUSE_BUTTON_WHEEL_UP,MOUSE_BUTTON_WHEEL_DOWN]:
 			var amount:float=-.1 if event.button_index==MOUSE_BUTTON_WHEEL_UP else .1

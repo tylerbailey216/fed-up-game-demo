@@ -100,6 +100,7 @@ func dial(center: Vector2, radius: float, value: float, maximum: float, label: S
 func _draw() -> void:
 	if compact_layout():
 		draw_compact()
+		draw_package_guide()
 		draw_mission_popup()
 		return
 	var factor:=minf(size.x/1280.0,size.y/720.0)
@@ -128,8 +129,43 @@ func _draw() -> void:
 	if cargo and cargo.on_foot:
 		panel(Rect2(420,605,440,65))
 		caption(Vector2(438,630),"ON FOOT / WASD MOVE / SHIFT RUN",18,GOLD,true)
-		caption(Vector2(438,656),"AUTO PICKUP / X enter / C view / Q,E orbit",15)
+		caption(Vector2(438,656),"X enter / C view / G look ahead / Drag to look",14)
+	draw_package_guide()
 	draw_mission_popup()
+
+func draw_package_guide() -> void:
+	if not cargo or not cargo.on_foot:return
+	var item:Dictionary=cargo.safety.nearest()
+	if item.is_empty():return
+	var camera:Camera3D=cargo.actor.camera
+	var target:Vector3=item.body.global_position+Vector3.UP*.9
+	var projected:=camera.unproject_position(target)
+	var center:=size/2
+	var compact:=compact_layout();var factor:=size.x/720 if compact else minf(size.x/1280,size.y/720)
+	var design_height:=size.y/factor
+	var top:float=(338 if design_height>=850 else (132 if design_height<480 else 258))*factor if compact else 145*factor
+	var bottom:float=size.y-(380 if design_height>=850 else 195)*factor if compact else size.y-155*factor
+	bottom=maxf(top+45,bottom)
+	var bounds:=Rect2(Vector2(22,top),Vector2(size.x-44,bottom-top))
+	var behind:=camera.is_position_behind(target)
+	if behind:projected=center-(projected-center)
+	var at:=projected.clamp(bounds.position,bounds.end)
+	var edge:bool=behind or not bounds.has_point(projected)
+	draw_set_transform(Vector2.ZERO,0,Vector2.ONE)
+	if edge:
+		var direction:Vector2=(projected-center).normalized()
+		if direction.is_zero_approx():direction=Vector2.DOWN
+		var side:=Vector2(-direction.y,direction.x)
+		shape([at+direction*12,at-direction*8+side*7,at-direction*8-side*7],GOLD,2)
+	else:
+		shape([at+Vector2(0,-9),at+Vector2(7,0),at+Vector2(0,9),at+Vector2(-7,0)],GOLD,2)
+	var meters:=roundi(cargo.actor.global_position.distance_to(item.body.global_position))
+	var label:="BOX %02d / %d m" % [int(item.id)+1,meters]
+	var font_size:=clampi(roundi(18*factor),12,20)
+	var width:=font.get_string_size(label,HORIZONTAL_ALIGNMENT_LEFT,-1,font_size).x
+	var label_at:=Vector2(clampf(at.x-width/2,12,size.x-width-12),minf(at.y+28,bottom+28))
+	panel(Rect2(label_at+Vector2(-6,-font_size-2),Vector2(width+12,font_size+10)),PANEL,GOLD,1)
+	caption(label_at,label,font_size,GOLD)
 
 func draw_mission_popup() -> void:
 	if not cargo or cargo.popup_time<=0:return

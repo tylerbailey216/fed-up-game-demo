@@ -10,6 +10,8 @@ var phase:=0.0
 var camera_angle:=0.45
 var camera_view:=0
 var camera_zoom:=1.0
+var camera_pitch:=0.0
+var look_ahead:=Vector3.ZERO
 var camera_rig:=preload("res://scripts/camera_rig.gd").new()
 var frames:Dictionary={}
 var shown_frame:AtlasTexture
@@ -90,26 +92,42 @@ func set_enabled(value:bool) -> void:
 	if value:camera.make_current();update_camera(1.0)
 
 func update_camera(weight:float) -> void:
-	var offsets:Array[Vector3]=[Vector3(0,4.4,6.2),Vector3(0,8,8),Vector3(0,13,2)]
-	var offset:=Basis(Vector3.UP,camera_angle)*offsets[camera_view]*camera_zoom
-	var focus:=global_position+Vector3.UP*1.0
+	var offsets:Array[Vector3]=[Vector3(0,5.2,10),Vector3(0,8,15),Vector3(0,22,9)]
+	var base:Vector3=offsets[camera_view]
+	var tilt:=clampf(atan2(base.y,base.z)+camera_pitch,.2,1.34)
+	var offset:=Basis(Vector3.UP,camera_angle)*Vector3(0,sin(tilt),cos(tilt))*base.length()*camera_zoom
+	var focus:=global_position+Vector3.UP*1.35
+	var forward:Vector3=-Basis(Vector3.UP,camera_angle).z
+	var travel:=Vector3(velocity.x,0,velocity.z).limit_length(4.2)/4.2
+	look_ahead=look_ahead.lerp(forward*(1.5 if camera_view==2 else 2.8)+travel,weight)
+	var viewport_size:=get_viewport().get_visible_rect().size
+	var aspect:=viewport_size.x/maxf(1,viewport_size.y)
+	camera.fov=84 if aspect<.9 else (76 if aspect<1.3 else 70)
 	var excluded:Array[RID]=[get_rid()]
 	var space:=get_world_3d().direct_space_state
 	var desired:=global_position+offset
 	var safe:=camera_rig.resolve(space,focus,desired,excluded)
 	if safe.distance_to(desired)>.3:
 		# Prefer an overhead view when the truck or a wall hides the worker.
-		var overhead:=camera_rig.resolve(space,focus,global_position+Basis(Vector3.UP,camera_angle)*Vector3(0,13,1),excluded)
-		if overhead.distance_to(focus)>safe.distance_to(focus):safe=overhead
+		for lift in [Vector3(0,19,10),Vector3(0,23,2)]:
+			var raised:Vector3=global_position+Basis(Vector3.UP,camera_angle)*lift*camera_zoom
+			var overhead:=camera_rig.resolve(space,focus,raised,excluded)
+			if overhead.distance_to(focus)>safe.distance_to(focus):safe=overhead
+			if overhead.distance_to(raised)<.3:break
 	var smoothed:=camera.global_position.lerp(safe,weight)
 	camera.global_position=camera_rig.resolve(space,focus,smoothed,excluded)
-	camera.look_at(focus)
+	camera.look_at(focus+look_ahead)
 
 func cycle_camera() -> void:
 	camera_view=(camera_view+1)%3
 
-func orbit_camera(amount:float) -> void:
+func orbit_camera(amount:float,pitch_amount:float=0.0) -> void:
 	camera_angle=wrapf(camera_angle+amount,-PI,PI)
+	camera_pitch=clampf(camera_pitch+pitch_amount,-.28,.35)
+
+func recenter_camera() -> void:
+	camera_view=0;camera_pitch=0;camera_angle=facing
+	game.van.notify_driver("LOOK AHEAD / Drag or swipe to orbit and tilt")
 
 func update_illustration(moving:bool,_running:bool) -> void:
 	var relative:=wrapf(facing-camera_angle,-PI,PI)

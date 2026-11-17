@@ -24,9 +24,10 @@ func collect_stage(game:Node,capture:bool=false) -> void:
 	var cargo:Node=game.cargo
 	cargo.actor.set_physics_process(false)
 	# Isolate each pickup, without carrying/deposit actions or proximity to truck.
-	cargo.actor.position=Vector3(420,.1,-75)
+	var field:Vector3=cargo.safety.origin+Vector3(-25,0,-15)
+	cargo.actor.position=field+Vector3(0,.1,5)
 	for item in cargo.packages:
-		if item.state=="loose":item.body.freeze=true;item.body.position=Vector3(420+int(item.id)*3,.4,-90)
+		if item.state=="loose":item.body.freeze=true;item.body.position=field+Vector3(int(item.id)*3,.4,0)
 	await frames(5)
 	for item in cargo.packages:
 		if item.state!="loose":continue
@@ -232,12 +233,67 @@ func check_cameras(game:Node) -> void:
 	var angle:float=actor.camera_angle
 	var drag:=InputEventScreenDrag.new();drag.index=7;drag.relative=Vector2(40,0)*scale;drag.position=finger.position+drag.relative;game.touch_controls._input(drag)
 	check(not is_equal_approx(actor.camera_angle,angle),"Swiping clear world space orbits the foot camera")
+	var pitch:float=actor.camera_pitch;drag.relative=Vector2(0,25)*scale;game.touch_controls._input(drag)
+	check(actor.camera_pitch>pitch,"Vertical touch swipes tilt the on-foot camera")
 	finger.pressed=false;game.touch_controls._input(finger);game.touch_controls.release_inputs()
 	blocker.queue_free();await frames(3)
 	game.van.position=actor.position+Vector3(0,0,3.5);game.van.rotation.y=0
 	await frames(3);actor.camera_angle=0;actor.camera_view=0;actor.update_camera(1)
 	check(actor.camera.global_position.y>actor.position.y+6 and camera_clear(actor,[actor.get_rid()]),"Truck cannot hide the worker behind its body")
+	game.van.position=Vector3(360,.15,-75);actor.position=Vector3(400,.1,-100)
+	actor.velocity=Vector3(0,0,-4.2);actor.camera_angle=0;actor.camera_pitch=0;actor.camera_view=0
+	for screen in [Vector2i(1280,720),Vector2i(720,1280)]:
+		game.get_window().size=screen;game.responsive_layout();await frames(4);actor.update_camera(1)
+		var ahead:Vector2=actor.camera.unproject_position(actor.position+Vector3(0,1,-18))
+		var area:=game.get_viewport().get_visible_rect()
+		check(area.has_point(ahead) and ahead.y<area.size.y*.6,"Travel camera shows the path eighteen meters ahead on desktop and phone")
+		check(actor.camera.global_position.distance_to(actor.position)>10,"Default foot view gives the worker breathing room")
+	actor.facing=PI/2;actor.camera_angle=-1;actor.camera_pitch=.2
+	touch(game,"camera",9,true);game.touch_controls._process(.6);touch(game,"camera",9,false)
+	check(is_equal_approx(actor.camera_angle,actor.facing) and actor.camera_pitch==0,"Holding mobile CAMERA recenters behind the worker")
+	actor.camera_angle=-1
+	var recenter:=InputEventKey.new();recenter.pressed=true;recenter.keycode=KEY_G;game._unhandled_key_input(recenter)
+	check(is_equal_approx(actor.camera_angle,actor.facing),"G recenters the desktop camera")
+	game.get_window().size=Vector2i(1280,720);game.responsive_layout();actor.velocity=Vector3.ZERO
 	actor.set_physics_process(true)
+
+func check_package_safety(game:Node) -> void:
+	var cargo:Node=game.cargo
+	cargo.actor.set_physics_process(false);cargo.actor.position=cargo.safety.origin+Vector3(0,.1,12)
+	if not game.traffic.cars.is_empty():
+		var car:RigidBody3D=game.traffic.cars[0]
+		var previous:=car.global_transform;var damping:=car.linear_damp
+		car.set_physics_process(false);car.linear_damp=0;car.constant_force=Vector3(300,0,0)
+		car.position=cargo.safety.origin+Vector3(-20,.12,-25);car.rotation=Vector3.ZERO;car.linear_velocity=Vector3(6,0,0);car.angular_velocity=Vector3.ZERO
+		var rescued:Array[int]=[]
+		for i in 2:
+			var item:Dictionary=cargo.packages[i];rescued.append(int(item.get("rescues",0)))
+			item.body.freeze=false;item.body.position=car.position+Vector3(-.43 if i==0 else .43,1.8,0)
+			item.body.linear_velocity=Vector3(6,0,0);item.body.angular_velocity=Vector3.ZERO;item.carrier_time=0;item.audit_at=cargo.safety.clock
+		cargo.safety.audit_clock=-.25;cargo.safety.index=0
+		await frames(12)
+		check(cargo.packages[0].body.position.distance_to(car.position)<2.5 and cargo.packages[0].body.position.y>car.position.y+1.5,"A moving traffic car physically carries a loose box in the regression setup")
+		# Keep roof support persistent across physics backends, reproducing the
+		# reported long-lived load instead of relying on incidental roof friction.
+		for frame in 180:
+			for i in 2:
+				var item:Dictionary=cargo.packages[i]
+				if int(item.get("rescues",0))==rescued[i]:
+					item.body.position=car.position+Vector3(-.43 if i==0 else .43,1.8,0)
+					item.body.linear_velocity=car.linear_velocity;item.body.angular_velocity=Vector3.ZERO
+			await frames(1)
+		for i in 2:
+			var item:Dictionary=cargo.packages[i]
+			check(int(item.get("rescues",0))>rescued[i] and item.body.position.distance_to(cargo.safety.origin)<12,"Both traffic-carried boxes return to reachable ground near the spill: id=%d pos=%s origin=%s rescues=%s carrier=%s spot=%s" % [i,item.body.position,cargo.safety.origin,item.get("rescues",0),item.get("carrier_time",0),cargo.safety.recovery_spot(int(item.id),item.body.get_rid())])
+		car.constant_force=Vector3.ZERO;car.linear_damp=damping;car.global_transform=previous;car.linear_velocity=Vector3.ZERO;car.set_physics_process(true)
+	for i in [2,3,4]:
+		var item:Dictionary=cargo.packages[i];item.body.freeze=true;item.body.linear_velocity=Vector3.ZERO
+		item.body.position=cargo.safety.origin+([Vector3(150,1,0),Vector3(0,8,0),Vector3(0,-8,0)][i-2])
+		item.stranded_time=2.2
+		cargo.safety.audit(item,1)
+		check(item.body.position.distance_to(cargo.safety.origin)<12 and absf(item.body.position.y-cargo.safety.origin.y)<.9,"Far-away, rooftop and below-deck boxes recover to the original walkable level")
+	check(cargo.spawned==cargo.quota and cargo.recovered==0 and cargo.packages.size()==cargo.quota,"Package recovery preserves the fixed quota and never awards duplicate pickups")
+	cargo.actor.set_physics_process(true)
 
 func run(game:Node,capture:bool) -> void:
 	game.start_drive();await frames(90)
@@ -261,6 +317,7 @@ func run(game:Node,capture:bool) -> void:
 			print("DELIVERY TEST FAIL: sustained first crash counted ",game.cargo.collision_count," collisions")
 			await game.quit_demo(1);return
 	check(game.cargo.spilled and game.van.wrecked and game.cargo.on_foot,"Third collision disables truck and forces foot recovery")
+	check(game.cargo.actor.position.y<game.van.position.y+.7,"Automatic exit never strands the worker on top of the crash barrier")
 	check(game.cargo.spawned==game.cargo.quota and game.cargo.quota==12,"Third impact releases exactly the full stage quota once")
 	check(game.vehicle_visuals.doors.size()==2 and absf(game.vehicle_visuals.doors[0].rotation.y)>1,"Both physical rear doors open")
 	var count:int=game.cargo.spawned
@@ -268,10 +325,12 @@ func run(game:Node,capture:bool) -> void:
 	check(game.cargo.spawned==count,"No time-based continuing package drops")
 	check(game.cargo.actor.camera.is_current(),"On-foot camera takes control")
 	var before:Vector3=game.cargo.actor.position
+	game.cargo.actor.camera_angle=0
 	Input.action_press("accelerate");await frames(30);Input.action_release("accelerate")
 	check(game.cargo.actor.position.distance_to(before)>1,"Player can walk after truck disables")
 	await check_worker(game)
 	await check_solid_truck(game)
+	await check_package_safety(game)
 	# Incomplete arrival reports the exact outstanding amount and cannot finish.
 	game.cargo.actor.position=game.cargo.checkpoint_position+Vector3.UP*.1;await frames(5)
 	check(not game.cargo.complete and game.cargo.remaining_notice==game.cargo.quota and str(game.cargo.quota) in game.cargo.popup,"Early checkpoint popup gives exact missing count")
@@ -306,6 +365,7 @@ func run_motorway(game:Node) -> void:
 		check(game.cargo.spawned==(12 if impact==2 else 0),"Motorway also respects three-collision rule")
 	await frames(30)
 	check(game.cargo.on_foot and game.cargo.actor.is_on_floor(),"Motorway permits safe foot exit")
+	await check_package_safety(game)
 	await collect_stage(game)
 	await check_finish(game,false)
 	print("MOTORWAY DELIVERY ","PASS" if failures.is_empty() else "FAIL: "+str(failures))
