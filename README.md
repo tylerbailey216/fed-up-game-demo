@@ -20,6 +20,8 @@ Desktop: WASD/arrows drive/walk; Space handbrake; C camera; X exit/enter; Shift 
 
 Camera: C cycles cockpit/chase/raised chase while driving and close/raised/overhead on foot. Right-drag orbits outside views; the mouse wheel zooms. Q/E orbit on foot. On touchscreens, tap the view button to cycle height and swipe unobstructed world space to orbit on foot. Cameras avoid solid walls; the foot camera raises automatically if the truck blocks the worker. The character artwork stays camera-facing and readable from high angles.
 
+The worker's normal locomotion uses 48 drawn poses: twelve each for front, back, left and right. Playback follows walking speed (about 18 pose changes/sec at normal speed). The head pivot and floor line are registered without stretching individual frames; no whole-body bob/tilt or crossfade supplies the walk motion. Desktop and mobile use these same atlases. `--presentation-check --walk-review` records real-input footage for both layouts; see `docs/WORKER_WALK_ART.md` for source assets and prompts.
+
 ## Develop locally
 
 Open `project.godot` in **Godot 4.5.1 Standard** (GDScript, Compatibility renderer). The original development PC also has `Launch Demo.cmd`, `Launch Independence.cmd` and `Open Editor.cmd`; its portable engine is excluded from Git.

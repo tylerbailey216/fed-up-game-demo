@@ -43,6 +43,21 @@ let activeBrowser;
  await page.waitForTimeout(750);
  await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
  await page.screenshot({path:'docs/web-phone-multitouch.png'});
+ // Stop, leave the cab, and sample the new walk through actual mobile input.
+ await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:184,y:601,id:5}]});
+ await page.waitForTimeout(900);
+ await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+ await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:138,y:129,id:6}]});
+ await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+ await page.waitForTimeout(250);
+ await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:64,y:539,id:7}]});
+ for(let frame=0;frame<3;frame++){
+  await page.waitForTimeout(100);
+  await page.screenshot({path:`docs/web-phone-worker-frame${frame}.png`});
+ }
+ await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+ await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:138,y:129,id:8}]});
+ await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
  await page.setViewportSize({width:844,height:390});
  await page.waitForTimeout(1500);
  await page.screenshot({path:'docs/web-phone-landscape.png'});

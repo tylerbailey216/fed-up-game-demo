@@ -1,6 +1,9 @@
 extends Node
 
 func run(game:Node) -> void:
+	if "--walk-review" in OS.get_cmdline_user_args():
+		var review:=preload("res://scripts/walk_presentation.gd").new();add_child(review)
+		await review.run(game);return
 	if "--recovery-review" in OS.get_cmdline_user_args():
 		await recovery_review(game);return
 	if not "--baseline" in OS.get_cmdline_user_args():

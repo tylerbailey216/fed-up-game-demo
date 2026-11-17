@@ -150,6 +150,7 @@ func walk_route(game:Node,begin:Vector3,end:Vector3) -> void:
 
 func check_worker(game:Node) -> void:
 	var actor:CharacterBody3D=game.cargo.actor
+	await check_walk_animation(game)
 	await walk_route(game,Vector3(262,.08,-75),Vector3(287,.08,-75))
 	await walk_route(game,Vector3(287,.08,-75),Vector3(262,.08,-75))
 	# Cross the mapped Public Square footway from grass to grass, both ways.
@@ -169,6 +170,39 @@ func check_worker(game:Node) -> void:
 	actor.held.hide();actor.camera_angle=PI/2;actor.facing=0;actor.update_illustration(true,false)
 	check(actor.facing_direction=="right","Facing follows camera rotation")
 	await check_cameras(game)
+
+func check_walk_animation(game:Node) -> void:
+	var actor:Node=game.cargo.actor
+	actor.held.hide();actor.camera_angle=0;actor.set_physics_process(false)
+	for direction in ["front","back","left","right"]:
+		var clip:String="walk_"+direction
+		check(actor.frames[clip].size()==12,"Every direction has twelve drawn walk frames: "+direction)
+		var textures:Dictionary={}
+		var reference_scale:=0.0
+		for frame in 12:
+			actor.show_frame(clip,frame);textures[actor.shown_frame.region]=true
+			if frame==0:reference_scale=actor.sprite.pixel_size
+			check(is_equal_approx(reference_scale,actor.sprite.pixel_size),"Walk drawings keep fixed scale through leg extension")
+		check(textures.size()==12,"Cycle advances through twelve separate atlas regions: "+direction)
+	# Actual walking input visits every pose, also through the phone touch stick.
+	for mobile in [false,true]:
+		actor.position=Vector3(400,.08,-75);actor.velocity=Vector3.ZERO;actor.set_physics_process(true)
+		if mobile:
+			game.get_window().size=Vector2i(720,1280);game.responsive_layout();await frames(4)
+			game.touch_controls.enabled=true;game.touch_controls.layout();touch(game,"stick",4,true,Vector2(0,-75))
+		else:Input.action_press("accelerate")
+		var visited:Dictionary={}
+		for frame in 70:
+			await frames(1);visited[actor.shown_frame_index]=true
+			check(actor.visual.position.is_zero_approx() and actor.visual.rotation.is_zero_approx(),"Walk movement is drawn in poses without whole-body bob/tilt")
+		if mobile:touch(game,"stick",4,false);game.touch_controls.release_inputs()
+		else:Input.action_release("accelerate")
+		check(visited.size()==12,"Keyboard and mobile input both play the complete twelve-pose cycle")
+		await frames(30)
+		var stationary:float=actor.phase;await frames(20)
+		check(absf(actor.phase-stationary)<.01,"Idle worker does not keep marching in place")
+	game.get_window().size=Vector2i(1280,720);game.responsive_layout()
+	actor.set_physics_process(true)
 
 func camera_clear(actor:Node,excluded:Array[RID]) -> bool:
 	var query:=PhysicsRayQueryParameters3D.create(actor.position+Vector3.UP,actor.camera.global_position)

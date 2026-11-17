@@ -38,3 +38,5 @@ Tire trails use original code-generated PlaneMesh strips and the project-authore
 
 
 Independence geographic prototype: assets/maps/independence_osm.xml and the modified independence.json database contain OpenStreetMap data, copyright OpenStreetMap contributors, licensed under ODbL 1.0. Attribution and license links: https://www.openstreetmap.org/copyright and https://opendatacommons.org/licenses/odbl/1-0/. Source and reproducible transformation details are in assets/maps/README.md. Original game code, materials, scenery meshes, truck and audio retain existing provenance. No Google imagery or 3D content was extracted.
+
+The current normal walk uses four new transparent `worker-walk-{front,back,left,right}.png` atlases (1536 x 1024 RGBA), with twelve separately drawn poses per direction. Built-in ImageGen extended the supplied character artwork; final prompts and registration details are in `docs/WORKER_WALK_ART.md`. The legacy four-frame walk/run pictures and carrying atlas remain source/reference artwork; normal locomotion uses the twelve-frame cycles. No general reuse license is granted for this project artwork.
