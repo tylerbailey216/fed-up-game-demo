@@ -24,6 +24,7 @@ var checkpoint_inside:=false
 var remaining_notice:=0
 var popup:=""
 var popup_time:=0.0
+var popup_last_at:=-10000
 var safety:=preload("res://scripts/package_safety.gd").new()
 var pickup_previous:=Vector3.ZERO
 
@@ -67,7 +68,9 @@ func build_checkpoint() -> void:
 	sign.billboard=BaseMaterial3D.BILLBOARD_ENABLED;sign.position=Vector3(0,4.8,0);checkpoint.add_child(sign)
 
 func show_popup(message:String) -> void:
-	popup=message;popup_time=4.5;game.van.notify_driver(message.replace("\n"," / "))
+	var now:=Time.get_ticks_msec()
+	if message==popup and now-popup_last_at<4000:return
+	popup=message;popup_time=2.6;popup_last_at=now
 
 func remaining_packages() -> int:
 	var count:=0

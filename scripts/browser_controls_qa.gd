@@ -20,6 +20,18 @@ func _physics_process(delta:float) -> void:
 	if not command.is_empty():
 		JavaScriptBridge.eval("window.fedupQACommand=''")
 		if command=="reset":reset()
+		elif command=="camera":
+			game.van.camera_high=false;game.van.camera_orbit=0;game.van.camera_pitch=0;game.van.set_view(false)
+		elif command=="ui_recovered":
+			game.van.flip_count=2;game.van.overturned=false;game.van.wrecked=false;game.update_hud(0,"N",0)
+		elif command=="ui_recovery":
+			game.van.set_physics_process(false);game.van.flip_count=2;game.van.overturned=true;game.van.roll_settled=true;game.update_hud(0,"ROLLED",0)
+		elif command=="ui_clear":
+			game.van.overturned=false;game.van.flip_count=0;game.van.roll_settled=false;game.van.wrecked=false
+			game.van.set_physics_process(true);game.van.notice_time=0;game.cargo.popup_time=0;reset();game.update_hud(0,"N",0)
+		elif command=="ui_message":
+			game.van.notice_time=0;game.cargo.remaining_notice=game.cargo.quota
+			game.cargo.show_popup("COLLECTION INCOMPLETE\n%d MORE PACKAGES TO COLLECT" % game.cargo.quota)
 		elif command=="no_msaa":game.get_viewport().msaa_3d=Viewport.MSAA_DISABLED
 		elif command=="restore_msaa":game.get_viewport().msaa_3d=Viewport.MSAA_2X
 		elif command=="half_resolution":game.get_viewport().scaling_3d_scale=.5
@@ -63,6 +75,11 @@ func _physics_process(delta:float) -> void:
 	var data:Dictionary={"build":JSON.parse_string(FileAccess.get_file_as_string("res://data/build_version.json")).state_id,"speed":game.van.speed,"position":[game.van.position.x,game.van.position.z],"on_foot":game.cargo.on_foot,"collected":game.cargo.recovered,"quota":game.cargo.quota,"restored":game.cargo.load_restored,"hands_empty":not game.cargo.actor.held.visible,"distance_to_truck":game.cargo.actor.position.distance_to(game.van.position),"reverse":game.touch_controls.reverse_selected,"regions":regions,"citizens":game.city_life.citizens.size(),"cars":game.traffic.cars.size()}
 	data["physics_ms"]=Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS)*1000
 	data["energy"]=game.dashboard.energy_fraction()
+	data["camera_yaw"]=game.van.camera_orbit;data["camera_pitch"]=game.van.camera_pitch;data["cockpit"]=game.van.cockpit
+	data["recovery_visible"]=game.recovery_back.visible
+	var recovery:Rect2=game.recovery_back.get_global_rect()
+	data["recovery_rect"]=[recovery.position.x/size.x,recovery.position.y/size.y,recovery.size.x/size.x,recovery.size.y/size.y]
+	data["notification_time"]=game.dashboard.message_time();data["message"]=game.dashboard.status_message()
 	data["active_citizens"]=game.city_life.active_count
 	data["process_ms"]=Performance.get_monitor(Performance.TIME_PROCESS)*1000
 	data["draw_calls"]=Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)

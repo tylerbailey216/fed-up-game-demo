@@ -19,6 +19,8 @@ var expanded_map := false
 var traffic: Node
 var cargo: Node
 var last_redraw_us := 0
+var action_prompt_visible:=false
+var touch_preview:=false # Native layout review only; normal play uses the device.
 const INK := Color("10121e")
 const PANEL := Color("202332")
 const CREAM := Color("f3ebd8")
@@ -107,7 +109,6 @@ func _draw() -> void:
 	if compact_layout():
 		draw_compact()
 		draw_package_guide()
-		draw_mission_popup()
 		return
 	var factor:=minf(size.x/1280.0,size.y/720.0)
 	draw_set_transform((size-Vector2(1280,720)*factor)/2,0,Vector2.ONE*factor)
@@ -118,7 +119,7 @@ func _draw() -> void:
 	caption(Vector2(1025,95),"TRUCK ENERGY",12,GOLD,true)
 	draw_energy(Rect2(1025,102,216,14))
 	if cargo:
-		caption(Vector2(375,89),cargo.objective(),13,GOLD,true)
+		draw_objective_line(Vector2(375,89),600,14)
 	if show_gps:
 		draw_route()
 	if not inside and not (cargo and cargo.on_foot):
@@ -133,14 +134,9 @@ func _draw() -> void:
 	if show_controls:
 		caption(Vector2(278,701),"WASD DRIVE  Q/E BLINKERS  H HAZARD  L LIGHTS  TAB OPTIONS",12,CREAM,true)
 	else:
-		caption(Vector2(278,701),"TAB  DASHBOARD / AUDIO     M  MAP     N  ROAD INFO     ESC  PAUSE" if vehicle.location_world else "TAB  DASHBOARD / AUDIO     M  MAP     N  DESTINATION     ESC  PAUSE",12,CREAM,true)
+		caption(Vector2(278,701),"WASD WALK / SHIFT RUN / X ENTER / DRAG LOOK / G RECENTER" if cargo and cargo.on_foot else "TAB OPTIONS / M MAP / C VIEW / DRAG LOOK / G RECENTER / ESC PAUSE",12,CREAM,true)
 	caption(Vector2(280,108),"%05.2f mi  /  %s" % [distance/1609.344,location_name()],13,CREAM)
-	if cargo and cargo.on_foot:
-		panel(Rect2(420,605,440,65))
-		caption(Vector2(438,630),"ON FOOT / WASD MOVE / SHIFT RUN",18,GOLD,true)
-		caption(Vector2(438,656),"X enter / C view / G look ahead / Drag to look",14)
 	draw_package_guide()
-	draw_mission_popup()
 
 func draw_package_guide() -> void:
 	if not cargo or not cargo.on_foot:return
@@ -176,31 +172,44 @@ func draw_package_guide() -> void:
 	panel(Rect2(label_at+Vector2(-6,-font_size-2),Vector2(width+12,font_size+10)),PANEL,GOLD,1)
 	caption(label_at,label,font_size,GOLD)
 
-func draw_mission_popup() -> void:
-	if not cargo or cargo.popup_time<=0:return
-	var compact:=compact_layout()
-	var factor:=size.x/720 if compact else minf(size.x/1280,size.y/720)
-	var design:=size/factor
-	draw_set_transform(Vector2.ZERO,0,Vector2.ONE*factor)
-	var width:=minf(620,design.x-48)
-	var rect:=Rect2((design.x-width)/2,design.y*(.265 if compact else .25),width,100)
-	var text_size:=23 if compact else 25
-	var first_line:=38;var line_step:=32
-	if compact:
-		if design.y<480:
-			width=356;rect=Rect2((design.x-width)/2,122,width,58);text_size=15;first_line=23;line_step=21
-		elif design.y<850:
-			rect.position.y=294;rect.size.y=52;text_size=18;first_line=20;line_step=22
-		else:rect.position.y=366
-	panel(rect,PANEL,CYAN if cargo.load_restored else GOLD)
-	var lines:PackedStringArray=cargo.popup.split("\n")
-	for i in lines.size():
-		while font.get_string_size(lines[i],HORIZONTAL_ALIGNMENT_LEFT,-1,text_size).x>width-32 and text_size>12:text_size-=1
-		var text_width:=font.get_string_size(lines[i],HORIZONTAL_ALIGNMENT_LEFT,-1,text_size).x
-		caption(Vector2((design.x-text_width)/2,rect.position.y+first_line+i*line_step),lines[i],text_size,GOLD if i==0 else CREAM)
+func status_message() -> String:
+	var message:String=cargo.objective() if cargo else ""
+	if vehicle.notice_time>0:message=vehicle.notice
+	if mission_message_active():
+		message=cargo.popup
+		if message.begins_with("COLLECTION INCOMPLETE"):message="%d PACKAGES LEFT / CHECK GPS" % cargo.remaining_notice
+		elif message.begins_with("ALL "):message="ALL %d SECURED / TRUCK READY" % cargo.quota
+		elif message.begins_with("DEMO COMPLETE"):message="ALL %d DELIVERED / ROUTE COMPLETE" % cargo.quota
+	if message.begins_with("ON FOOT"):message="ON FOOT / WALK OVER PACKAGES"
+	if message.begins_with("TRAINING COMPLETE"):message="DOWNTOWN OPEN / LIVE TRAFFIC"
+	return message.replace("\n"," / ").to_upper()
+
+func mission_message_active() -> bool:
+	return cargo and cargo.popup_time>0 and (vehicle.notice_time<=0 or cargo.popup_last_at>=vehicle.notice_last_at)
+
+func message_time() -> float:
+	return cargo.popup_time if mission_message_active() else vehicle.notice_time
+
+func draw_objective_line(at:Vector2,width:float,text_size:int) -> void:
+	var message:=status_message()
+	var time:=message_time()
+	var face:Font=preload("res://assets/fonts/BarlowCondensed-Bold.ttf")
+	var fitted:=message
+	while face.get_string_size(fitted,HORIZONTAL_ALIGNMENT_LEFT,-1,text_size).x>width and fitted.length()>4:fitted=fitted.substr(0,fitted.length()-2)+"…"
+	var tone:=GOLD if time>0 else CYAN
+	tone.a=clampf(time/.35,0,1) if time>0 else 1.0
+	draw_string(face,at+Vector2(1,1),fitted,HORIZONTAL_ALIGNMENT_LEFT,width,text_size,Color(INK,tone.a))
+	draw_string(face,at,fitted,HORIZONTAL_ALIGNMENT_LEFT,width,text_size,tone)
+	if time>0:
+		draw_line(at+Vector2(0,5),at+Vector2(width*clampf(time/2.6,0,1),5),Color(tone,.65*tone.a),1,true)
 
 func compact_layout() -> bool:
-	return size.x/maxf(1,size.y)<1.6 or DisplayServer.is_touchscreen_available()
+	return touch_preview or size.x/maxf(1,size.y)<1.6 or DisplayServer.is_touchscreen_available()
+
+func compact_map_rect() -> Rect2:
+	var h:=size.y/(size.x/720)
+	if h<480:return Rect2(170,122,534,90) if expanded_map else Rect2(538,80,166,90)
+	return Rect2(24,282 if h>=850 else 138,672,minf(440,h-690) if h>=850 else h-340) if expanded_map else Rect2(378,140,326,210 if h>=850 else 150)
 
 func location_name() -> String:
 	if vehicle.location_world:
@@ -226,15 +235,15 @@ func draw_compact() -> void:
 	caption(Vector2(162,36 if wide else 45),location_name(),14 if wide else 20,GOLD,true)
 	caption(Vector2(32,61 if wide else 77),"TRUCK",11 if wide else 16,GOLD,true)
 	draw_energy(Rect2(96,49,240,15) if wide else Rect2(150,61,540,20))
-	if cargo:caption(Vector2(360,61) if wide else Vector2(32,107),cargo.objective(),11 if wide else 16,CYAN)
+	if cargo:draw_objective_line(Vector2(360,61) if wide else Vector2(32,107),330 if wide else 658,13 if wide else 18)
 	if show_gps and vehicle.location_world:
-		var rect:=Rect2(378,140,326,210 if h>=850 else 150) if not expanded_map else Rect2(24,282 if h>=850 else 138,672,minf(440,h-690) if h>=850 else h-340)
-		if wide:rect=Rect2(538,80,166,90) if not expanded_map else Rect2(170,122,534,90)
+		var rect:=compact_map_rect()
 		panel(rect,Color("202f36"))
 		vehicle.location_world.draw_map(self,rect,cargo.player_position() if cargo else vehicle.position)
 		draw_packages(rect)
 		caption(rect.position+Vector2(12,22),"GOLD: BOXES / BLUE: STOP",10 if h<480 else 13,GOLD,true)
 		caption(rect.end-Vector2(rect.size.x-12,10),"© OSM contributors" if h<480 else "© OpenStreetMap contributors",9 if h<480 else 10)
+	if action_prompt_visible:return
 	var y:=h-360
 	if wide:
 		y=h-80
@@ -262,7 +271,6 @@ func draw_compact() -> void:
 		shape([Vector2(330,y+27),Vector2(342,y+19),Vector2(342,y+35)],Color("73d998") if flash and (vehicle.hazards or vehicle.indicator==-1) else Color("4b5159"),1)
 		shape([Vector2(665,y+27),Vector2(653,y+19),Vector2(653,y+35)],Color("73d998") if flash and (vehicle.hazards or vehicle.indicator==1) else Color("4b5159"),1)
 		caption(Vector2(342,y+73),"LOAD SECURED" if not cargo or not cargo.spilled else "RECOVER LOST PACKAGES",14,CYAN)
-	if vehicle.notice_time>0:caption(Vector2(34,y+107),vehicle.notice.left(76),13,GOLD)
 
 func energy_fraction() -> float:
 	return clampf(1.0-cargo.damage/100.0,0,1) if cargo else clampf(1.0-vehicle.flip_count/3.0,0,1)
@@ -468,6 +476,3 @@ func draw_status() -> void:
 	if vehicle.fuel_gallons < 3:
 		status.append("LOW FUEL")
 	caption(Vector2(1000,688),"  /  ".join(status),10,GOLD)
-	if vehicle.notice_time > 0:
-		panel(Rect2(470,111,500,35),PANEL,GOLD,2)
-		caption(Vector2(484,134),vehicle.notice,13,CREAM,true)

@@ -18,7 +18,7 @@ The controls below work on Metro Loop and in the connected live traffic district
 | B | Hold horn; Vehicle tab also offers a brief horn button |
 | F | Demo refuel to full while stopped (not a delivery or service mission) |
 | M / N | Expand GPS map / cycle local loop destinations |
-| G / V | Toggle GPS / live rear-view mirror |
+| G / V | Recenter camera / toggle live rear-view mirror; GPS toggle is in HUD options |
 | Tab | HUD/GPS, Vehicle and Audio controls; pauses simulation while open |
 | Esc | Pause/resume; closes dashboard options first if open |
 | C / R | Camera / safe-position reset (keeps fuel/ignition state) |

@@ -25,7 +25,7 @@ var local_options := ConfigFile.new()
 var shutting_down := false
 var hud_shortcuts: HBoxContainer
 var camera_shortcut: Button
-var recovery_panel: VBoxContainer
+var recovery_panel: Control
 var recovery_back:Panel
 var recovery_status: Label
 var upright_button: Button
@@ -39,6 +39,7 @@ var cargo: Node3D
 var touch_controls: Node
 var legacy_test := false
 var city_life:Node3D
+var camera_drag_button:=0
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -528,18 +529,17 @@ func build_ui() -> void:
 		camera_shortcut.add_theme_stylebox_override(state,StyleBoxEmpty.new())
 	camera_shortcut.pressed.connect(toggle_camera)
 	hud.add_child(camera_shortcut)
-	recovery_back=Panel.new();recovery_back.mouse_filter=Control.MOUSE_FILTER_IGNORE
+	recovery_back=preload("res://scripts/prompt_frame.gd").new();recovery_back.mouse_filter=Control.MOUSE_FILTER_IGNORE
 	var recovery_style:=StyleBoxFlat.new();recovery_style.bg_color=Color("202332");recovery_style.border_color=Color("ffd044")
 	recovery_style.set_border_width_all(3);recovery_style.set_corner_radius_all(14)
 	recovery_back.add_theme_stylebox_override("panel",recovery_style);hud.add_child(recovery_back);recovery_back.hide()
-	recovery_panel = VBoxContainer.new()
+	recovery_panel = Control.new()
 	recovery_panel.theme = menu.theme
-	recovery_panel.position = Vector2(390,530)
-	recovery_panel.custom_minimum_size = Vector2(500,0)
+	recovery_panel.mouse_filter=Control.MOUSE_FILTER_IGNORE
 	hud.add_child(recovery_panel)
 	recovery_status = text_label("",21)
-	recovery_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	recovery_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	recovery_status.vertical_alignment=VERTICAL_ALIGNMENT_CENTER
+	recovery_status.text_overrun_behavior=TextServer.OVERRUN_TRIM_ELLIPSIS
 	recovery_panel.add_child(recovery_status)
 	upright_button = button("RIGHT TRUCK / RECOVER [U]",func(): van.recover_upright(),recovery_panel)
 	new_truck_button = button("START WITH A NEW TRUCK",func():
@@ -549,6 +549,9 @@ func build_ui() -> void:
 			return
 		van.new_truck(),recovery_panel)
 	recovery_panel.hide()
+	for action in [upright_button,new_truck_button]:
+		action.custom_minimum_size=Vector2.ZERO;action.focus_mode=Control.FOCUS_NONE
+		action.add_theme_font_override("font",preload("res://assets/fonts/BarlowCondensed-Bold.ttf"))
 	touch_controls=preload("res://scripts/touch_controls.gd").new()
 	touch_controls.game=self
 	hud.add_child(touch_controls)
@@ -591,6 +594,7 @@ func toggle_camera() -> void:
 	van.cycle_camera()
 
 func toggle_options() -> void:
+	camera_drag_button=0
 	if options.visible:
 		options.hide()
 		get_tree().paused = options_was_paused
@@ -774,11 +778,12 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		return
 	if event.keycode==KEY_F and cargo and cargo.on_foot:
 		return
-	if not (cargo and cargo.on_foot and event.keycode in [KEY_Q,KEY_E]):dashboard_key(event.keycode)
+	if event.keycode!=KEY_G and not (cargo and cargo.on_foot and event.keycode in [KEY_Q,KEY_E]):dashboard_key(event.keycode)
 	if event.keycode == KEY_C:
 		toggle_camera()
-	if event.keycode == KEY_G and cargo and cargo.on_foot:
-		cargo.actor.recenter_camera()
+	if event.keycode == KEY_G:
+		if cargo and cargo.on_foot:cargo.actor.recenter_camera()
+		else:van.recenter_camera()
 	if event.keycode == KEY_X and cargo:
 		cargo.interact()
 	if event.keycode == KEY_R:
@@ -787,11 +792,17 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		van.recover_upright()
 
 func _input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and not event.pressed and camera_drag_button==event.button_index:camera_drag_button=0
+	if not driving or paused or (options and options.visible):camera_drag_button=0
 	if driving and not paused and not options.visible:
 		var walking:bool=cargo and cargo.on_foot
-		if event is InputEventMouseMotion and Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT):
+		if event is InputEventMouseButton and event.device!=-1 and event.button_index in [MOUSE_BUTTON_LEFT,MOUSE_BUTTON_RIGHT]:
+			if event.pressed and can_drag_camera(event.position):camera_drag_button=event.button_index
+			elif not event.pressed and camera_drag_button==event.button_index:camera_drag_button=0
+		if event is InputEventMouseMotion and event.device!=-1 and camera_drag_button!=0:
 			if walking:cargo.actor.orbit_camera(-event.relative.x*.008,event.relative.y*.005)
-			elif not van.cockpit:van.camera_orbit=wrapf(van.camera_orbit-event.relative.x*.008,-PI,PI)
+			else:van.orbit_camera(-event.relative.x*.008,event.relative.y*.005)
+			get_viewport().set_input_as_handled()
 		if event is InputEventMouseButton and event.pressed and event.button_index in [MOUSE_BUTTON_WHEEL_UP,MOUSE_BUTTON_WHEEL_DOWN]:
 			var amount:float=-.1 if event.button_index==MOUSE_BUTTON_WHEEL_UP else .1
 			if walking:cargo.actor.camera_zoom=clampf(cargo.actor.camera_zoom+amount,.65,1.6)
@@ -802,28 +813,20 @@ func _input(event: InputEvent) -> void:
 			toggle_options()
 			get_viewport().set_input_as_handled()
 
+func can_drag_camera(at:Vector2) -> bool:
+	if dashboard.compact_layout():return touch_controls.world_point(at/(touch_controls.size.x/720))
+	var factor:=minf(hud.size.x/1280,hud.size.y/720)
+	var point:Vector2=(at-(hud.size-Vector2(1280,720)*factor)*.5)/factor
+	if point.y<145 or point.y>680:return false
+	var map_rect:=Rect2(305,125,670,365) if dashboard.expanded_map else Rect2(23,521,220,165)
+	if dashboard.show_gps and map_rect.has_point(point):return false
+	if point.x>1000 and point.y>530:return false
+	var hovered:Control=get_viewport().gui_get_hovered_control()
+	return not hovered or hovered.mouse_filter==Control.MOUSE_FILTER_IGNORE or not hovered.get_global_rect().has_point(at)
+
 func update_hud(speed: float, gear: String, distance: float) -> void:
 	if dashboard:
-		if recovery_panel:
-			recovery_panel.visible = (van.overturned or van.flip_count>0 or van.wrecked or (cargo and cargo.complete)) and not (cargo and cargo.on_foot and not cargo.complete)
-			recovery_status.text = "TRUCK DISABLED / ENGINE OFF" if van.wrecked else ("WAIT FOR TRUCK TO SETTLE" if van.overturned and not van.roll_settled else "UPRIGHT RECOVERY AVAILABLE")
-			if cargo and not cargo.spilled:
-				recovery_status.text="LOAD SECURED"+(" / RIGHT TRUCK [U]" if van.roll_settled else " / WAIT FOR TRUCK TO SETTLE")
-			if outerbelt and van.overturned and not van.flip_registered:
-				recovery_status.text="HEAVY IMPACT - WAIT FOR TRUCK TO SETTLE" if not van.roll_settled else "TRUCK SETTLED - RECOVER [U]"
-			upright_button.visible = van.overturned
-			upright_button.disabled = not van.roll_settled
-			new_truck_button.visible = cargo.complete if cargo else van.wrecked
-			if cargo:new_truck_button.text="PLAY DEMO AGAIN"
-			if cargo and cargo.complete:
-				recovery_status.text="DELIVERY COMPLETE! / %d OF %d PACKAGES\nTHANKS FOR PLAYING FedUp" % [cargo.recovered,cargo.quota]
-			var compact:bool=dashboard.compact_layout()
-			var recovery_scale:=minf(hud.size.x/1280,hud.size.y/720) if not compact else hud.size.x/720
-			recovery_panel.scale = Vector2.ONE*recovery_scale
-			recovery_panel.position = Vector2((hud.size.x-500*recovery_scale)/2,hud.size.y-525*recovery_scale if compact else 530*recovery_scale)
-			recovery_back.visible=recovery_panel.visible
-			recovery_back.position=recovery_panel.position-Vector2.ONE*14*recovery_scale
-			recovery_back.size=recovery_panel.size*recovery_scale+Vector2.ONE*28*recovery_scale
+		update_recovery_prompt()
 		navigation.update_position(van.position,van.speed)
 		dashboard.update_state(speed,gear,distance,van.steering,atan2(van.position.z,van.position.x),van.cockpit)
 		if hud_shortcuts and camera_shortcut:
@@ -834,6 +837,42 @@ func update_hud(speed: float, gear: String, distance: float) -> void:
 			hud_shortcuts.position=Vector2(550,18)*ui_scale
 			camera_shortcut.scale=Vector2.ONE*ui_scale
 			camera_shortcut.position=Vector2(1100,20)*ui_scale
+
+func update_recovery_prompt() -> void:
+	if not recovery_panel:return
+	var complete:bool=cargo and cargo.complete
+	var recovering:bool=van.overturned and not (cargo and cargo.on_foot)
+	var disabled:bool=not cargo and van.wrecked
+	recovery_panel.visible=complete or recovering or disabled
+	recovery_back.visible=recovery_panel.visible
+	dashboard.action_prompt_visible=recovery_panel.visible
+	if not recovery_panel.visible:
+		upright_button.hide();new_truck_button.hide();return
+	var compact:bool=dashboard.compact_layout()
+	var factor:float=hud.size.x/720 if compact else minf(hud.size.x/1280,hud.size.y/720)
+	var design:Vector2=hud.size/factor
+	var rect:=Rect2((design.x-500)/2,605,500,64)
+	if compact:
+		if design.y<480:rect=Rect2(172,design.y-80,242,58) if not complete else Rect2(172,design.y-80,384,58)
+		elif design.y<850:rect=Rect2(196,design.y-190,346,88)
+		else:rect=Rect2(24,design.y-360,672,88)
+	var action:bool=complete or disabled or not compact
+	var action_width:float=140 if rect.size.x<400 else 180
+	recovery_panel.position=rect.position*factor;recovery_panel.scale=Vector2.ONE*factor;recovery_panel.size=rect.size
+	recovery_back.position=recovery_panel.position;recovery_back.scale=Vector2.ONE*factor;recovery_back.size=rect.size
+	recovery_back.set_kind("complete" if complete else ("wait" if not van.roll_settled and recovering else "recover"))
+	recovery_status.position=Vector2(50,10)
+	recovery_status.size=Vector2(rect.size.x-62-(action_width+10 if action else 0),rect.size.y-20)
+	recovery_status.add_theme_font_size_override("font_size",16 if rect.size.x<400 else 22)
+	recovery_status.text="ROUTE COMPLETE" if complete else ("TRUCK SETTLING" if recovering and not van.roll_settled else ("RIGHT TRUCK" if recovering else "TRUCK DISABLED"))
+	upright_button.visible=recovering and not compact
+	upright_button.disabled=not van.roll_settled
+	upright_button.text="RECOVER [U]"
+	new_truck_button.visible=complete or disabled
+	new_truck_button.text="PLAY AGAIN" if complete else "NEW TRUCK"
+	for control in [upright_button,new_truck_button]:
+		control.position=Vector2(rect.size.x-action_width-10,(rect.size.y-44)/2)
+		control.size=Vector2(action_width,44);control.add_theme_font_size_override("font_size",18)
 
 func smoke_test() -> void:
 	assert(FileAccess.file_exists("res://data/empty_day.json"))

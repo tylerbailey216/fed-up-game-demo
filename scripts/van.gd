@@ -32,6 +32,7 @@ var impact_strength := 0.0
 var horn := false
 var notice := ""
 var notice_time := 0.0
+var notice_last_at:=-10000
 var wheel_distance := 0.0
 var planar_velocity := Vector3.ZERO
 var lateral_speed := 0.0
@@ -62,6 +63,7 @@ var delivery_collision_rules := false
 var crash_guard := BoxShape3D.new()
 var camera_high := false
 var camera_orbit := 0.0
+var camera_pitch:=0.0
 var camera_zoom := 1.0
 var camera_rig := preload("res://scripts/camera_rig.gd").new()
 var collision_kind := "bump"
@@ -386,8 +388,10 @@ func gear_text() -> String:
 	return "D%d" % (1+int(absf(speed)>5)+int(absf(speed)>11)+int(absf(speed)>18)+int(absf(speed)>26))
 
 func notify_driver(message: String) -> void:
+	var now:=Time.get_ticks_msec()
+	if message==notice and now-notice_last_at<3500:return
 	notice = message
-	notice_time = 3.5
+	notice_time = 2.6;notice_last_at=now
 
 func refuel() -> bool:
 	if absf(speed) > 0.5:
@@ -465,6 +469,18 @@ func cycle_camera() -> void:
 	else:
 		camera_high=false;set_view(true)
 	camera_orbit=0
+	camera_pitch=0
+
+func orbit_camera(amount:float,pitch_amount:float=0.0) -> void:
+	if cockpit:camera_high=false;set_view(false)
+	camera_manual=false
+	camera_orbit=wrapf(camera_orbit+amount,-PI,PI)
+	camera_pitch=clampf(camera_pitch+pitch_amount,-.18,.72)
+
+func recenter_camera() -> void:
+	camera_orbit=0;camera_pitch=0;camera_zoom=1;camera_manual=false
+	chase_heading=rotation.y
+	notify_driver("CAMERA CENTERED / DRAG TO LOOK AROUND")
 
 func reset_vehicle() -> void:
 	# Position reset must not erase rollover damage or bypass the recovery wait.
@@ -514,7 +530,10 @@ func _process(delta: float) -> void:
 	# truck's transform. Turning exposes its flank and countersteering settles it.
 	var desired_heading := rotation.y-yaw_rate*1.1
 	chase_heading = lerp_angle(chase_heading,desired_heading,1.0-exp(-3.0*delta))
-	var offset := Basis(Vector3.UP,chase_heading+camera_orbit)*Vector3(-steering*1.4,8.5 if camera_high else 5.3,13.5 if camera_high else 10.5)*camera_zoom
+	var base:=Vector3(-steering*1.4,6.7 if camera_high else 3.5,13.5 if camera_high else 10.5)
+	var tilt:=clampf(atan2(base.y,base.z)+camera_pitch,.16,1.27)
+	var radius:=Vector2(base.y,base.z).length()*camera_zoom
+	var offset:=Basis(Vector3.UP,chase_heading+camera_orbit)*Vector3(base.x*camera_zoom,sin(tilt)*radius,cos(tilt)*radius)+Vector3.UP*1.8
 	chase_position = chase_position.lerp(global_position+offset,1.0-exp(-7.0*delta))
 	var focus:=global_position+Vector3(0,1.8,0)+planar_velocity*0.09
 	var excluded:Array[RID]=[get_rid()]
@@ -525,10 +544,11 @@ func _process(delta: float) -> void:
 func _physics_process(delta: float) -> void:
 	if not active:
 		return
+	notice_time=maxf(0,notice_time-delta)
 	surface_sampler.update(delta)
 	if delivery_complete:
 		engine_on=false;parking_brake=true;speed=0;velocity=Vector3.ZERO;planar_velocity=Vector3.ZERO
-		throttle_load=0;rpm=0;notice_time=maxf(0,notice_time-delta)
+		throttle_load=0;rpm=0
 		telemetry.emit(0,"P",distance)
 		return
 	update_crash_contact(delta)
@@ -567,7 +587,6 @@ func _physics_process(delta: float) -> void:
 			move_and_slide()
 		telemetry.emit(0, "DISABLED" if wrecked else ("IMPACT" if location_world and not flip_registered else "ROLLED"),distance)
 		return
-	notice_time = maxf(0,notice_time-delta)
 	impact_strength = move_toward(impact_strength,0,delta*8)
 	wall_timer = maxf(0,wall_timer-delta)
 	var throttle := Input.get_action_strength("accelerate")

@@ -394,6 +394,13 @@ func check_package_safety(game:Node) -> void:
 
 func run(game:Node,capture:bool) -> void:
 	game.start_drive();await frames(90)
+	if not "--street-only" in OS.get_cmdline_user_args():
+		var ui:=preload("res://scripts/ui_camera_tests.gd").new();add_child(ui)
+		failures.append_array(await ui.run(game,"--ui-capture" in OS.get_cmdline_user_args()))
+		ui.queue_free()
+		if "--ui-only" in OS.get_cmdline_user_args():
+			print("UI CAMERA TEST PASS" if failures.is_empty() else "UI CAMERA TEST FAIL: "+str(failures))
+			await game.quit_demo(0 if failures.is_empty() else 1);return
 	if "--street-only" in OS.get_cmdline_user_args():
 		await check_street_contacts(game)
 		print("STREET TEST PASS" if failures.is_empty() else "STREET TEST FAIL: "+str(failures))

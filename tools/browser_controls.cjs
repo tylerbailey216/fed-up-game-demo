@@ -2,10 +2,11 @@
 const {chromium}=require('./webqa/node_modules/playwright');
 const fs=require('fs');
 (async()=>{
- const browser=await chromium.launch({executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true,args:['--enable-webgl']});
+ let browser;
  const results=[];
  try{
  for(const [width,height,touch,dpr] of [[360,640,true,2],[844,390,true,2],[768,1024,true,1],[1280,720,false,1]]){
+  browser=await chromium.launch({executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true,args:['--enable-webgl']});
   const context=await browser.newContext({viewport:{width,height},hasTouch:touch,deviceScaleFactor:dpr});
   const page=await context.newPage();const errors=[];
   page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error'){errors.push(m.text());console.log(m.text());}});
@@ -21,6 +22,32 @@ const fs=require('fs');
   const up=async id=>{points=points.filter(p=>p.id!==id);await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:points});};
   const move=async(id,key,dx,dy)=>{const position=await coords(key,dx,dy);points=points.map(p=>p.id===id?{...position,id}:p);await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:points});};
   const wait=async(predicate,message)=>{try{await page.waitForFunction(predicate,null,{timeout:16000});}catch(e){throw new Error(message+' '+JSON.stringify(await state()));}};
+  await command('camera');
+  if(touch){
+   await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{id:71,x:width*.5,y:height*.5}]});
+   await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{id:71,x:width*.6,y:height*.56}]});
+   await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+  }else{
+   await page.mouse.move(width*.5,height*.5);await page.mouse.down();await page.mouse.move(width*.6,height*.56,{steps:6});await page.mouse.up();
+  }
+  await wait(()=>Math.abs(window.fedupQA.camera_yaw)>.2&&window.fedupQA.camera_pitch>.05,'Driving orbit/tilt failed');
+  await page.screenshot({path:`docs/controls-truck-orbit-${width}x${height}.png`});
+  if(touch){await down(72,'camera');await page.waitForTimeout(750);await up(72);}else await page.keyboard.press('g');
+  await wait(()=>window.fedupQA.camera_yaw===0&&window.fedupQA.camera_pitch===0,'Driving camera recenter failed');
+  await command('ui_recovered');
+  if((await state()).recovery_visible)throw new Error('Recovered truck retains the historical-flip overlay');
+  await page.screenshot({path:`docs/controls-no-overlay-${width}x${height}.png`});
+  await command('ui_recovery');
+  const card=(await state()).recovery_rect;
+  if(!(await state()).recovery_visible||card[2]*card[3]>.1||card[1]+card[3]>1)throw new Error('Recovery prompt is oversized or missing');
+  await page.screenshot({path:`docs/controls-compact-recovery-${width}x${height}.png`});
+  await command('ui_clear');await command('ui_message');
+  await wait(()=>window.fedupQA.message.includes('12 PACKAGES LEFT'),'Compact mission count missing');
+  await page.screenshot({path:`docs/controls-message-${width}x${height}.png`});
+  await page.waitForTimeout(800);const remaining=(await state()).notification_time;await command('ui_message');
+  if((await state()).notification_time>remaining+.1)throw new Error('Repeated message refreshed its lifetime');
+  await wait(()=>window.fedupQA.notification_time===0,'Gameplay notification lingers');
+  await command('ui_clear');
   if(touch){
    await down(1,'gas');await page.waitForTimeout(900);
    await down(2,'stick',.25,0);await move(2,'stick',0,.36);
@@ -52,9 +79,10 @@ const fs=require('fs');
   if(errors.length)throw new Error(errors.join('\n'));
   const city=await state();
   results.push({width,height,touch,dpr,build:q.build,collected:q.collected,distance:q.distance_to_truck,performance,physics_ms:city.physics_ms,process_ms:city.process_ms,draw_calls:city.draw_calls,primitives:city.primitives,active_citizens:city.active_citizens,errors});
-  console.log(`PASS ${width}x${height}: reverse, twelve distant walk-over pickups, populated city`,performance);
+  console.log(`PASS ${width}x${height}: compact/expiring prompts, driving camera gestures, reverse, twelve distant pickups`,performance);
   await context.close();
+  await browser.close();browser=null;
  }
  fs.writeFileSync('docs/controls-smoke.json',JSON.stringify(results,null,2));console.log(JSON.stringify(results,null,2));
- }finally{await browser.close();}
+ }finally{if(browser)await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});
