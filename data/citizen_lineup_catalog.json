@@ -1,0 +1,60 @@
+{
+  "citizens": [
+    {
+      "id": "business",
+      "texture": "assets/art/presentation/citizen-lineup-business.png",
+      "world_height": 1.83,
+      "stride": 1.08,
+      "identity": "the BUSINESS COMMUTER, upper row far left: adult Black woman, dark brown skin, dark hair in a large high bun with side swept fringe, round gold earrings, purple tailored jacket and matching purple trousers, white collared shirt, dark belt with gold buckle, brown leather briefcase at her side, broad black shoes. Preserve her exact face and compact proportions from the lineup"
+    },
+    {
+      "id": "tourist",
+      "texture": "assets/art/presentation/citizen-lineup-tourist.png",
+      "world_height": 1.7,
+      "stride": 1.08,
+      "identity": "the TOURIST, upper row second from left: light skinned blond adult, beige bucket hat with purple sunglasses resting on its brim, orange Hawaiian shirt with big white flowers, small black camera hanging on chest strap, khaki cargo shorts, tan and black sandals. Preserve the character identity and every outfit detail"
+    },
+    {
+      "id": "construction",
+      "texture": "assets/art/presentation/citizen-lineup-construction.png",
+      "world_height": 1.9,
+      "stride": 1.08,
+      "identity": "the CONSTRUCTION WORKER, upper row third from left: stocky tan skinned adult man with short dark beard, yellow hard hat, bright orange safety vest with white reflective strips over navy short sleeved shirt and navy trousers, brown tool belt with pouches and chunky brown work boots. Preserve his stout silhouette and exact hat and vest design"
+    },
+    {
+      "id": "senior",
+      "texture": "assets/art/presentation/citizen-lineup-senior.png",
+      "world_height": 1.52,
+      "stride": 1.08,
+      "identity": "the ELDERLY WOMAN, upper row fifth from left: short elderly light skinned woman with fluffy pale gray curly hair, round black glasses and pearl earrings, lavender cardigan, pale cream knee length dress with large purple flowers, brown handbag, dusky purple flat shoes. Preserve her gray hair, shorter stockier silhouette, friendly face and exact dress pattern"
+    },
+    {
+      "id": "alien-a",
+      "texture": "assets/art/presentation/citizen-lineup-alien-a-v3.png",
+      "world_height": 1.68,
+      "stride": 1.08,
+      "identity": "EXTRATERRESTRIAL CIVILIAN A, bottom row fourth figure from left: lavender skinned woman with pointed ears, two lavender antennae with ball tips, short pale blond bob, large glossy black almond eyes, gold hoop earrings, purple jacket with cream accents, small gold-yellow crossbody handbag with diagonal orange strap, black trousers and chunky pale lavender/cream boots"
+    },
+    {
+      "id": "alien-b",
+      "texture": "assets/art/presentation/citizen-lineup-alien-b.png",
+      "world_height": 1.54,
+      "stride": 1.08,
+      "identity": "EXTRATERRESTRIAL CIVILIAN B, bottom row fifth figure from left: short stocky lime green citizen with darker olive spots on rounded head, square black-rim glasses, small side ears, purple hooded sweatshirt with orange/lavender ringed planet emblem, khaki cargo trousers, purple and cream rounded sneakers"
+    },
+    {
+      "id": "alien-c",
+      "texture": "assets/art/presentation/citizen-lineup-alien-c.png",
+      "world_height": 1.86,
+      "stride": 1.08,
+      "identity": "EXTRATERRESTRIAL CIVILIAN C, bottom row sixth figure from left: slender sky-blue citizen with two long blue ball-tipped antennae, small darker blue cheek spots, large glossy black almond eyes, large orange/cream headphones, purple and cream bomber jacket, black trousers, white/purple sneakers, bright orange crossbody messenger bag"
+    },
+    {
+      "id": "alien-d",
+      "texture": "assets/art/presentation/citizen-lineup-alien-d.png",
+      "world_height": 1.78,
+      "stride": 1.08,
+      "identity": "EXTRATERRESTRIAL CIVILIAN D, bottom row seventh figure from left: pink skinned citizen with darker magenta spots, large pointed ears, round black glasses, cream turtleneck collar, purple sweater with bold orange zigzag across chest, gray trousers, cream/purple shoes, cream ringed-planet tote at the side"
+    }
+  ]
+}

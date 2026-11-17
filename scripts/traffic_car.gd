@@ -16,9 +16,15 @@ var brake_material: StandardMaterial3D
 var visual_material:ShaderMaterial
 var visual_roll:=INF
 var visual_steer:=INF
+var definition:Dictionary={}
+var model_kind:="legacy"
+var body_width:=1.95
+var body_length:=4.3
+var wheel_radius:=.34
 
 func _ready() -> void:
-	mass = 1100
+	mass = float(definition.get("mass",1100))
+	body_width=float(definition.get("width",1.95));body_length=float(definition.get("length",4.3));wheel_radius=float(definition.get("radius",.34))
 	axis_lock_angular_x = true
 	axis_lock_angular_z = true
 	linear_damp = 0.35
@@ -33,9 +39,10 @@ func _ready() -> void:
 	add_to_group("traffic_vehicle")
 	var shape := CollisionShape3D.new()
 	var box := BoxShape3D.new()
-	box.size = Vector3(1.95,1.5,4.3)
+	var body_height:float=float(definition.get("height",1.5))-.12
+	box.size = Vector3(body_width,body_height,body_length)
 	shape.shape = box
-	shape.position.y = 0.75
+	shape.position.y = body_height*.5+.08
 	add_child(shape)
 	horn_player = AudioStreamPlayer3D.new()
 	horn_player.stream = preload("res://assets/audio/horn.wav")
@@ -80,7 +87,7 @@ func _physics_process(delta: float) -> void:
 	var forward := -global_basis.z
 	var ray_length := maxf(5.0,speed*speed/9.0+3.0)
 	for side in [-0.65,0.65]:
-		var start: Vector3 = global_position+Vector3(0,0.8,0)+forward*2.25+global_basis.x*side
+		var start: Vector3 = global_position+Vector3(0,0.8,0)+forward*(body_length*.5+.12)+global_basis.x*side
 		var query := PhysicsRayQueryParameters3D.create(start,start+forward*ray_length)
 		query.exclude = [get_rid()]
 		var hit := get_world_3d().direct_space_state.intersect_ray(query)
@@ -102,7 +109,7 @@ func _physics_process(delta: float) -> void:
 		horn_cooldown = 7.0
 	if brake_material:
 		brake_material.albedo_color = Color("ff5049") if desired<speed-0.5 or desired<0.5 else Color("8e2634")
-	wheel_roll -= speed*delta/0.34
+	wheel_roll -= speed*delta/wheel_radius
 	for wheel in wheel_nodes:
 		wheel.rotation.x = wheel_roll
 		wheel.rotation.y = clampf(error,-0.4,0.4) if wheel.position.z<0 else 0.0

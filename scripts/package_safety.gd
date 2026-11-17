@@ -40,9 +40,18 @@ func audit(item:Dictionary,elapsed:float) -> void:
 	var lost:bool=not body.global_position.is_finite() or gap.y< -2 or Vector2(gap.x,gap.z).length()>MAX_DISTANCE
 	var support:Dictionary={}
 	if body.global_position.is_finite():
-		var ray:=PhysicsRayQueryParameters3D.create(body.global_position,body.global_position-Vector3.UP*1.5,1)
+		var ray:=PhysicsRayQueryParameters3D.create(body.global_position+Vector3.UP*.6,body.global_position-Vector3.UP*1.5,1)
+		ray.exclude=[body.get_rid()]
 		support=cargo.get_world_3d().direct_space_state.intersect_ray(ray)
 	var riding:bool=not support.is_empty() and support.collider.is_in_group("traffic_vehicle")
+	# Roof heights vary across the reference fleet, including overlapping loads.
+	if not riding:
+		for car in cargo.game.traffic.cars:
+			if car.freeze or body.position.distance_squared_to(car.position)>100:continue
+			var local:Vector3=car.to_local(body.global_position)
+			var height:float=float(car.definition.get("height",1.5))
+			if absf(local.x)<car.body_width*.5+.4 and absf(local.z)<car.body_length*.5+.4 and local.y>maxf(.9,height*.65) and local.y<height+1.2:
+				riding=true;break
 	item.carrier_time=float(item.get("carrier_time",0))+elapsed if riding else 0.0
 	var stranded:bool=body.linear_velocity.length()<.6 and (absf(gap.y)>1.65 or support.is_empty())
 	item.stranded_time=float(item.get("stranded_time",0))+elapsed if stranded else 0.0

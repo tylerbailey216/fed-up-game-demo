@@ -18,6 +18,32 @@ var recoveries:=0
 var pace:=1.2
 var shown:AtlasTexture
 var last_position:=Vector3.ZERO
+var design_id:=""
+var simulation_active:=true
+static var atlas_cache:Dictionary={}
+var ground_clock:=0.0
+var ground_height:=0.0
+var path_blocked:=false
+
+func walk_motion(movement:Vector3,delta:float) -> void:
+	# Known footway navigation needs a floor/wall check, not a full character
+	# floor solver for every civilian on every frame. Reactions still use it.
+	ground_clock-=delta
+	if ground_clock<=0:
+		ground_clock=.1
+		var space:PhysicsDirectSpaceState3D=get_world_3d().direct_space_state
+		var next:Vector3=position+movement*.12
+		var ray:=PhysicsRayQueryParameters3D.create(next+Vector3.UP*.5,next-Vector3.UP*.8,1)
+		ray.exclude=[get_rid()]
+		var floor_hit:Dictionary=space.intersect_ray(ray)
+		path_blocked=floor_hit.is_empty() or absf(floor_hit.position.y-position.y)>.34
+		if not path_blocked:ground_height=floor_hit.position.y+.025
+		if not movement.is_zero_approx():
+			ray.from=position+Vector3.UP*.65;ray.to=ray.from+movement.normalized()*(.4+movement.length()*.12)
+			path_blocked=path_blocked or not space.intersect_ray(ray).is_empty()
+	if not path_blocked:position+=movement*delta
+	position.y=move_toward(position.y,ground_height,delta*2.5)
+	velocity=movement if not path_blocked else Vector3.ZERO
 
 func _ready() -> void:
 	process_mode=Node.PROCESS_MODE_PAUSABLE
@@ -26,11 +52,13 @@ func _ready() -> void:
 	capsule.radius=.3;capsule.height=float(definition.world_height)*.85
 	collision.shape=capsule;collision.position.y=capsule.height*.5;add_child(collision)
 	var texture:Texture2D=load(definition.texture)
-	for key in definition.clips:
+	if atlas_cache.has(definition.texture):clips=atlas_cache[definition.texture]
+	for key in definition.clips if clips.is_empty() else []:
 		clips[key]=[]
 		for drawing in definition.clips[key].frames:
 			var atlas:=AtlasTexture.new();atlas.atlas=texture;atlas.filter_clip=true
 			var r:Array=drawing.region;atlas.region=Rect2(r[0],r[1],r[2],r[3]);clips[key].append(atlas)
+	atlas_cache[definition.texture]=clips
 	sprite=Sprite3D.new();sprite.billboard=BaseMaterial3D.BILLBOARD_ENABLED;sprite.shaded=false
 	sprite.alpha_cut=SpriteBase3D.ALPHA_CUT_DISCARD;sprite.alpha_scissor_threshold=.2
 	sprite.texture_filter=BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS;add_child(sprite)
@@ -53,7 +81,9 @@ func check_contacts() -> void:
 		if not is_instance_valid(vehicle) or global_position.distance_squared_to(vehicle.global_position)>42:continue
 		var speed:Vector3=vehicle.planar_velocity if vehicle==district.game.van else vehicle.linear_velocity
 		var local:Vector3=vehicle.to_local(global_position)
-		if absf(local.x)<1.7 and absf(local.z)<3.6 and speed.length()>1.2:
+		var width:float=1.35 if vehicle==district.game.van else vehicle.body_width*.5+.3
+		var length:float=3.6 if vehicle==district.game.van else vehicle.body_length*.5+.3
+		if absf(local.x)<width and absf(local.z)<length and speed.length()>1.2:
 			react(speed+global_position-vehicle.global_position,speed.length());return
 	for barrel in district.game.traffic.barrels:
 		if global_position.distance_squared_to(barrel.global_position)<1.3 and barrel.linear_velocity.length()>2:
@@ -80,9 +110,7 @@ func show_pose() -> void:
 
 func _physics_process(delta:float) -> void:
 	if not district.game.driving:return
-	var nearby:=global_position.distance_squared_to(district.game.van.global_position)<220*220
-	visible=nearby
-	if not nearby and state not in ["tumble","recover"]:return
+	if not simulation_active and state not in ["tumble","recover"]:return
 	cooldown=maxf(0,cooldown-delta);timer+=delta
 	check_contacts()
 	if state=="tumble":
@@ -101,15 +129,14 @@ func _physics_process(delta:float) -> void:
 	else:
 		var gap:=route[waypoint]-position;gap.y=0
 		if gap.length()<.6:waypoint=(waypoint+1)%route.size();gap=route[waypoint]-position;gap.y=0
-		var crossing:=absf(gap.normalized().dot(district.side))>.8
-		state="wait" if crossing and district.game.traffic.ns_light=="GREEN" and gap.length()>12 else "walk"
+		state="walk"
 		var movement:=gap.normalized()*pace if state=="walk" else Vector3.ZERO
 		if movement.length()>.1:facing=atan2(-movement.x,-movement.z)
-		velocity=Vector3(movement.x,velocity.y-9.81*delta,movement.z);move_and_slide()
+		walk_motion(movement,delta)
 		var traveled:=Vector2(position.x-last_position.x,position.z-last_position.z).length()
-		if state=="walk":phase=fmod(phase+traveled*TAU/2.3,TAU)
+		if state=="walk":phase=fmod(phase+traveled*TAU/float(definition.get("stride",1.08)),TAU)
 		blocked=blocked+delta if state=="walk" and traveled<.001 else 0.0
-		if blocked>3 or global_position.y< -2 or global_position.distance_to(route[waypoint])>35:
+		if blocked>3 or global_position.y< -2:
 			# Resume on the known sidewalk, without abandoning the route forever.
 			position=route[(waypoint+route.size()-1)%route.size()]+Vector3.UP*.1;velocity=Vector3.ZERO;blocked=0
 	last_position=position;show_pose()

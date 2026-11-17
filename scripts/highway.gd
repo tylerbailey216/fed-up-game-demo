@@ -5,6 +5,25 @@ const SEGMENTS := 240
 var art := preload("res://scripts/art_style.gd").new()
 var boxes: Array[MeshInstance3D] = []
 var training_mode := false
+var shrub_grid:Dictionary={}
+
+func tree_collision(at:Vector3,radius:=.30,height:=2.5) -> void:
+	var body:=StaticBody3D.new();body.position=at+Vector3.UP*height*.5;body.add_to_group("street_tree")
+	var shape:=CollisionShape3D.new();var trunk:=CylinderShape3D.new();trunk.radius=radius;trunk.height=height
+	shape.shape=trunk;body.add_child(shape);add_child(body)
+
+func register_shrub(at:Vector3,radius:float) -> void:
+	var cell:=Vector2i(floori(at.x/8),floori(at.z/8))
+	if not shrub_grid.has(cell):shrub_grid[cell]=[]
+	shrub_grid[cell].append(Vector3(at.x,at.z,radius))
+
+func vegetation_strength(at:Vector3) -> float:
+	var cell:=Vector2i(floori(at.x/8),floori(at.z/8));var strength:=0.0
+	for x in range(cell.x-1,cell.x+2):
+		for z in range(cell.y-1,cell.y+2):
+			for shrub in shrub_grid.get(Vector2i(x,z),[]):
+				strength=maxf(strength,clampf((shrub.z+1.0-Vector2(at.x,at.z).distance_to(Vector2(shrub.x,shrub.y)))/1.5,0,1))
+	return strength
 
 func material(color: Color) -> Material:
 	return art.material(color)
@@ -33,6 +52,7 @@ func _ready() -> void:
 	# sits slightly below asphalt to avoid coplanar flicker at road edges.
 	var terrain := block(self,Vector3(325 if training_mode else 0,-0.34,0),Vector3(2850 if training_mode else 2200,0.6,2200),Color("7f9465"),true)
 	var terrain_body := terrain.get_child(0) as StaticBody3D
+	terrain_body.set_meta("surface_kind","grass")
 	(terrain_body.get_child(0) as CollisionShape3D).position.y = 0.04
 	var length := TAU * RADIUS / SEGMENTS
 	for i in SEGMENTS:
@@ -128,6 +148,7 @@ func build_greenery(rng: RandomNumberGenerator) -> void:
 			continue
 		var scale := rng.randf_range(1.5,2.4)
 		shrubs.append(Transform3D(Basis(Vector3.UP,angle).scaled(Vector3(scale,scale*0.8,scale)),pos))
+		register_shrub(pos,scale*.8)
 	for i in 180:
 		var angle := TAU*i/180.0
 		var radius := 280.0+rng.randf_range(0,13)
@@ -137,6 +158,7 @@ func build_greenery(rng: RandomNumberGenerator) -> void:
 		if pos.x>248 and pos.z>-170 and pos.z<70:
 			continue
 		trunks.append(Transform3D(Basis().scaled(Vector3(0.55,8,0.55)),pos))
+		tree_collision(Vector3(pos.x,0,pos.z),.29,2.2)
 		var scale := rng.randf_range(2.6,3.8)
 		var center := pos+Vector3(0,5.7,0)
 		crowns.append(Transform3D(Basis().scaled(Vector3(scale,scale*1.1,scale)),center))
@@ -201,7 +223,7 @@ func build_clouds(rng: RandomNumberGenerator) -> void:
 	cloud_batch.material_override.set_shader_parameter("distant_haze",false)
 
 func build_lamp(segment: Node3D) -> void:
-	block(segment,Vector3(8.8,4.6,0),Vector3(0.16,9.2,0.16),Color("252c3b"))
+	block(segment,Vector3(8.8,4.6,0),Vector3(0.16,9.2,0.16),Color("252c3b"),true)
 	var arm := block(segment,Vector3(7.5,9.35,0),Vector3(2.7,0.12,0.13),Color("252c3b"))
 	arm.rotation.z = -0.12
 	block(segment,Vector3(6.25,9.45,0),Vector3(0.8,0.17,0.35),Color("252c3b"))
@@ -210,7 +232,7 @@ func build_lamp(segment: Node3D) -> void:
 func build_gantry(segment: Node3D) -> void:
 	var ink := Color("252c3b")
 	for side in [-1,1]:
-		block(segment,Vector3(side*8.5,3.5,0),Vector3(0.24,7.0,0.24),ink)
+		block(segment,Vector3(side*8.5,3.5,0),Vector3(0.24,7.0,0.24),ink,true)
 	for y in [6.7,7.4]:
 		block(segment,Vector3(0,y,0),Vector3(17.3,0.16,0.16),ink)
 	for x in range(-8,9,2):

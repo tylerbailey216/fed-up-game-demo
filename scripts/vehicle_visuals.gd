@@ -15,6 +15,7 @@ var previous_throttle := 0.0
 var exhaust_bursts := 0
 var headlight_was_on:=false
 var headlight_update:=0.0
+var seen_surface_bump:=0
 
 func _ready() -> void:
 	find_wheels(van.body)
@@ -123,7 +124,13 @@ func _physics_process(delta: float) -> void:
 	if seen_impact != van.impact_serial:
 		suspension_velocity += Vector3(van.impact_local.z*0.65,van.impact_local.x*0.3,-van.impact_local.x*0.8)
 		seen_impact = van.impact_serial
+	if seen_surface_bump!=van.surface_bump_serial:
+		suspension_velocity+=Vector3(van.surface_bump_strength*.8,0,van.ground_tilt.y*3)
+		seen_surface_bump=van.surface_bump_serial
 	var target := Vector3(clampf(-van.acceleration*0.004,-0.035,0.035),clampf(-van.slip_angle*0.16,-0.035,0.035),clampf(-van.yaw_rate*van.speed*0.009,-0.075,0.075)) if van.active else Vector3.ZERO
+	target.x+=van.ground_tilt.x;target.z+=van.ground_tilt.y
+	if van.ground_kind=="grass" and absf(van.speed)>1:
+		target.x+=sin(van.wheel_distance*5)*.009;target.z+=sin(van.wheel_distance*3.3)*(.007+van.vegetation_contact*.012)
 	suspension_velocity += ((target-suspension)*65.0-suspension_velocity*11.0)*delta
 	suspension += suspension_velocity*delta
 	suspension = suspension.clamp(Vector3(-0.1,-0.06,-0.12),Vector3(0.1,0.06,0.12))

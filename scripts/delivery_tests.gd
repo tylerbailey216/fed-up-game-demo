@@ -117,7 +117,11 @@ func check_mobile_reverse(game:Node) -> void:
 	game.get_window().size=Vector2i(1280,720);game.responsive_layout();await frames(4)
 
 func check_city_life(game:Node) -> void:
-	check(game.city_life.citizens.size()==16 and game.traffic.cars.size()==14,"Downtown has sixteen citizens and fourteen interactive vehicles")
+	check(game.city_life.citizens.size()==48 and game.traffic.cars.size()==30,"Downtown has 48 route citizens and 30 interactive vehicles")
+	var designs:Dictionary={};var models:Dictionary={}
+	for person in game.city_life.citizens:designs[person.design_id]=true
+	for car in game.traffic.cars:models[car.model_kind]=true
+	check(designs.size()==8 and models.size()==14,"All eight supplied citizen identities and fourteen reference vehicle types appear")
 	# Keep the rendering budget without dropping wheels or live brake lights.
 	for car in game.traffic.cars:
 		var meshes:Array=[]
@@ -133,7 +137,7 @@ func check_city_life(game:Node) -> void:
 			for i in kinds.size():
 				if kinds[i].x>.5:axles[uv[i]]=true
 				else:body_vertices+=1
-		check(axles.size()==4 and body_vertices>0,"All four original wheel axles and body panels survive render merging")
+		check(axles.size()==car.wheel_nodes.size() and body_vertices>0,"Every reference wheel axle and body panel survives render merging")
 		check(is_equal_approx(float(car.visual_material.get_shader_parameter("wheel_roll")),car.wheel_roll) and is_equal_approx(float(car.visual_material.next_pass.get_shader_parameter("wheel_roll")),car.wheel_roll),"Traffic color and outline passes follow the same physical wheel rotation")
 	var headlights:bool=game.van.headlights
 	game.van.headlights=true;await frames(5)
@@ -160,6 +164,42 @@ func check_city_life(game:Node) -> void:
 	check(person.recoveries>recoveries and person.state in ["walk","wait","surprise"],"Citizen bounces, lands, recovers and resumes the route")
 	check(person.position.is_finite() and person.position.y>-.2,"Citizen recovery leaves a grounded reachable character")
 	person.position=previous;person.velocity=Vector3.ZERO;person.last_position=previous
+
+func check_street_contacts(game:Node) -> void:
+	var van:Node=game.van;var previous:Transform3D=van.transform
+	var start:=Vector3(250,0,-75);var direction:Vector3=(game.highway.entry-start).normalized()
+	var side:=Vector3(-direction.z,0,direction.x)
+	var curb:Vector3=start.lerp(game.highway.entry,.16)+side*8.3
+	var space:PhysicsDirectSpaceState3D=game.get_world_3d().direct_space_state
+	var ray:=PhysicsRayQueryParameters3D.create(curb+Vector3.UP,curb-Vector3.UP,1)
+	var hit:Dictionary=space.intersect_ray(ray)
+	check(not hit.is_empty() and is_equal_approx(hit.position.y,.16) and hit.collider.is_in_group("raised_street_surface"),"Visible entrance sidewalk has a matching 16 cm physical top")
+	var island:Vector3=game.highway.streets.island_centers[0]
+	ray.from=island+Vector3.UP;ray.to=island-Vector3.UP;hit=space.intersect_ray(ray)
+	check(not hit.is_empty() and is_equal_approx(hit.position.y,.16),"Entrance grass island is raised above the driving surface")
+	var trees:Array=game.get_tree().get_nodes_in_group("street_tree")
+	check(trees.size()>200,"Training and downtown tree trunks have physical colliders")
+	var tree:Node3D=trees[0];ray.from=tree.global_position+Vector3.RIGHT*2;ray.to=tree.global_position-Vector3.RIGHT*2;hit=space.intersect_ray(ray)
+	check(not hit.is_empty() and hit.collider==tree,"A horizontal contact ray strikes the visible tree trunk")
+	game.traffic.set_physics_process(false)
+	for car in game.traffic.cars:car.freeze=true
+	var damage:int=game.cargo.collision_count;var bumps:int=van.surface_bump_serial;var highest:=0.0;var lowest:=INF
+	for sign_value in [-1,1]:
+		var heading:Vector3=side*sign_value
+		van.position=curb-heading*6+Vector3.UP*.15;van.rotation.y=atan2(-heading.x,-heading.z)
+		van.speed=0;van.velocity=Vector3.ZERO;van.planar_velocity=Vector3.ZERO;van.wall_timer=0;van.surface_sampler.previous.clear()
+		await frames(15);lowest=minf(lowest,van.position.y);van.speed=5;van.planar_velocity=heading*5
+		Input.action_press("accelerate")
+		for i in 180:
+			await frames(1);highest=maxf(highest,van.position.y)
+			if (van.position-curb).dot(heading)>6:break
+		Input.action_release("accelerate")
+		check((van.position-curb).dot(heading)>5,"Truck crosses actual entrance curb in both directions: side=%s at=%s curb=%s" % [sign_value,van.position,curb])
+	check(highest-lowest>.12 and highest-lowest<.4 and van.surface_bump_serial>bumps,"Curb crossing lifts truck and triggers feedback: rise=%s bumps=%s -> %s" % [highest-lowest,bumps,van.surface_bump_serial])
+	check(game.cargo.collision_count==damage,"Ordinary curb crossings do not drain truck energy or release packages")
+	van.transform=previous;van.speed=0;van.velocity=Vector3.ZERO;van.planar_velocity=Vector3.ZERO
+	game.traffic.set_physics_process(true)
+	await frames(10)
 
 func check_finish(game:Node,capture:bool) -> void:
 	var cargo:Node=game.cargo
@@ -200,7 +240,7 @@ func walk_route(game:Node,begin:Vector3,end:Vector3) -> void:
 	var strengths:Dictionary={"steer_left":maxf(0,-direction.x),"steer_right":maxf(0,direction.x),"accelerate":maxf(0,-direction.z),"brake_reverse":maxf(0,direction.z)}
 	for action in strengths:
 		if strengths[action]>0:Input.action_press(action,strengths[action])
-	await frames(ceili((begin.distance_to(end)+.4)/4.2*60))
+	await frames(ceili((begin.distance_to(end)+.8)/4.2*60))
 	for action in strengths:Input.action_release(action)
 	check((actor.global_position-begin).dot(direction)>begin.distance_to(end)-.3,"Input-driven worker crosses flat road/path without getting stuck: %s -> %s, reached %s" % [begin,end,actor.global_position])
 	check(actor.is_on_floor(),"Worker stays grounded across road/path")
@@ -325,7 +365,7 @@ func check_package_safety(game:Node) -> void:
 		var rescued:Array[int]=[]
 		for i in 2:
 			var item:Dictionary=cargo.packages[i];rescued.append(int(item.get("rescues",0)))
-			item.body.freeze=false;item.body.position=car.position+Vector3(-.43 if i==0 else .43,1.8,0)
+			item.body.freeze=false;item.body.position=car.position+Vector3(-.43 if i==0 else .43,float(car.definition.height)+.3,0)
 			item.body.linear_velocity=Vector3(6,0,0);item.body.angular_velocity=Vector3.ZERO;item.carrier_time=0;item.audit_at=cargo.safety.clock
 		cargo.safety.audit_clock=-.25;cargo.safety.index=0
 		await frames(12)
@@ -336,7 +376,7 @@ func check_package_safety(game:Node) -> void:
 			for i in 2:
 				var item:Dictionary=cargo.packages[i]
 				if int(item.get("rescues",0))==rescued[i]:
-					item.body.position=car.position+Vector3(-.43 if i==0 else .43,1.8,0)
+					item.body.position=car.position+Vector3(-.43 if i==0 else .43,float(car.definition.height)+.3,0)
 					item.body.linear_velocity=car.linear_velocity;item.body.angular_velocity=Vector3.ZERO
 			await frames(1)
 		for i in 2:
@@ -354,13 +394,18 @@ func check_package_safety(game:Node) -> void:
 
 func run(game:Node,capture:bool) -> void:
 	game.start_drive();await frames(90)
+	if "--street-only" in OS.get_cmdline_user_args():
+		await check_street_contacts(game)
+		print("STREET TEST PASS" if failures.is_empty() else "STREET TEST FAIL: "+str(failures))
+		await game.quit_demo(0 if failures.is_empty() else 1);return
 	await check_city_life(game)
+	await check_street_contacts(game)
 	await check_mobile_reverse(game)
 	game.van.reset_vehicle();await frames(60)
 	game.cargo.collision_count=0;game.cargo.damage=0;game.cargo.seen_collision=game.van.crash_serial
 	game.van.crash_contact_active=false
 	check(game.van.is_on_floor(),"Training spawn rests on road")
-	check(game.highway.map_data.roads.size()>500 and game.traffic.cars.size()==14,"Mapped downtown and traffic exist")
+	check(game.highway.map_data.roads.size()>500 and game.traffic.cars.size()==30,"Mapped downtown and traffic exist")
 	game.van.position=Vector3(260,.15,-75);game.van.rotation.y=-PI/2;game.van.speed=12
 	Input.action_press("accelerate");await frames(240);Input.action_release("accelerate")
 	check(game.highway.entered and game.van.position.x>285,"Actual construction-barrel gateway opens downtown: at=%s speed=%.2f impacts=%d" % [game.van.position,game.van.speed,game.cargo.collision_count])
@@ -369,6 +414,7 @@ func run(game:Node,capture:bool) -> void:
 	for impact in 3:
 		await drive_into_wall(game)
 		check(game.cargo.collision_count==impact+1,"Each distinct physical impact counts once")
+		check(is_equal_approx(game.dashboard.energy_fraction(),1.0-float(impact+1)/3.0),"Energy bar drains once per distinct crash")
 		if impact<2:
 			check(game.cargo.spawned==0 and not game.van.cargo_open and not game.van.wrecked,"First two impacts keep all packages secured and truck driveable")
 		if impact==0 and game.cargo.collision_count!=1:

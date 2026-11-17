@@ -10,6 +10,7 @@ var impact_cooldown := 0.0
 var previous_brake := false
 var horn_time := 0.0
 var seen_collision := 0
+var seen_surface_bump:=0
 
 func _exit_tree() -> void:
 	shutdown()
@@ -61,7 +62,8 @@ func _process(delta: float) -> void:
 	var engine: float = float(van.engine_on)
 	level("engine_idle",engine*(0.28 if van.cockpit else 0.42),clampf(van.rpm/1000,0.65,3.5))
 	level("engine_load",engine*van.throttle_load*0.30,clampf(van.rpm/1100,0.65,3))
-	level("road",clampf(speed/35,0,1)*0.42,0.8+speed/65)
+	var rough:bool=van.ground_kind=="grass"
+	level("road",clampf(speed/35,0,1)*(.56 if rough else .42),(.68 if rough else .8)+speed/65)
 	level("tire_squeal",van.tire_squeal*0.52,0.9+speed/120)
 	level("wind",(0.10+speed/35*0.25)*nature_volume)
 	level("nature",0.32*nature_volume*(1-speed/50))
@@ -78,6 +80,8 @@ func _process(delta: float) -> void:
 	if van.collision_serial != seen_collision:
 		seen_collision = van.collision_serial
 		effect(van.collision_kind,0.22+van.collision_level*0.6)
+	if seen_surface_bump!=van.surface_bump_serial:
+		seen_surface_bump=van.surface_bump_serial;effect("bump",.09+van.surface_bump_strength*.35)
 	var braking: bool = van.brake_load > 0.5 and speed > 4
 	if braking and not previous_brake:
 		effect("brake_air",0.4)

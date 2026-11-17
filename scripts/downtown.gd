@@ -20,6 +20,7 @@ var barriers:Node3D # Compatibility: the separate motorway owns its barriers.
 var road_grid:Dictionary={}
 var road_names:Array[String]=[]
 var scenery_material:ShaderMaterial
+var streets:Node3D
 
 func _ready() -> void:
 	training_mode=true
@@ -37,15 +38,16 @@ func _ready() -> void:
 			if not road.foot:
 				var length:float=path[i-1].distance_to(path[i])
 				for j in maxi(1,ceili(length/8)):add_road_sample(path[i-1].lerp(path[i],float(j)/maxi(1,ceili(length/8))),road.name)
-		if "Superior" in road.name and not road.foot:
+		if road.name=="West Lakeside Avenue" and not road.foot:
 			for p in path:
-				var score:float=p.distance_to(Vector3(420,0,-75))
+				var score:float=p.distance_to(Vector3(285,0,-75))
 				if score<closest:closest=score;entry=p
 	road_segment(Vector3(250,0,-75),entry,14,false)
 	for i in 30:add_road_sample(Vector3(250,0,-75).lerp(entry,i/29.0),"Cleveland training exit")
 	for park in map_data.parks:flat_polygon(park.polygon,0.018,"779b59")
 	for building in map_data.buildings:building_mesh(building)
 	finish_surfaces()
+	streets=preload("res://scripts/street_surfaces.gd").new();streets.world=self;add_child(streets);streets.build()
 	build_terminal()
 	build_street_details()
 	consolidate_boxes()
@@ -70,11 +72,6 @@ func road_segment(a:Vector3,b:Vector3,width:float,foot:bool) -> void:
 	var side:=Vector3(-(b-a).z,0,(b-a).x).normalized()*width/2
 	var up:=Vector3.UP*(0.022 if foot else 0.012)
 	quad(a-side+up,a+side+up,b+side+up,b-side+up,"c9bfaa" if foot else "505461")
-	if not foot:
-		var outward:=side.normalized()*2.2
-		var step_up:=Vector3.UP*.012
-		quad(a-side-outward+up+step_up,a-side+up+step_up,b-side+up+step_up,b-side-outward+up+step_up,"b8ad96")
-		quad(a+side+up+step_up,a+side+outward+up+step_up,b+side+outward+up+step_up,b+side+up+step_up,"b8ad96")
 	if not foot and width>8:
 		var dir:Vector3=(b-a).normalized()
 		for j in int(a.distance_to(b)/10):
@@ -151,11 +148,11 @@ func label(at:Vector3,text:String,yaw:=0.0,pixel:=0.025) -> void:
 
 func build_street_details() -> void:
 	label(Vector3(295,5,-88),"DOWNTOWN CLEVELAND\nPUBLIC SQUARE / TOWER CITY",-PI/2)
-	block(self,Vector3(295.08,5,-88),Vector3(.18,3.0,13),Color("253b3d"))
-	for z in [-93,-83]:block(self,Vector3(295.08,2,z),Vector3(.18,4,.18),Color("353441"))
+	block(self,Vector3(295.08,5,-88),Vector3(.18,3.0,13),Color("253b3d"),true)
+	for z in [-93,-83]:block(self,Vector3(295.08,2,z),Vector3(.18,4,.18),Color("353441"),true)
 	var square_sign:=Vector3(975,1.65,-48)
 	block(self,square_sign,Vector3(4.4,1.15,.15),Color("253b3d"))
-	for x in [-1.7,1.7]:block(self,square_sign+Vector3(x,-.75,0),Vector3(.09,1.5,.09),Color("353441"))
+	for x in [-1.7,1.7]:block(self,square_sign+Vector3(x,-.75,0),Vector3(.09,1.5,.09),Color("353441"),true)
 	label(square_sign+Vector3(0,0,.09),"PUBLIC SQUARE",0,.008)
 	label(depot+Vector3(0,3,0),"FedUp RECOVERY DEPOT",0,0.018)
 	block(self,depot+Vector3(0,0.04,0),Vector3(7,0.06,7),Color("765494"))
@@ -165,6 +162,7 @@ func build_street_details() -> void:
 		var angle:=rng.randf_range(0,TAU);var radius:=rng.randf_range(35,75)
 		var p:=OFFSET+Vector3(cos(angle)*radius,0,sin(angle)*radius)
 		trunks.append(Transform3D(Basis().scaled(Vector3(0.5,5,0.5)),p+Vector3.UP*2.5))
+		tree_collision(p,.26,4.3)
 		crowns.append(Transform3D(Basis().scaled(Vector3(4,5,4)),p+Vector3.UP*6))
 	batch_boxes(trunks,Color("65503a"));var sphere:=SphereMesh.new();sphere.radial_segments=8;sphere.rings=4
 	batch_mesh(sphere,crowns,Color("638f49"),true)
@@ -176,7 +174,7 @@ func _physics_process(_delta:float) -> void:
 		game.van.notify_driver("TRAINING COMPLETE - welcome to Public Square / Tower City")
 
 func has_road_near(at:Vector3,distance:=7.0) -> bool:
-	if at.x<300:return absf(Vector2(at.x,at.z).length()-260)<8
+	if at.x<300 and absf(Vector2(at.x,at.z).length()-260)<8:return true
 	var cell:=Vector2i(floori(at.x/32),floori(at.z/32))
 	for x in range(cell.x-1,cell.x+2):
 		for z in range(cell.y-1,cell.y+2):

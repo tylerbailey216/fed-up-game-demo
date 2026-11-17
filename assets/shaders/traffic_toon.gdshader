@@ -11,15 +11,18 @@ uniform vec3 headlight_forward = vec3(0.0,0.0,-1.0);
 uniform float headlight_strength = 0.0;
 uniform float headlight_range = 35.0;
 uniform float leaf_sway = 0.0;
+uniform vec3 brush_position = vec3(0.0);
+uniform float brush_strength = 0.0;
 varying vec3 world_normal;
 varying vec3 world_pos;
 varying float camera_distance;
 // Draw the existing wheel geometry with the body, retaining axle rotation.
 uniform float wheel_roll = 0.0;
 uniform float wheel_steer = 0.0;
-void pose_traffic_wheel(inout vec3 point, inout vec3 normal, vec2 axle, float kind) {
+void pose_traffic_wheel(inout vec3 point, inout vec3 normal, vec2 axle, vec2 wheel) {
+    float kind = wheel.x;
     if (kind < 0.5) { return; }
-    vec3 pivot = vec3(axle.x, 0.34, axle.y);
+    vec3 pivot = vec3(axle.x, wheel.y, axle.y);
     float c = cos(wheel_roll);
     float s = sin(wheel_roll);
     mat3 roll = mat3(vec3(1.0,0.0,0.0),vec3(0.0,c,s),vec3(0.0,-s,c));
@@ -32,7 +35,13 @@ void pose_traffic_wheel(inout vec3 point, inout vec3 normal, vec2 axle, float ki
 }
 
 void vertex() {
-    pose_traffic_wheel(VERTEX, NORMAL, UV, UV2.x);
+    pose_traffic_wheel(VERTEX, NORMAL, UV, UV2);
+	if (leaf_sway > 0.0 && brush_strength > 0.0) {
+		vec3 world = (MODEL_MATRIX * vec4(VERTEX,1.0)).xyz;
+		vec2 away = world.xz-brush_position.xz;
+		float bend = (1.0-smoothstep(1.0,3.0,length(away))) * (1.0-smoothstep(2.8,4.0,world.y-brush_position.y)) * brush_strength;
+		VERTEX.xz += away/max(length(away),0.1) * bend * 0.30;
+	}
     VERTEX.x += sin(TIME*0.9+(MODEL_MATRIX*vec4(VERTEX,1.0)).z*0.22)*leaf_sway;
     world_normal = normalize(MODEL_NORMAL_MATRIX * NORMAL);
     world_pos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;

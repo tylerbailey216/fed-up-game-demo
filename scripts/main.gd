@@ -806,9 +806,9 @@ func update_hud(speed: float, gear: String, distance: float) -> void:
 	if dashboard:
 		if recovery_panel:
 			recovery_panel.visible = (van.overturned or van.flip_count>0 or van.wrecked or (cargo and cargo.complete)) and not (cargo and cargo.on_foot and not cargo.complete)
-			recovery_status.text = "TOTALLED - ENGINE DISABLED (3 / 3)" if van.wrecked else "ROLLOVERS %d / 3%s" % [van.flip_count," - WAIT FOR TRUCK TO SETTLE" if van.overturned and not van.roll_settled else ""]
+			recovery_status.text = "TRUCK DISABLED / ENGINE OFF" if van.wrecked else ("WAIT FOR TRUCK TO SETTLE" if van.overturned and not van.roll_settled else "UPRIGHT RECOVERY AVAILABLE")
 			if cargo and not cargo.spilled:
-				recovery_status.text="COLLISIONS %d / 3 / LOAD SECURED%s" % [cargo.collision_count," / RIGHT TRUCK [U]" if van.roll_settled else " / WAIT FOR TRUCK TO SETTLE"]
+				recovery_status.text="LOAD SECURED"+(" / RIGHT TRUCK [U]" if van.roll_settled else " / WAIT FOR TRUCK TO SETTLE")
 			if outerbelt and van.overturned and not van.flip_registered:
 				recovery_status.text="HEAVY IMPACT - WAIT FOR TRUCK TO SETTLE" if not van.roll_settled else "TRUCK SETTLED - RECOVER [U]"
 			upright_button.visible = van.overturned

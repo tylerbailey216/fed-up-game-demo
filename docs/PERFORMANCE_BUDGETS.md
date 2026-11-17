@@ -24,6 +24,8 @@ Native visual review checks PC, portrait and landscape scenes, including animate
 
 ## Remaining targets
 
+The subsequent lineup expansion has 48 citizens across known routes and 30 reference vehicles, with at most 24 normal citizens within 190 m and cars hidden/frozen beyond 250 m. A first unoptimized sample reached only 16.3 FPS in the crowded 1688 x 780 on-foot view. Reducing excess text geometry, enabling character mipmaps and using cached floor/wall probes for normal civilian walking produced a follow-up 22.6 FPS / p95 50 ms, about 230 draws and 172,000 primitives; sampled physics time was 5.6 ms. Reaction motion retains full collision solving. The changed entrance/camera sees a different scene from older measurements, so this is not a controlled comparison to the previous build. It does not establish a stable 30 FPS target on this PC or actual phones. Functional four-layout tests and live publication checks are recorded separately in local smoke reports.
+
 - Target 60 FPS on the intended PC; aim for stable 30 FPS on supported phones, with 60 where measured capacity allows. These are targets, not minimum hardware promises.
 - Close or pause extra game instances, then compare the same stationary crowded block, driving route, collision burst and package-recovery sequence.
 - Record actual renderer, canvas pixels, average FPS, 95th-percentile frame time, physics time and draw calls. Average FPS alone can hide stuttering.

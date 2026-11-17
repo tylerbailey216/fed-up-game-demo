@@ -114,6 +114,9 @@ func _draw() -> void:
 	if inside:
 		draw_cab()
 	draw_brand()
+	panel(Rect2(1012,78,242,48))
+	caption(Vector2(1025,95),"TRUCK ENERGY",12,GOLD,true)
+	draw_energy(Rect2(1025,102,216,14))
 	if cargo:
 		caption(Vector2(375,89),cargo.objective(),13,GOLD,true)
 	if show_gps:
@@ -149,7 +152,7 @@ func draw_package_guide() -> void:
 	var center:=size/2
 	var compact:=compact_layout();var factor:=size.x/720 if compact else minf(size.x/1280,size.y/720)
 	var design_height:=size.y/factor
-	var top:float=(338 if design_height>=850 else (132 if design_height<480 else 258))*factor if compact else 145*factor
+	var top:float=(370 if design_height>=850 else (132 if design_height<480 else 286))*factor if compact else 145*factor
 	var bottom:float=size.y-(380 if design_height>=850 else 195)*factor if compact else size.y-155*factor
 	bottom=maxf(top+45,bottom)
 	var bounds:=Rect2(Vector2(22,top),Vector2(size.x-44,bottom-top))
@@ -181,13 +184,20 @@ func draw_mission_popup() -> void:
 	draw_set_transform(Vector2.ZERO,0,Vector2.ONE*factor)
 	var width:=minf(620,design.x-48)
 	var rect:=Rect2((design.x-width)/2,design.y*(.265 if compact else .25),width,100)
+	var text_size:=23 if compact else 25
+	var first_line:=38;var line_step:=32
+	if compact:
+		if design.y<480:
+			width=356;rect=Rect2((design.x-width)/2,122,width,58);text_size=15;first_line=23;line_step=21
+		elif design.y<850:
+			rect.position.y=294;rect.size.y=52;text_size=18;first_line=20;line_step=22
+		else:rect.position.y=366
 	panel(rect,PANEL,CYAN if cargo.load_restored else GOLD)
 	var lines:PackedStringArray=cargo.popup.split("\n")
 	for i in lines.size():
-		var text_size:=23 if compact else 25
 		while font.get_string_size(lines[i],HORIZONTAL_ALIGNMENT_LEFT,-1,text_size).x>width-32 and text_size>12:text_size-=1
 		var text_width:=font.get_string_size(lines[i],HORIZONTAL_ALIGNMENT_LEFT,-1,text_size).x
-		caption(Vector2((design.x-text_width)/2,rect.position.y+38+i*32),lines[i],text_size,GOLD if i==0 else CREAM)
+		caption(Vector2((design.x-text_width)/2,rect.position.y+first_line+i*line_step),lines[i],text_size,GOLD if i==0 else CREAM)
 
 func compact_layout() -> bool:
 	return size.x/maxf(1,size.y)<1.6 or DisplayServer.is_touchscreen_available()
@@ -211,12 +221,14 @@ func draw_compact() -> void:
 	var h:=size.y/factor
 	draw_set_transform(Vector2.ZERO,0,Vector2.ONE*factor)
 	var wide:=h<480
-	panel(Rect2(16,12 if wide else 16,688,56 if wide else 78))
+	panel(Rect2(16,12 if wide else 16,688,60 if wide else 110))
 	caption(Vector2(32,37 if wide else 48),"FedUp",22 if wide else 28,CREAM,true)
 	caption(Vector2(162,36 if wide else 45),location_name(),14 if wide else 20,GOLD,true)
-	if cargo:caption(Vector2(32,57 if wide else 77),cargo.objective(),12 if wide else 18,CYAN)
+	caption(Vector2(32,61 if wide else 77),"TRUCK",11 if wide else 16,GOLD,true)
+	draw_energy(Rect2(96,49,240,15) if wide else Rect2(150,61,540,20))
+	if cargo:caption(Vector2(360,61) if wide else Vector2(32,107),cargo.objective(),11 if wide else 16,CYAN)
 	if show_gps and vehicle.location_world:
-		var rect:=Rect2(378,110,326,210 if h>=850 else 150) if not expanded_map else Rect2(24,254 if h>=850 else 108,672,minf(440,h-660) if h>=850 else h-310)
+		var rect:=Rect2(378,140,326,210 if h>=850 else 150) if not expanded_map else Rect2(24,282 if h>=850 else 138,672,minf(440,h-690) if h>=850 else h-340)
 		if wide:rect=Rect2(538,80,166,90) if not expanded_map else Rect2(170,122,534,90)
 		panel(rect,Color("202f36"))
 		vehicle.location_world.draw_map(self,rect,cargo.player_position() if cargo else vehicle.position)
@@ -235,7 +247,7 @@ func draw_compact() -> void:
 		panel(Rect2(196,y,346,102))
 		caption(Vector2(210,y+30),"ON FOOT" if cargo and cargo.on_foot else "%03d mph / %s" % [roundi(speed),gear],25,GOLD,true)
 		caption(Vector2(210,y+60),"WALK OVER BOXES TO COLLECT" if cargo and cargo.on_foot else "FUEL %.1f GAL / %s" % [vehicle.fuel_gallons,"ENGINE ON" if vehicle.engine_on else "ENGINE OFF"],14)
-		caption(Vector2(210,y+86),"CONDITION %d%% / %d BOXES" % [roundi(100-cargo.damage),cargo.recovered] if cargo else "FREE DRIVE",14,CYAN)
+		caption(Vector2(210,y+86),"%d BOXES SECURED" % cargo.recovered if cargo else "FREE DRIVE",14,CYAN)
 		return
 	panel(Rect2(24,y,672,120))
 	if cargo and cargo.on_foot:
@@ -249,8 +261,29 @@ func draw_compact() -> void:
 		var flash:=fmod(vehicle.blink_time,1.0)<.5
 		shape([Vector2(330,y+27),Vector2(342,y+19),Vector2(342,y+35)],Color("73d998") if flash and (vehicle.hazards or vehicle.indicator==-1) else Color("4b5159"),1)
 		shape([Vector2(665,y+27),Vector2(653,y+19),Vector2(653,y+35)],Color("73d998") if flash and (vehicle.hazards or vehicle.indicator==1) else Color("4b5159"),1)
-		caption(Vector2(342,y+73),"TRUCK CONDITION %d%%" % roundi(100-cargo.damage if cargo else 100),16)
+		caption(Vector2(342,y+73),"LOAD SECURED" if not cargo or not cargo.spilled else "RECOVER LOST PACKAGES",14,CYAN)
 	if vehicle.notice_time>0:caption(Vector2(34,y+107),vehicle.notice.left(76),13,GOLD)
+
+func energy_fraction() -> float:
+	return clampf(1.0-cargo.damage/100.0,0,1) if cargo else clampf(1.0-vehicle.flip_count/3.0,0,1)
+
+func draw_energy(rect:Rect2) -> void:
+	var energy:=energy_fraction()
+	var low:=energy>0 and energy<.35
+	var tone:=Color("69df93") if energy>.68 else (GOLD if energy>.35 else Color("ff654d"))
+	if low:tone=tone.lerp(Color("ffe3a4"),.35+.35*sin(Time.get_ticks_msec()*.012))
+	draw_rect(rect.grow(3),INK)
+	draw_rect(rect.grow(1),CREAM,false,1)
+	draw_rect(rect,Color("493348"))
+	if energy>0:
+		var filled:=Rect2(rect.position,Vector2(rect.size.x*energy,rect.size.y))
+		draw_rect(filled,tone)
+		draw_rect(Rect2(filled.position,Vector2(filled.size.x,filled.size.y*.28)),tone.lightened(.3))
+		for i in range(1,12):
+			var x:=rect.position.x+rect.size.x*i/12.0
+			if x<filled.end.x:draw_line(Vector2(x,rect.position.y+2),Vector2(x,rect.end.y-2),tone.darkened(.25),1)
+	else:
+		caption(rect.position+Vector2(5,rect.size.y-2),"DISABLED",maxi(9,roundi(rect.size.y*.75)),Color("ff8e6c"),true)
 
 func draw_brand() -> void:
 	shape([Vector2(26,17),Vector2(340,17),Vector2(323,59),Vector2(13,59)],INK,5)

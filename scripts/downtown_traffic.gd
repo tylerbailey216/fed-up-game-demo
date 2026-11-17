@@ -3,21 +3,12 @@ extends "res://scripts/traffic_district.gd"
 func _ready() -> void:
 	process_mode=Node.PROCESS_MODE_PAUSABLE
 	for z in [-80.5,-77,-73.5,-70]:make_barrel(Vector3(270,.65,z))
-	var points:Array=highway.map_data.traffic_route
-	if points.size()<5:return
-	var route:Array[Vector3]=[]
-	for i in points.size():
-		var a:Vector3=Vector3(points[i][0],0,points[i][1])+highway.OFFSET
-		var b:Vector3=Vector3(points[(i+1)%points.size()][0],0,points[(i+1)%points.size()][1])+highway.OFFSET
-		var side:=Vector3(-(b-a).z,0,(b-a).x).normalized()*1.45
-		route.append(a+side)
-	for i in 8:
-		var car:=Car.new();car.district=self;car.route=route.duplicate();car.waypoint=(i*route.size()/8+1)%route.size()
-		var index:int=(car.waypoint-1+route.size())%route.size()
-		car.position=route[index]+Vector3.UP*.06
-		var direction:Vector3=route[car.waypoint]-car.position
-		car.rotation.y=atan2(-direction.x,-direction.z);car.cruise_speed=6.5+float(i%3)
-		add_child(car);build_car(car,[Color("ad4e58"),Color("3b8ca2"),Color("d9b957"),Color("d6cbb8")][i%4],i);cars.append(car)
+	var data:Dictionary=JSON.parse_string(FileAccess.get_file_as_string("res://data/city_population.json"))
+	var kinds:Array=city_art.definitions.keys()
+	for n in data.traffic_routes.size():
+		var route:Array[Vector3]=[]
+		for p in data.traffic_routes[n]:route.append(Vector3(p[0],0,p[1]))
+		for i in 8:spawn_reference_car(kinds[(n*8+i)%kinds.size()],route,i*route.size()/8,.22,6.0+float(i%3)*.6)
 	highway.consolidate_boxes()
 	for location in [Vector3(920,0,-170),Vector3(1160,0,95)]:
 		make_signal(location,"NS",0)
@@ -28,8 +19,12 @@ func in_city(pos:Vector3) -> bool:
 
 func _physics_process(delta:float) -> void:
 	var active:bool=game.driving
+	var focus:Vector3=game.cargo.player_position() if game.get("cargo") and game.cargo else game.van.position
 	for car in cars:
-		if car.freeze==active:car.freeze=not active
+		var nearby:bool=car.position.distance_squared_to(focus)<250*250
+		var simulate:bool=active and nearby
+		if car.freeze==simulate:car.freeze=not simulate
+		car.visible=nearby;car.collision_layer=1 if nearby else 0
 	for barrel in barrels:
 		if barrel.freeze==active:barrel.freeze=not active
 	if not active:return

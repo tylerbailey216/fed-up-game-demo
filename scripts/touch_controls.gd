@@ -34,6 +34,8 @@ func layout() -> void:
 		regions.stick=Rect2(20,h-152,128,128)
 		regions.gas=Rect2(582,h-152,118,56);regions.brake=Rect2(582,h-84,118,56)
 		regions.hand=Rect2(430,h-70,126,42);regions.upright=Rect2(430,h-122,126,42)
+	else:
+		for key in ["camera","map","options","exit"]:regions[key].position.y+=28
 	regions["gear"]=regions.upright
 
 func release_inputs() -> void:
@@ -79,7 +81,7 @@ func _input(event:InputEvent) -> void:
 					"stick":stick=(pos-regions.stick.get_center())/80
 				get_viewport().set_input_as_handled();break
 			var h:=size.y/scale_factor
-			var world_top:=330 if h>=850 else (130 if h<480 else 250)
+			var world_top:=360 if h>=850 else (130 if h<480 else 280)
 			if not fingers.has(event.index) and game.cargo and game.cargo.on_foot and pos.y>world_top and pos.y<h-180:
 				fingers[event.index]="orbit";get_viewport().set_input_as_handled()
 		else:

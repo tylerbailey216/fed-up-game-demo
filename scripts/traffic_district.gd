@@ -16,6 +16,14 @@ var truck_in_crossing := false
 var running := true
 var push_count := 0
 var disabled_world := false
+var city_art:=preload("res://scripts/city_vehicle_art.gd").new()
+
+func spawn_reference_car(kind:String,route:Array[Vector3],edge:int,fraction:float,pace:float) -> RigidBody3D:
+	var car:=Car.new();car.district=self;car.definition=city_art.definitions[kind];car.model_kind=kind
+	car.route=route.duplicate();car.waypoint=(edge+1)%route.size();car.cruise_speed=pace
+	car.position=route[edge].lerp(route[car.waypoint],fraction)+Vector3.UP*.06
+	var direction:Vector3=route[car.waypoint]-car.position;car.rotation.y=atan2(-direction.x,-direction.z)
+	add_child(car);city_art.build(car,highway,kind);cars.append(car);return car
 
 func mesh_box(parent: Node3D, pos: Vector3, size: Vector3, color: Color) -> MeshInstance3D:
 	var node := MeshInstance3D.new()
@@ -147,6 +155,8 @@ func make_signal(at: Vector3, axis: String, heading: float) -> void:
 	add_child(pole)
 	pole.position = at
 	pole.rotation.y = heading
+	var solid:=StaticBody3D.new();var shape:=CollisionShape3D.new();var cylinder:=CylinderShape3D.new()
+	cylinder.radius=.13;cylinder.height=5.2;shape.shape=cylinder;shape.position.y=2.6;solid.add_child(shape);pole.add_child(solid)
 	mesh_box(pole,Vector3(0,2.6,0),Vector3(0.18,5.2,0.18),Color("303846"))
 	mesh_box(pole,Vector3(0,4.4,-0.2),Vector3(0.65,1.8,0.4),Color("242a35"))
 	for i in 3:
@@ -250,7 +260,7 @@ func build_car(car: RigidBody3D, color: Color, variant: int) -> void:
 				var index:int=indices[step] if not indices.is_empty() else step
 				surface.set_color(tone)
 				surface.set_uv(panel.get_meta("axle",Vector2.ZERO))
-				surface.set_uv2(Vector2(panel.get_meta("kind",0.0),0))
+				surface.set_uv2(Vector2(panel.get_meta("kind",0.0),.34))
 				surface.set_normal((pose.basis*normals[index]).normalized())
 				surface.add_vertex(pose*vertices[index])
 			panel.queue_free()

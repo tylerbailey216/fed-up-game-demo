@@ -82,7 +82,7 @@ func spill() -> void:
 	if spilled or collision_count<3:return
 	spilled=true;game.van.cargo_open=true
 	for i in quota:drop_package()
-	game.van.notify_driver("THIRD COLLISION - TRUCK DISABLED / Recover %d packages" % quota)
+	game.van.notify_driver("TRUCK DISABLED / Recover %d packages" % quota)
 
 func drop_package() -> void:
 	if not spilled or spawned>=quota:return
@@ -110,7 +110,7 @@ func damage_hit(_level:float) -> void:
 	if collision_count==3:
 		game.van.wrecked=true;game.van.engine_on=false;game.van.cruise=false
 		spill()
-	else:game.van.notify_driver("COLLISION %d / 3 - LOAD SECURED" % collision_count)
+	else:game.van.notify_driver("LOW TRUCK ENERGY / LOAD SECURED" if collision_count==2 else "TRUCK DAMAGED / LOAD SECURED")
 
 func next_stage() -> void:
 	if not complete:return
@@ -243,5 +243,5 @@ func objective() -> String:
 	if complete:return "DEMO COMPLETE / ALL %d DELIVERED" % quota
 	if load_restored:return "LOAD SECURED / ENTER TRUCK" if on_foot else "STOP AT GOLD COLLECTION BAY / GPS"
 	if not armed:return "TRAINING / Push past orange barrels to enter downtown"
-	if not spilled:return "STAGE %d / %d PACKAGES SECURED / COLLISIONS %d OF 3" % [stage_index+1,quota,collision_count]
+	if not spilled:return "STAGE %d / %d PACKAGES SECURED" % [stage_index+1,quota]
 	return "WALK OVER BOXES / %d LEFT / %d SECURED" % [remaining_packages(),recovered]

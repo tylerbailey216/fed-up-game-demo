@@ -1,0 +1,438 @@
+{
+  "vehicles": {
+    "compact": {
+      "model": "res://assets/models/traffic/compact.glb",
+      "width": 1.72,
+      "length": 3.45,
+      "height": 1.85,
+      "radius": 0.37,
+      "mass": 850,
+      "wheels": [
+        [
+          -0.8428,
+          0.37,
+          -1.02
+        ],
+        [
+          0.8428,
+          0.37,
+          -1.02
+        ],
+        [
+          -0.8428,
+          0.37,
+          1.02
+        ],
+        [
+          0.8428,
+          0.37,
+          1.02
+        ]
+      ],
+      "reference": "FedUp Vehicle Look Sheet.png"
+    },
+    "sedan": {
+      "model": "res://assets/models/traffic/sedan.glb",
+      "width": 1.96,
+      "length": 4.55,
+      "height": 1.72,
+      "radius": 0.38,
+      "mass": 1250,
+      "wheels": [
+        [
+          -0.9603999999999999,
+          0.38,
+          -1.42
+        ],
+        [
+          0.9603999999999999,
+          0.38,
+          -1.42
+        ],
+        [
+          -0.9603999999999999,
+          0.38,
+          1.38
+        ],
+        [
+          0.9603999999999999,
+          0.38,
+          1.38
+        ]
+      ],
+      "reference": "FedUp Vehicle Look Sheet.png"
+    },
+    "taxi": {
+      "model": "res://assets/models/traffic/taxi.glb",
+      "width": 1.9,
+      "length": 4.08,
+      "height": 1.9,
+      "radius": 0.38,
+      "mass": 1200,
+      "wheels": [
+        [
+          -0.9309999999999999,
+          0.38,
+          -1.25
+        ],
+        [
+          0.9309999999999999,
+          0.38,
+          -1.25
+        ],
+        [
+          -0.9309999999999999,
+          0.38,
+          1.25
+        ],
+        [
+          0.9309999999999999,
+          0.38,
+          1.25
+        ]
+      ],
+      "reference": "FedUp Vehicle Look Sheet.png"
+    },
+    "pickup": {
+      "model": "res://assets/models/traffic/pickup.glb",
+      "width": 2.04,
+      "length": 4.9,
+      "height": 2.02,
+      "radius": 0.43,
+      "mass": 1800,
+      "wheels": [
+        [
+          -0.9996,
+          0.43,
+          -1.5
+        ],
+        [
+          0.9996,
+          0.43,
+          -1.5
+        ],
+        [
+          -0.9996,
+          0.43,
+          1.48
+        ],
+        [
+          0.9996,
+          0.43,
+          1.48
+        ]
+      ],
+      "reference": "FedUp Vehicle Look Sheet.png"
+    },
+    "suv": {
+      "model": "res://assets/models/traffic/suv.glb",
+      "width": 2.05,
+      "length": 4.64,
+      "height": 2.12,
+      "radius": 0.44,
+      "mass": 1900,
+      "wheels": [
+        [
+          -1.0045,
+          0.44,
+          -1.43
+        ],
+        [
+          1.0045,
+          0.44,
+          -1.43
+        ],
+        [
+          -1.0045,
+          0.44,
+          1.43
+        ],
+        [
+          1.0045,
+          0.44,
+          1.43
+        ]
+      ],
+      "reference": "FedUp Vehicle Look Sheet.png"
+    },
+    "delivery-van": {
+      "model": "res://assets/models/traffic/delivery-van.glb",
+      "width": 2.05,
+      "length": 4.72,
+      "height": 2.68,
+      "radius": 0.42,
+      "mass": 2300,
+      "wheels": [
+        [
+          -1.0045,
+          0.42,
+          -1.42
+        ],
+        [
+          1.0045,
+          0.42,
+          -1.42
+        ],
+        [
+          -1.0045,
+          0.42,
+          1.45
+        ],
+        [
+          1.0045,
+          0.42,
+          1.45
+        ]
+      ],
+      "reference": "FedUp Vehicle Look Sheet.png"
+    },
+    "box-truck": {
+      "model": "res://assets/models/traffic/box-truck.glb",
+      "width": 2.34,
+      "length": 6.15,
+      "height": 3.1,
+      "radius": 0.48,
+      "mass": 3800,
+      "wheels": [
+        [
+          -1.1465999999999998,
+          0.48,
+          -1.95
+        ],
+        [
+          1.1465999999999998,
+          0.48,
+          -1.95
+        ],
+        [
+          -1.1465999999999998,
+          0.48,
+          1.9
+        ],
+        [
+          1.1465999999999998,
+          0.48,
+          1.9
+        ]
+      ],
+      "reference": "FedUp Vehicle Look Sheet.png"
+    },
+    "school-bus": {
+      "model": "res://assets/models/traffic/school-bus.glb",
+      "width": 2.25,
+      "length": 7.4,
+      "height": 2.86,
+      "radius": 0.47,
+      "mass": 5800,
+      "wheels": [
+        [
+          -1.1025,
+          0.47,
+          -2.45
+        ],
+        [
+          1.1025,
+          0.47,
+          -2.45
+        ],
+        [
+          -1.1025,
+          0.47,
+          2.45
+        ],
+        [
+          1.1025,
+          0.47,
+          2.45
+        ]
+      ],
+      "reference": "FedUp Vehicle Look Sheet.png"
+    },
+    "city-bus": {
+      "model": "res://assets/models/traffic/city-bus.glb",
+      "width": 2.3,
+      "length": 7.6,
+      "height": 2.86,
+      "radius": 0.47,
+      "mass": 6400,
+      "wheels": [
+        [
+          -1.127,
+          0.47,
+          -2.5
+        ],
+        [
+          1.127,
+          0.47,
+          -2.5
+        ],
+        [
+          -1.127,
+          0.47,
+          2.5
+        ],
+        [
+          1.127,
+          0.47,
+          2.5
+        ]
+      ],
+      "reference": "FedUp Vehicle Look Sheet.png"
+    },
+    "police": {
+      "model": "res://assets/models/traffic/police.glb",
+      "width": 1.96,
+      "length": 4.55,
+      "height": 1.92,
+      "radius": 0.38,
+      "mass": 1450,
+      "wheels": [
+        [
+          -0.9603999999999999,
+          0.38,
+          -1.42
+        ],
+        [
+          0.9603999999999999,
+          0.38,
+          -1.42
+        ],
+        [
+          -0.9603999999999999,
+          0.38,
+          1.38
+        ],
+        [
+          0.9603999999999999,
+          0.38,
+          1.38
+        ]
+      ],
+      "reference": "FedUp Vehicle Look Sheet.png"
+    },
+    "ambulance": {
+      "model": "res://assets/models/traffic/ambulance.glb",
+      "width": 2.25,
+      "length": 5.55,
+      "height": 2.95,
+      "radius": 0.44,
+      "mass": 3400,
+      "wheels": [
+        [
+          -1.1025,
+          0.44,
+          -1.75
+        ],
+        [
+          1.1025,
+          0.44,
+          -1.75
+        ],
+        [
+          -1.1025,
+          0.44,
+          1.7
+        ],
+        [
+          1.1025,
+          0.44,
+          1.7
+        ]
+      ],
+      "reference": "FedUp Vehicle Look Sheet.png"
+    },
+    "tow-truck": {
+      "model": "res://assets/models/traffic/tow-truck.glb",
+      "width": 2.2,
+      "length": 5.65,
+      "height": 2.75,
+      "radius": 0.45,
+      "mass": 3300,
+      "wheels": [
+        [
+          -1.078,
+          0.45,
+          -1.8
+        ],
+        [
+          1.078,
+          0.45,
+          -1.8
+        ],
+        [
+          -1.078,
+          0.45,
+          1.65
+        ],
+        [
+          1.078,
+          0.45,
+          1.65
+        ]
+      ],
+      "reference": "FedUp Vehicle Look Sheet.png"
+    },
+    "dump-truck": {
+      "model": "res://assets/models/traffic/dump-truck.glb",
+      "width": 2.4,
+      "length": 6.3,
+      "height": 3.04,
+      "radius": 0.49,
+      "mass": 5200,
+      "wheels": [
+        [
+          -1.176,
+          0.49,
+          -2.03
+        ],
+        [
+          1.176,
+          0.49,
+          -2.03
+        ],
+        [
+          -1.176,
+          0.49,
+          1.05
+        ],
+        [
+          1.176,
+          0.49,
+          1.05
+        ],
+        [
+          -1.176,
+          0.49,
+          2.15
+        ],
+        [
+          1.176,
+          0.49,
+          2.15
+        ]
+      ],
+      "reference": "FedUp Vehicle Look Sheet.png"
+    },
+    "scooter": {
+      "model": "res://assets/models/traffic/scooter.glb",
+      "width": 0.74,
+      "length": 1.92,
+      "height": 1.54,
+      "radius": 0.28,
+      "mass": 160,
+      "wheels": [
+        [
+          0.0,
+          0.28,
+          -0.66
+        ],
+        [
+          0.0,
+          0.28,
+          0.63
+        ]
+      ],
+      "reference": "FedUp Vehicle Look Sheet.png"
+    }
+  }
+}

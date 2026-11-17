@@ -1,9 +1,10 @@
 // Draw the existing wheel geometry with the body, retaining axle rotation.
 uniform float wheel_roll = 0.0;
 uniform float wheel_steer = 0.0;
-void pose_traffic_wheel(inout vec3 point, inout vec3 normal, vec2 axle, float kind) {
+void pose_traffic_wheel(inout vec3 point, inout vec3 normal, vec2 axle, vec2 wheel) {
+    float kind = wheel.x;
     if (kind < 0.5) { return; }
-    vec3 pivot = vec3(axle.x, 0.34, axle.y);
+    vec3 pivot = vec3(axle.x, wheel.y, axle.y);
     float c = cos(wheel_roll);
     float s = sin(wheel_roll);
     mat3 roll = mat3(vec3(1.0,0.0,0.0),vec3(0.0,c,s),vec3(0.0,-s,c));

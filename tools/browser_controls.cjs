@@ -34,6 +34,7 @@ const fs=require('fs');
    await page.keyboard.down('s');await wait(()=>window.fedupQA.speed< -1,'Desktop reverse failed');await page.keyboard.up('s');
   }
   await command('spill');await wait(()=>window.fedupQA.on_foot,'Spill did not enable walking');
+  if((await state()).energy!==0)throw new Error('Third crash did not empty energy bar');
   if(touch)await down(5,'stick',0,-.36);else await page.keyboard.down('w');
   await wait(()=>window.fedupQA.collected>=1,'Walk-over contact did not collect');
   await page.screenshot({path:`docs/controls-auto-pickup-${width}x${height}.png`});
@@ -41,14 +42,16 @@ const fs=require('fs');
   if(touch)await up(5);else await page.keyboard.up('w');
   const q=await state();
   if(!q.hands_empty||q.distance_to_truck<20)throw new Error('Pickup required carrying/returning to the truck');
-  if(q.cars!==14||q.citizens!==16)throw new Error('City population missing');
+  if(q.energy!==1)throw new Error('Recovered truck did not restore energy bar');
+  if(q.cars!==30||q.citizens!==48)throw new Error('City population missing');
   if(q.build!==await page.evaluate(()=>document.documentElement.dataset.build))throw new Error('Loader/game build mismatch');
   await page.screenshot({path:`docs/controls-collected-${width}x${height}.png`});
   await command('city');await page.waitForTimeout(1200);
   await page.screenshot({path:`docs/controls-city-${width}x${height}.png`});
   const performance=await page.evaluate(()=>new Promise(resolve=>{let last;const times=[];function sample(t){if(last)times.push(t-last);last=t;if(times.length===120){times.sort((a,b)=>a-b);resolve({fps:120000/times.reduce((a,b)=>a+b,0),p95_ms:times[113]});}else requestAnimationFrame(sample);}requestAnimationFrame(sample);}));
   if(errors.length)throw new Error(errors.join('\n'));
-  results.push({width,height,touch,dpr,build:q.build,collected:q.collected,distance:q.distance_to_truck,performance,errors});
+  const city=await state();
+  results.push({width,height,touch,dpr,build:q.build,collected:q.collected,distance:q.distance_to_truck,performance,physics_ms:city.physics_ms,process_ms:city.process_ms,draw_calls:city.draw_calls,primitives:city.primitives,active_citizens:city.active_citizens,errors});
   console.log(`PASS ${width}x${height}: reverse, twelve distant walk-over pickups, populated city`,performance);
   await context.close();
  }

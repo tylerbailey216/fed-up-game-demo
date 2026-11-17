@@ -62,6 +62,8 @@ func _physics_process(delta:float) -> void:
 		regions[key]=[r.position.x*scale/size.x,r.position.y*scale/size.y,r.size.x*scale/size.x,r.size.y*scale/size.y]
 	var data:Dictionary={"build":JSON.parse_string(FileAccess.get_file_as_string("res://data/build_version.json")).state_id,"speed":game.van.speed,"position":[game.van.position.x,game.van.position.z],"on_foot":game.cargo.on_foot,"collected":game.cargo.recovered,"quota":game.cargo.quota,"restored":game.cargo.load_restored,"hands_empty":not game.cargo.actor.held.visible,"distance_to_truck":game.cargo.actor.position.distance_to(game.van.position),"reverse":game.touch_controls.reverse_selected,"regions":regions,"citizens":game.city_life.citizens.size(),"cars":game.traffic.cars.size()}
 	data["physics_ms"]=Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS)*1000
+	data["energy"]=game.dashboard.energy_fraction()
+	data["active_citizens"]=game.city_life.active_count
 	data["process_ms"]=Performance.get_monitor(Performance.TIME_PROCESS)*1000
 	data["draw_calls"]=Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)
 	data["primitives"]=Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME)

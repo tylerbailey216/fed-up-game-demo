@@ -81,6 +81,12 @@ var held_roll_angular := Vector3.ZERO
 var location_world: Node3D
 var driver_on_foot := false
 var cargo_open := false
+var ground_kind:="asphalt"
+var ground_tilt:=Vector2.ZERO
+var vegetation_contact:=0.0
+var surface_bump_serial:=0
+var surface_bump_strength:=0.0
+var surface_sampler:=preload("res://scripts/vehicle_surface.gd").new()
 
 func pause_crash(paused: bool) -> void:
 	if not is_instance_valid(roll_body):
@@ -414,6 +420,8 @@ func toggle_cruise() -> void:
 		notify_driver("Cruise requires 12 mph and engine on")
 
 func _ready() -> void:
+	surface_sampler.van=self
+	floor_snap_length=.24
 	var shape := CollisionShape3D.new()
 	# Stadium footprint with vertical sides: rounded in plan without a capsule's
 	# curved underside, which can ride up low Jersey barriers.
@@ -517,6 +525,7 @@ func _process(delta: float) -> void:
 func _physics_process(delta: float) -> void:
 	if not active:
 		return
+	surface_sampler.update(delta)
 	if delivery_complete:
 		engine_on=false;parking_brake=true;speed=0;velocity=Vector3.ZERO;planar_velocity=Vector3.ZERO
 		throttle_load=0;rpm=0;notice_time=maxf(0,notice_time-delta)
@@ -588,6 +597,7 @@ func _physics_process(delta: float) -> void:
 	else:
 		speed = move_toward(speed, 0.0, 0.65 * delta)
 		reverse_delay = 0.0
+	if ground_kind=="grass":speed=move_toward(speed,0,delta*(.35+absf(speed)*.02+vegetation_contact*.75))
 	if Input.is_action_pressed("handbrake") or parking_brake:
 		speed = move_toward(speed, 0.0, 10.0 * delta)
 	var response := 9.0 if steering*direction<0 else (8.0 if direction==0 else 6.5)

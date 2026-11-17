@@ -10,10 +10,18 @@ uniform vec3 headlight_forward = vec3(0.0,0.0,-1.0);
 uniform float headlight_strength = 0.0;
 uniform float headlight_range = 35.0;
 uniform float leaf_sway = 0.0;
+uniform vec3 brush_position = vec3(0.0);
+uniform float brush_strength = 0.0;
 varying vec3 world_normal;
 varying vec3 world_pos;
 varying float camera_distance;
 void vertex() {
+	if (leaf_sway > 0.0 && brush_strength > 0.0) {
+		vec3 world = (MODEL_MATRIX * vec4(VERTEX,1.0)).xyz;
+		vec2 away = world.xz-brush_position.xz;
+		float bend = (1.0-smoothstep(1.0,3.0,length(away))) * (1.0-smoothstep(2.8,4.0,world.y-brush_position.y)) * brush_strength;
+		VERTEX.xz += away/max(length(away),0.1) * bend * 0.30;
+	}
     VERTEX.x += sin(TIME*0.9+(MODEL_MATRIX*vec4(VERTEX,1.0)).z*0.22)*leaf_sway;
     world_normal = normalize(MODEL_NORMAL_MATRIX * NORMAL);
     world_pos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
