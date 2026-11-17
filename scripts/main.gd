@@ -26,6 +26,7 @@ var shutting_down := false
 var hud_shortcuts: HBoxContainer
 var camera_shortcut: Button
 var recovery_panel: VBoxContainer
+var recovery_back:Panel
 var recovery_status: Label
 var upright_button: Button
 var new_truck_button: Button
@@ -330,6 +331,12 @@ func build_van() -> void:
 	var body := Node3D.new()
 	van.add_child(body)
 	van.body = body
+	# The road hull has rounded corners for handling. Pedestrians meet the full
+	# illustrated box body, including its rear corners, also when rolled over.
+	var pedestrian_hull:=StaticBody3D.new();pedestrian_hull.collision_layer=8;pedestrian_hull.collision_mask=0
+	var pedestrian_shape:=CollisionShape3D.new();var pedestrian_box:=BoxShape3D.new()
+	pedestrian_box.size=Vector3(2.5,3.15,5.5);pedestrian_shape.shape=pedestrian_box;pedestrian_shape.position.y=1.575
+	pedestrian_hull.add_child(pedestrian_shape);body.add_child(pedestrian_hull)
 	if ResourceLoader.exists("res://assets/models/fedup_van.glb"):
 		var model: PackedScene = load("res://assets/models/fedup_van.glb")
 		var visual := model.instantiate()
@@ -516,6 +523,10 @@ func build_ui() -> void:
 		camera_shortcut.add_theme_stylebox_override(state,StyleBoxEmpty.new())
 	camera_shortcut.pressed.connect(toggle_camera)
 	hud.add_child(camera_shortcut)
+	recovery_back=Panel.new();recovery_back.mouse_filter=Control.MOUSE_FILTER_IGNORE
+	var recovery_style:=StyleBoxFlat.new();recovery_style.bg_color=Color("202332");recovery_style.border_color=Color("ffd044")
+	recovery_style.set_border_width_all(3);recovery_style.set_corner_radius_all(14)
+	recovery_back.add_theme_stylebox_override("panel",recovery_style);hud.add_child(recovery_back);recovery_back.hide()
 	recovery_panel = VBoxContainer.new()
 	recovery_panel.theme = menu.theme
 	recovery_panel.position = Vector2(390,530)
@@ -757,7 +768,6 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	if not driving or paused:
 		return
 	if event.keycode==KEY_F and cargo and cargo.on_foot:
-		cargo.deposit()
 		return
 	if not (cargo and cargo.on_foot and event.keycode in [KEY_Q,KEY_E]):dashboard_key(event.keycode)
 	if event.keycode == KEY_C:
@@ -788,7 +798,7 @@ func _input(event: InputEvent) -> void:
 func update_hud(speed: float, gear: String, distance: float) -> void:
 	if dashboard:
 		if recovery_panel:
-			recovery_panel.visible = (van.overturned or van.flip_count>0 or van.wrecked) and not (cargo and cargo.on_foot and not cargo.complete)
+			recovery_panel.visible = (van.overturned or van.flip_count>0 or van.wrecked or (cargo and cargo.complete)) and not (cargo and cargo.on_foot and not cargo.complete)
 			recovery_status.text = "TOTALLED - ENGINE DISABLED (3 / 3)" if van.wrecked else "ROLLOVERS %d / 3%s" % [van.flip_count," - WAIT FOR TRUCK TO SETTLE" if van.overturned and not van.roll_settled else ""]
 			if cargo and not cargo.spilled:
 				recovery_status.text="COLLISIONS %d / 3 / LOAD SECURED%s" % [cargo.collision_count," / RIGHT TRUCK [U]" if van.roll_settled else " / WAIT FOR TRUCK TO SETTLE"]
@@ -796,15 +806,17 @@ func update_hud(speed: float, gear: String, distance: float) -> void:
 				recovery_status.text="HEAVY IMPACT - WAIT FOR TRUCK TO SETTLE" if not van.roll_settled else "TRUCK SETTLED - RECOVER [U]"
 			upright_button.visible = van.overturned
 			upright_button.disabled = not van.roll_settled
-			new_truck_button.visible = van.wrecked and (not cargo or cargo.complete)
-			if cargo:new_truck_button.text="NEXT STAGE / %d PACKAGES" % int(cargo.stages[(cargo.stage_index+1)%cargo.stages.size()].packages)
+			new_truck_button.visible = cargo.complete if cargo else van.wrecked
+			if cargo:new_truck_button.text="PLAY DEMO AGAIN"
 			if cargo and cargo.complete:
-				recovery_status.text="STAGE %d COMPLETE / ALL %d PACKAGES SECURED" % [cargo.stage_index+1,cargo.quota]
-				if cargo.stage_index==cargo.stages.size()-1:new_truck_button.text="ALL STAGES COMPLETE / PLAY AGAIN"
+				recovery_status.text="DELIVERY COMPLETE! / %d OF %d PACKAGES\nTHANKS FOR PLAYING FedUp" % [cargo.recovered,cargo.quota]
 			var compact:bool=dashboard.compact_layout()
 			var recovery_scale:=minf(hud.size.x/1280,hud.size.y/720) if not compact else hud.size.x/720
 			recovery_panel.scale = Vector2.ONE*recovery_scale
 			recovery_panel.position = Vector2((hud.size.x-500*recovery_scale)/2,hud.size.y-525*recovery_scale if compact else 530*recovery_scale)
+			recovery_back.visible=recovery_panel.visible
+			recovery_back.position=recovery_panel.position-Vector2.ONE*14*recovery_scale
+			recovery_back.size=recovery_panel.size*recovery_scale+Vector2.ONE*28*recovery_scale
 		navigation.update_position(van.position,van.speed)
 		dashboard.update_state(speed,gear,distance,van.steering,atan2(van.position.z,van.position.x),van.cockpit)
 		if hud_shortcuts and camera_shortcut:

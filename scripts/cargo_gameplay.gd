@@ -16,11 +16,18 @@ var seen_collision:=0
 var safe_foot_position:=Vector3.ZERO
 var complete:=false
 var armed:=false
-var pickup_cooldown:=0.0
+var load_restored:=false
+var checkpoint:Node3D
+var checkpoint_position:=Vector3.ZERO
+var checkpoint_hold:=0.0
+var checkpoint_inside:=false
+var remaining_notice:=0
+var popup:=""
+var popup_time:=0.0
 
 func pause_packages(value:bool) -> void:
 	for item in packages:
-		if is_instance_valid(item.body): item.body.freeze=value
+		if is_instance_valid(item.body): item.body.freeze=value or item.state!="loose"
 
 func _ready() -> void:
 	process_mode=Node.PROCESS_MODE_PAUSABLE
@@ -29,6 +36,41 @@ func _ready() -> void:
 	actor=preload("res://scripts/delivery_worker.gd").new();actor.game=game;add_child(actor);actor.set_enabled(false)
 	game.van.delivery_collision_rules=true
 	seen_collision=game.van.crash_serial
+	build_checkpoint()
+
+func build_checkpoint() -> void:
+	checkpoint=Node3D.new();add_child(checkpoint)
+	if game.outerbelt:
+		var road:Dictionary=game.highway.nearest_road(game.highway.spawn_position-game.van.global_basis.z*140)
+		checkpoint_position=road.point
+		checkpoint.rotation.y=game.highway.spawn_heading
+	else:
+		# A dedicated stop bay on the wide training-to-Superior Avenue access road.
+		var start:=Vector3(250,0,-75)
+		checkpoint_position=start.lerp(game.highway.entry,.40)
+		var direction:Vector3=(game.highway.entry-start).normalized()
+		checkpoint.rotation.y=atan2(-direction.x,-direction.z)
+	checkpoint.position=checkpoint_position
+	var art:Node=game.highway
+	for side in [-1,1]:
+		art.block(checkpoint,Vector3(side*5.8,.055,0),Vector3(.16,.045,15),Color("ffd044"))
+		for z in [-7,7]:
+			art.block(checkpoint,Vector3(side*5.8,1.35,z),Vector3(.18,2.7,.18),Color("272034"))
+			art.block(checkpoint,Vector3(side*5.8,2.55,z),Vector3(.36,.2,.36),Color("ffd044"))
+	for z in [-7,7]:
+		art.block(checkpoint,Vector3(0,.06,z),Vector3(11.5,.05,.35),Color("fff1d2"))
+	var sign:=Label3D.new();sign.text="FedUp / COLLECTION\nFULL STOP TO FINISH";sign.font_size=56;sign.font=preload("res://assets/fonts/BarlowCondensed-Bold.ttf")
+	sign.pixel_size=.009;sign.outline_size=10;sign.modulate=Color("ffd044")
+	sign.billboard=BaseMaterial3D.BILLBOARD_ENABLED;sign.position=Vector3(0,4.8,0);checkpoint.add_child(sign)
+
+func show_popup(message:String) -> void:
+	popup=message;popup_time=4.5;game.van.notify_driver(message.replace("\n"," / "))
+
+func remaining_packages() -> int:
+	var count:=0
+	for item in packages:
+		if item.state!="loose":count+=1
+	return maxi(0,quota-count)
 
 func player_position() -> Vector3:
 	return actor.global_position if on_foot else game.van.global_position
@@ -73,16 +115,19 @@ func next_stage() -> void:
 		if is_instance_valid(item.body):item.body.queue_free()
 	packages.clear();carrying={};actor.held.hide();actor.set_enabled(false)
 	on_foot=false;game.van.driver_on_foot=false
-	stage_index=(stage_index+1)%stages.size()
+	stage_index=0 # This demo ends at the first collection point; replay starts fresh.
 	quota=int(stages[stage_index].packages)
-	spilled=false;complete=false;recovered=0;spawned=0;damage=0;collision_count=0;pickup_cooldown=0
+	spilled=false;complete=false;recovered=0;spawned=0;damage=0;collision_count=0;load_restored=false
+	checkpoint_hold=0;checkpoint_inside=false;popup_time=0
 	game.van.cargo_open=false;game.van.new_truck();seen_collision=game.van.crash_serial
+	game.van.active=true
 	game.van.notify_driver("STAGE %d / %s / %d PACKAGES" % [stage_index+1,stages[stage_index].name,quota])
 
 func toggle_foot() -> void:
 	if on_foot:
-		if not carrying.is_empty():game.van.notify_driver("Return your package first / F at truck rear or purple depot");return
-		if game.van.wrecked:game.van.notify_driver("Truck disabled - return packages to truck or purple depot");return
+		if game.van.wrecked:
+			show_popup("TRUCK DISABLED / %d PACKAGES LEFT" % remaining_packages() if remaining_packages()>0 else "PACKAGES RETURNING / PLEASE WAIT")
+			return
 		if actor.position.distance_to(game.van.position)>5:game.van.notify_driver("Get closer to the truck to enter");return
 		on_foot=false;actor.set_enabled(false);game.van.driver_on_foot=false;game.van.parking_brake=false;game.van.engine_on=true;game.van.set_view(false)
 		return
@@ -100,7 +145,7 @@ func toggle_foot() -> void:
 			if hit.is_empty() or hit.normal.y<.85:continue
 			at=hit.position+Vector3.UP*.08
 			var capsule:=CapsuleShape3D.new();capsule.radius=.34;capsule.height=1.7
-			var query:=PhysicsShapeQueryParameters3D.new();query.shape=capsule;query.transform=Transform3D(Basis.IDENTITY,at+Vector3.UP*.9);query.collision_mask=1
+			var query:=PhysicsShapeQueryParameters3D.new();query.shape=capsule;query.transform=Transform3D(Basis.IDENTITY,at+Vector3.UP*.9);query.collision_mask=1|8
 			if get_world_3d().direct_space_state.intersect_shape(query,1).is_empty():found=true;break
 		if found:break
 	if not found:game.van.notify_driver("No safe space beside truck - recover it first");return
@@ -108,24 +153,16 @@ func toggle_foot() -> void:
 	actor.global_position=at;safe_foot_position=at;actor.velocity=Vector3.ZERO;actor.set_enabled(true)
 	game.van.notify_driver("ON FOOT - WASD move / Shift run / X enter truck")
 
-func return_target() -> String:
-	if not on_foot:return ""
-	var rear:Vector3=game.van.to_global(Vector3(0,0,3.6))
-	var offset:Vector3=actor.global_position-rear
-	if Vector2(offset.x,offset.z).length()<2.3 and absf(offset.y)<3:return "truck"
-	if not game.outerbelt and actor.global_position.distance_to(game.highway.depot)<3.8:return "depot"
-	return ""
-
 func interact() -> void:
-	if on_foot and not carrying.is_empty():deposit()
-	else:toggle_foot()
+	if not complete:toggle_foot()
 
 func secure_package(item:Dictionary,target:String) -> void:
+	if item.state!="returning":return
 	item.state="recovered"
 	if is_instance_valid(item.body):
 		var body:RigidBody3D=item.body
 		body.freeze=true;body.collision_layer=0;body.collision_mask=0
-		var slot:=recovered
+		var slot:int=item.id
 		if target=="truck":
 			body.reparent(game.van.body,false)
 			body.position=Vector3(-.5+(slot%2)*.9,.92+floori(slot/6.0)*.53,2.05-(floori(slot/2.0)%3)*.6)
@@ -134,31 +171,49 @@ func secure_package(item:Dictionary,target:String) -> void:
 		body.rotation=Vector3.ZERO;body.show()
 	recovered+=1
 
-func deposit() -> void:
-	if carrying.is_empty():return
-	var target:=return_target()
-	if target.is_empty():game.van.notify_driver("Carry package to the open truck rear or purple depot / F to return");return
-	secure_package(carrying,target);carrying={};actor.held.hide();pickup_cooldown=.4
-	game.van.notify_driver("Package secured - %d / %d" % [recovered,quota])
-
 func recover_package(item:Dictionary) -> void:
 	if item.state!="loose":return
-	if on_foot:
-		if is_instance_valid(item.body):
-			item.body.freeze=true;item.body.collision_layer=0;item.body.collision_mask=0;item.body.hide()
-		item.state="carried";carrying=item;actor.held.show()
-	else:
-		secure_package(item,"truck")
-	pickup_cooldown=.25
+	item.state="returning"
+	item.body.freeze=true;item.body.collision_layer=0;item.body.collision_mask=0;item.body.hide()
+	var effect:=preload("res://scripts/package_return.gd").new();effect.cargo=self;effect.item=item;add_child(effect)
+
+func restore_load() -> void:
+	load_restored=true;damage=0
+	var van:Node=game.van
+	if van.overturned:van.recover_upright()
+	van.wrecked=false;van.flip_count=0;van.engine_on=not on_foot;van.cruise=false
+	van.cargo_open=false;van.speed=0;van.velocity=Vector3.ZERO;van.planar_velocity=Vector3.ZERO
+	van.crash_contact_active=true;van.crash_origin=van.position;van.crash_clear_time=0
+	show_popup("ALL %d SECURED / TRUCK READY\nENTER TRUCK, THEN STOP AT COLLECTION" % quota)
+
+func update_checkpoint(delta:float) -> void:
+	var at:Vector3=checkpoint.to_local(player_position())
+	var inside:bool=absf(at.x)<5.5 and absf(at.z)<7 and absf(at.y)<3
+	if inside and not checkpoint_inside and not complete:
+		remaining_notice=remaining_packages()
+		if remaining_notice>0:show_popup("COLLECTION INCOMPLETE\n%d MORE PACKAGES TO COLLECT" % remaining_notice)
+		elif not load_restored:show_popup("PACKAGES RETURNING / WAIT FOR THE LOAD")
+		else:show_popup("COLLECTION POINT / STOP THE TRUCK")
+	if not inside and checkpoint_inside and popup.begins_with("COLLECTION"):popup_time=0
+	checkpoint_inside=inside
+	if complete:return
+	if not inside or on_foot or not load_restored or absf(game.van.speed)>.35:
+		checkpoint_hold=0;return
+	checkpoint_hold+=delta
+	if checkpoint_hold>=1.2:
+		complete=true;game.van.parking_brake=true;game.van.engine_on=false
+		game.van.delivery_complete=true
+		game.van.speed=0;game.van.planar_velocity=Vector3.ZERO;game.van.velocity=Vector3.ZERO
+		show_popup("DEMO COMPLETE!\nALL %d PACKAGES DELIVERED" % quota)
 
 func _physics_process(delta:float) -> void:
 	if not game.driving:return
+	popup_time=maxf(0,popup_time-delta)
 	armed=game.outerbelt or game.highway.entered
 	if seen_collision!=game.van.crash_serial:
 		seen_collision=game.van.crash_serial
 		if armed:damage_hit(game.van.collision_level)
 	if game.van.wrecked and not on_foot and (not game.van.overturned or game.van.roll_settled):toggle_foot()
-	pickup_cooldown=maxf(0,pickup_cooldown-delta)
 	var at:=player_position()
 	if on_foot:
 		if actor.is_on_floor():safe_foot_position=actor.position
@@ -167,14 +222,14 @@ func _physics_process(delta:float) -> void:
 		var body:RigidBody3D=item.body
 		if body.position.y< -4 or body.position.x>1740 or body.position.x< -1300 or absf(body.position.z)>1200:
 			body.position=game.van.safe_position+Vector3(4,1,0);body.linear_velocity=Vector3.ZERO
-		if pickup_cooldown>0 or (on_foot and not carrying.is_empty()):continue
-		if at.distance_to(body.position)<(2 if on_foot else 3.2) and (on_foot or absf(game.van.speed)<6):recover_package(item)
-	if spilled and recovered==quota and not complete:
-		complete=true;game.van.cargo_open=false;game.van.notify_driver("STAGE %d COMPLETE / ALL %d PACKAGES SECURED" % [stage_index+1,quota])
+		# Contact-range pickup; the 60 Hz step cannot skip a box at sprint speed.
+		if on_foot and Vector2(at.x-body.position.x,at.z-body.position.z).length()<.95 and absf(at.y-body.position.y)<1.8:recover_package(item)
+	if spilled and recovered==quota and not load_restored:restore_load()
+	update_checkpoint(delta)
 
 func objective() -> String:
-	if complete:return "STAGE %d COMPLETE / %d OF %d RECOVERED" % [stage_index+1,recovered,quota]
+	if complete:return "DEMO COMPLETE / ALL %d DELIVERED" % quota
+	if load_restored:return "LOAD SECURED / ENTER TRUCK" if on_foot else "STOP AT GOLD COLLECTION BAY / GPS"
 	if not armed:return "TRAINING / Push past orange barrels to enter downtown"
 	if not spilled:return "STAGE %d / %d PACKAGES SECURED / COLLISIONS %d OF 3" % [stage_index+1,quota,collision_count]
-	if on_foot and not carrying.is_empty():return "CARRYING PACKAGE / F or RETURN to stow" if not return_target().is_empty() else "CARRYING PACKAGE / Walk to truck rear or purple depot"
-	return "STAGE %d / RECOVER %d OF %d / ON FOOT" % [stage_index+1,recovered,quota]
+	return "WALK OVER BOXES / %d LEFT / %d SECURED" % [remaining_packages(),recovered]

@@ -20,22 +20,119 @@ func drive_into_wall(game:Node) -> void:
 		if game.cargo.spilled:break
 	Input.action_release("accelerate");await frames(60)
 
-func collect_stage(game:Node) -> void:
-	game.cargo.actor.set_physics_process(false)
-	game.cargo.actor.position=game.van.position+Vector3(3,0,0);await frames(20)
-	for item in game.cargo.packages:
+func collect_stage(game:Node,capture:bool=false) -> void:
+	var cargo:Node=game.cargo
+	cargo.actor.set_physics_process(false)
+	# Isolate each pickup, without carrying/deposit actions or proximity to truck.
+	cargo.actor.position=Vector3(420,.1,-75)
+	for item in cargo.packages:
+		if item.state=="loose":item.body.freeze=true;item.body.position=Vector3(420+int(item.id)*3,.4,-90)
+	await frames(5)
+	for item in cargo.packages:
 		if item.state!="loose":continue
-		item.body.freeze=true
-		game.cargo.actor.position=item.body.position;await frames(20)
-		check(item.state=="carried","Walking to each fixed parcel picks it up")
-		var before:int=game.cargo.recovered
-		game.cargo.actor.position=game.van.to_global(Vector3(0,.1,3.6));await frames(35)
-		check(item.state=="carried" and game.cargo.recovered==before and game.cargo.actor.held.visible,"Package stays in hands even inside the return zone until player confirms")
-		game.cargo.interact();await frames(20)
-		check(item.state=="recovered" and game.cargo.recovered==before+1 and is_instance_valid(item.body),"Explicit return stows the existing package once")
-		check(item.body.get_parent()==game.van.body and item.body.visible,"Returned package is visible in the cargo bay")
-	check(game.cargo.recovered==game.cargo.quota and game.cargo.complete,"Stage completes at its exact package quota")
-	check(not game.van.cargo_open,"Cargo doors close on completion")
+		var before:int=cargo.recovered
+		cargo.actor.camera_view=0;cargo.actor.camera_angle=0
+		if int(item.id)==0:
+			cargo.actor.position=item.body.position-Vector3(2.1,.3,0);cargo.actor.velocity=Vector3.ZERO;cargo.actor.set_physics_process(true)
+			Input.action_press("steer_right");Input.action_press("sprint");await frames(30)
+			Input.action_release("steer_right");Input.action_release("sprint");cargo.actor.set_physics_process(false)
+			check(cargo.actor.animation_speed>4,"Worker animation cadence follows actual sprint travel")
+		else:
+			cargo.actor.position=item.body.position-Vector3.UP*.3;await frames(3)
+		cargo.actor.update_camera(1)
+		check(item.state=="returning" and not item.body.visible,"Walk-over pickup immediately becomes a sparkle return")
+		check(cargo.carrying.is_empty() and not cargo.actor.held.visible,"Automatic collection never leaves a box in the driver's hands")
+		cargo.recover_package(item)
+		if capture and int(item.id)==0:
+			await frames(12);await snapshot("delivery-auto-pickup")
+		await frames(120)
+		check(item.state=="recovered" and cargo.recovered==before+1,"Repeated contact cannot collect the same package twice")
+		check(item.body.get_parent()==game.van.body and item.body.visible,"Sparkles stow the original box in the truck")
+		if int(item.id)==0:
+			cargo.actor.position=cargo.checkpoint_position+Vector3.UP*.1;await frames(5)
+			check(cargo.remaining_notice==cargo.quota-1 and str(cargo.quota-1) in cargo.popup,"Checkpoint updates exact remaining count after a partial recovery")
+			if capture:
+				game.get_window().size=Vector2i(720,1280);game.responsive_layout();cargo.actor.update_camera(1)
+				await frames(3);await snapshot("delivery-incomplete-phone")
+				game.get_window().size=Vector2i(1280,720);game.responsive_layout()
+	check(cargo.recovered==cargo.quota and cargo.load_restored and not cargo.complete,"Exact full load restores truck but does not finish before checkpoint")
+	check(not game.van.wrecked and not game.van.cargo_open,"Full recovery repairs truck and closes rear doors")
+	await frames(120)
+	check(cargo.recovered==cargo.quota and cargo.spawned==cargo.quota,"Recovery has no continuing emissions or duplicate counts")
+
+func check_solid_truck(game:Node) -> void:
+	var actor:CharacterBody3D=game.cargo.actor
+	game.van.position=Vector3(390,.15,-75);game.van.rotation.y=0
+	actor.camera_angle=0;actor.set_physics_process(true)
+	for side in [-1,1]:
+		actor.position=game.van.position+Vector3(side*4,0,0);actor.velocity=Vector3.ZERO
+		Input.action_press("steer_right" if side<0 else "steer_left");await frames(100)
+		Input.action_release("steer_right" if side<0 else "steer_left")
+		var local:Vector3=game.van.to_local(actor.position)
+		check(local.x*side>1.5,"Worker is blocked by the solid truck side, including parked disabled truck")
+	for side in [-1,1]:
+		actor.position=game.van.position+Vector3(0,0,side*6);actor.velocity=Vector3.ZERO
+		Input.action_press("brake_reverse" if side<0 else "accelerate");await frames(100)
+		Input.action_release("brake_reverse" if side<0 else "accelerate")
+		check(game.van.to_local(actor.position).z*side>2.9,"Worker cannot walk through the truck front or cargo rear")
+	actor.set_physics_process(false)
+
+func touch(game:Node,key:String,index:int,pressed:bool,offset:=Vector2.ZERO) -> void:
+	var event:=InputEventScreenTouch.new();event.index=index;event.pressed=pressed
+	event.position=(game.touch_controls.regions[key].get_center()+offset)*game.touch_controls.size.x/720
+	game.touch_controls._input(event)
+
+func check_mobile_reverse(game:Node) -> void:
+	game.get_window().size=Vector2i(720,1280);game.responsive_layout();await frames(4)
+	game.touch_controls.enabled=true;game.touch_controls.layout()
+	game.van.position=Vector3(390,.15,-75);game.van.rotation.y=0
+	game.van.speed=0;game.van.planar_velocity=Vector3.ZERO;game.van.engine_on=true;game.van.parking_brake=false
+	var begin:Vector3=game.van.position
+	touch(game,"brake",2,true);await frames(120);touch(game,"brake",2,false)
+	check(game.van.speed< -1 and game.van.position.z>begin.z+1,"Mobile BRAKE / REV actually reverses from rest: speed=%s" % game.van.speed)
+	game.van.speed=4;game.van.planar_velocity=Vector3(0,0,-4)
+	touch(game,"brake",2,true);await frames(180);touch(game,"brake",2,false)
+	check(game.van.speed< -1,"Holding mobile brake stops forward travel, then reverses")
+	game.van.speed=0;game.van.planar_velocity=Vector3.ZERO
+	touch(game,"stick",1,true,Vector2(0,75));await frames(120);touch(game,"stick",1,false)
+	check(game.van.speed< -1,"Pulling mobile stick down reverses the truck")
+	touch(game,"stick",1,true,Vector2(70,0));touch(game,"gas",2,true)
+	check(Input.is_action_pressed("accelerate") and Input.is_action_pressed("steer_right"),"Two fingers steer and accelerate together")
+	touch(game,"stick",1,false)
+	check(Input.is_action_pressed("accelerate") and not Input.is_action_pressed("steer_right"),"Releasing steering preserves gas finger")
+	game.touch_controls.release_inputs();game.van.speed=0;game.van.planar_velocity=Vector3.ZERO
+	game.get_window().size=Vector2i(1280,720);game.responsive_layout();await frames(4)
+
+func check_finish(game:Node,capture:bool) -> void:
+	var cargo:Node=game.cargo
+	cargo.actor.position=game.van.position+Vector3(3.5,0,0);cargo.toggle_foot();await frames(5)
+	check(not cargo.on_foot and game.van.engine_on,"After all returns, player can enter and drive the repaired truck")
+	Input.action_press("accelerate");await frames(45);Input.action_release("accelerate")
+	check(game.van.speed>1,"Repaired truck responds to gas")
+	# Approach the actual painted bay along its road, using normal acceleration.
+	game.van.position=cargo.checkpoint.to_global(Vector3(0,.15,30));game.van.rotation.y=cargo.checkpoint.rotation.y
+	game.van.speed=0;game.van.planar_velocity=Vector3.ZERO;game.van.velocity=Vector3.ZERO
+	Input.action_press("accelerate")
+	for i in 300:
+		await frames(1)
+		if cargo.checkpoint.to_local(game.van.position).z<3:break
+	Input.action_release("accelerate")
+	check(cargo.checkpoint.to_local(game.van.position).z<5,"Collection bay is physically reachable by driving its access road: checkpoint=%s heading=%s reached=%s local=%s speed=%s" % [cargo.checkpoint_position,cargo.checkpoint.rotation.y,game.van.position,cargo.checkpoint.to_local(game.van.position),game.van.speed])
+	game.van.position=cargo.checkpoint_position+Vector3.UP*.15;game.van.speed=2;game.van.planar_velocity=Vector3(0,0,-2)
+	await frames(35)
+	check(not cargo.complete,"Rolling through collection zone cannot finish the demo")
+	game.van.position=cargo.checkpoint_position+Vector3.UP*.15;game.van.speed=0;game.van.velocity=Vector3.ZERO;game.van.planar_velocity=Vector3.ZERO
+	Input.action_press("handbrake");await frames(90);Input.action_release("handbrake")
+	check(cargo.complete and not game.van.engine_on and game.van.parking_brake,"Full load and deliberate full stop complete this demo")
+	var finished_at:Vector3=game.van.position
+	game.van.engine_on=true;game.van.parking_brake=false;Input.action_press("accelerate");await frames(30);Input.action_release("accelerate")
+	check(game.van.position.distance_to(finished_at)<.05 and not game.van.engine_on,"Demo finish cannot be bypassed by restarting ignition or holding gas")
+	if capture:
+		game.van.set_view(false);await frames(3);await snapshot("delivery-demo-complete")
+		game.get_window().size=Vector2i(720,1280);game.responsive_layout();await frames(3);await snapshot("delivery-complete-phone")
+		game.get_window().size=Vector2i(1280,720);game.responsive_layout()
+	cargo.next_stage();await frames(15)
+	check(not cargo.complete and cargo.stage_index==0 and cargo.quota==12 and cargo.packages.is_empty(),"Replay starts the demo cleanly, not a hidden next level")
 
 func walk_route(game:Node,begin:Vector3,end:Vector3) -> void:
 	var actor:CharacterBody3D=game.cargo.actor
@@ -110,12 +207,17 @@ func check_cameras(game:Node) -> void:
 
 func run(game:Node,capture:bool) -> void:
 	game.start_drive();await frames(90)
+	await check_mobile_reverse(game)
+	game.van.reset_vehicle();await frames(60)
+	game.cargo.collision_count=0;game.cargo.damage=0;game.cargo.seen_collision=game.van.crash_serial
+	game.van.crash_contact_active=false
 	check(game.van.is_on_floor(),"Training spawn rests on road")
 	check(game.highway.map_data.roads.size()>500 and game.traffic.cars.size()==8,"Mapped downtown and traffic exist")
 	game.van.position=Vector3(260,.15,-75);game.van.rotation.y=-PI/2;game.van.speed=12
 	Input.action_press("accelerate");await frames(240);Input.action_release("accelerate")
 	check(game.highway.entered and game.van.position.x>285,"Actual construction-barrel gateway opens downtown: at=%s speed=%.2f impacts=%d" % [game.van.position,game.van.speed,game.cargo.collision_count])
 	var wall:=StaticBody3D.new();var collision:=CollisionShape3D.new();var shape:=BoxShape3D.new();shape.size=Vector3(1,4,16);collision.shape=shape;wall.add_child(collision);game.add_child(wall);wall.position=Vector3(345,2,-75)
+	game.cargo.collision_count=0;game.cargo.damage=0;game.cargo.seen_collision=game.van.crash_serial
 	for impact in 3:
 		await drive_into_wall(game)
 		check(game.cargo.collision_count==impact+1,"Each distinct physical impact counts once")
@@ -135,32 +237,13 @@ func run(game:Node,capture:bool) -> void:
 	Input.action_press("accelerate");await frames(30);Input.action_release("accelerate")
 	check(game.cargo.actor.position.distance_to(before)>1,"Player can walk after truck disables")
 	await check_worker(game)
-	# Reject remote returns and preserve carried state instead of teleporting cargo.
-	game.cargo.actor.set_physics_process(false)
-	var loose:Dictionary=game.cargo.packages[0]
-	game.cargo.actor.position=loose.body.position;await frames(20)
-	game.cargo.actor.position=Vector3(400,.1,-75)
-	var recovered_before:int=game.cargo.recovered
-	game.cargo.deposit();await frames(30)
-	check(not game.cargo.carrying.is_empty() and game.cargo.recovered==recovered_before,"Remote return cannot teleport package back to truck")
-	game.cargo.actor.position=game.highway.depot+Vector3(0,.1,0)
-	var confirm:=InputEventKey.new();confirm.keycode=KEY_F;confirm.pressed=true;game._unhandled_key_input(confirm);await frames(30)
-	check(loose.state=="recovered" and game.cargo.recovered==recovered_before+1 and loose.body.visible,"F returns carried package at the depot")
-	await collect_stage(game)
-	if capture:
-		game.cargo.actor.position=Vector3(1000,.1,-75);game.cargo.actor.update_camera(1)
-		await snapshot("delivery-worker")
-	for stage in [1,2]:
-		game.cargo.next_stage();await frames(30)
-		check(game.cargo.quota==[12,16,20][stage] and game.cargo.spawned==0,"Next stage has its own larger fixed quota")
-		Input.action_press("accelerate");await frames(120);Input.action_release("accelerate")
-		check(game.cargo.spawned==0 and not game.cargo.spilled,"Driving again never leaks packages")
-		for impact in 3:
-			await drive_into_wall(game)
-			check(game.cargo.spawned==(game.cargo.quota if impact==2 else 0),"All stages spill only on their third collision")
-		await frames(20);await collect_stage(game)
+	await check_solid_truck(game)
+	# Incomplete arrival reports the exact outstanding amount and cannot finish.
+	game.cargo.actor.position=game.cargo.checkpoint_position+Vector3.UP*.1;await frames(5)
+	check(not game.cargo.complete and game.cargo.remaining_notice==game.cargo.quota and str(game.cargo.quota) in game.cargo.popup,"Early checkpoint popup gives exact missing count")
+	await collect_stage(game,capture)
+	await check_finish(game,capture)
 	# A severe physical crash may tip the truck; it is still only one crash.
-	game.cargo.next_stage();await frames(30)
 	shape.size=Vector3(1,4,100)
 	game.van.position=Vector3(330,.15,-75);game.van.rotation.y=-PI/2+.55
 	game.van.velocity=Vector3.ZERO;game.van.planar_velocity=-game.van.global_basis.z*34;game.van.speed=34
@@ -175,14 +258,6 @@ func run(game:Node,capture:bool) -> void:
 		game.get_window().size=screen;game.responsive_layout();await frames(4)
 		check(game.menu.position.x>=0 and game.menu.position.x+game.menu.size.x<=game.get_window().content_scale_size.x+1,"Menu fits screen "+str(screen))
 		if capture:await snapshot("responsive-%dx%d" % [screen.x,screen.y])
-	game.get_window().size=Vector2i(720,1280);game.responsive_layout();await frames(4)
-	game.cargo.on_foot=false;game.touch_controls.enabled=true;game.touch_controls.layout()
-	var steer:=InputEventScreenTouch.new();steer.index=1;steer.pressed=true;steer.position=game.touch_controls.regions.stick.get_center()+Vector2(70,0);game.touch_controls._input(steer)
-	var gas:=InputEventScreenTouch.new();gas.index=2;gas.pressed=true;gas.position=game.touch_controls.regions.gas.get_center();game.touch_controls._input(gas)
-	check(Input.is_action_pressed("accelerate") and Input.is_action_pressed("steer_right"),"Two fingers steer and accelerate together")
-	steer.pressed=false;game.touch_controls._input(steer)
-	check(Input.is_action_pressed("accelerate") and not Input.is_action_pressed("steer_right"),"Releasing steering preserves gas finger")
-	game.touch_controls.release_inputs()
 	print("DELIVERY TEST ","PASS" if failures.is_empty() else "FAIL: "+str(failures))
 	await game.quit_demo(0 if failures.is_empty() else 1)
 
@@ -197,5 +272,8 @@ func run_motorway(game:Node) -> void:
 		check(game.cargo.spawned==(12 if impact==2 else 0),"Motorway also respects three-collision rule")
 	await frames(30)
 	check(game.cargo.on_foot and game.cargo.actor.is_on_floor(),"Motorway permits safe foot exit")
+	await collect_stage(game)
+	await check_finish(game,false)
 	print("MOTORWAY DELIVERY ","PASS" if failures.is_empty() else "FAIL: "+str(failures))
 	await game.quit_demo(0 if failures.is_empty() else 1)
+

@@ -100,6 +100,7 @@ func dial(center: Vector2, radius: float, value: float, maximum: float, label: S
 func _draw() -> void:
 	if compact_layout():
 		draw_compact()
+		draw_mission_popup()
 		return
 	var factor:=minf(size.x/1280.0,size.y/720.0)
 	draw_set_transform((size-Vector2(1280,720)*factor)/2,0,Vector2.ONE*factor)
@@ -127,7 +128,24 @@ func _draw() -> void:
 	if cargo and cargo.on_foot:
 		panel(Rect2(420,605,440,65))
 		caption(Vector2(438,630),"ON FOOT / WASD MOVE / SHIFT RUN",18,GOLD,true)
-		caption(Vector2(438,656),"F return box / C view / Q,E orbit" if not cargo.carrying.is_empty() else "X enter / C view / Q,E orbit / Wheel zoom",15)
+		caption(Vector2(438,656),"AUTO PICKUP / X enter / C view / Q,E orbit",15)
+	draw_mission_popup()
+
+func draw_mission_popup() -> void:
+	if not cargo or cargo.popup_time<=0:return
+	var compact:=compact_layout()
+	var factor:=size.x/720 if compact else minf(size.x/1280,size.y/720)
+	var design:=size/factor
+	draw_set_transform(Vector2.ZERO,0,Vector2.ONE*factor)
+	var width:=minf(620,design.x-48)
+	var rect:=Rect2((design.x-width)/2,design.y*(.265 if compact else .25),width,100)
+	panel(rect,PANEL,CYAN if cargo.load_restored else GOLD)
+	var lines:PackedStringArray=cargo.popup.split("\n")
+	for i in lines.size():
+		var text_size:=23 if compact else 25
+		while font.get_string_size(lines[i],HORIZONTAL_ALIGNMENT_LEFT,-1,text_size).x>width-32 and text_size>12:text_size-=1
+		var text_width:=font.get_string_size(lines[i],HORIZONTAL_ALIGNMENT_LEFT,-1,text_size).x
+		caption(Vector2((design.x-text_width)/2,rect.position.y+38+i*32),lines[i],text_size,GOLD if i==0 else CREAM)
 
 func compact_layout() -> bool:
 	return size.x/maxf(1,size.y)<1.6 or DisplayServer.is_touchscreen_available()
@@ -142,7 +160,9 @@ func draw_packages(rect:Rect2) -> void:
 	if vehicle.location_world.has_method("map_point"):
 		for item in cargo.packages:
 			if item.state=="loose" and is_instance_valid(item.body):draw_circle(vehicle.location_world.map_point(item.body.position,rect),3.5,GOLD)
-		if not cargo.game.outerbelt:draw_circle(vehicle.location_world.map_point(cargo.game.highway.depot,rect),5,Color("c189ee"))
+		var stop:Vector2=vehicle.location_world.map_point(cargo.checkpoint_position,rect)
+		draw_rect(Rect2(stop-Vector2.ONE*5,Vector2.ONE*10),CYAN)
+		draw_rect(Rect2(stop-Vector2.ONE*5,Vector2.ONE*10),INK,false,1)
 
 func draw_compact() -> void:
 	var factor:=size.x/720
@@ -159,26 +179,26 @@ func draw_compact() -> void:
 		panel(rect,Color("202f36"))
 		vehicle.location_world.draw_map(self,rect,cargo.player_position() if cargo else vehicle.position)
 		draw_packages(rect)
-		caption(rect.position+Vector2(12,22),"GPS / GOLD = BOXES" if h<480 else "GPS / PACKAGES IN GOLD",10 if h<480 else 13,GOLD,true)
+		caption(rect.position+Vector2(12,22),"GOLD: BOXES / BLUE: STOP",10 if h<480 else 13,GOLD,true)
 		caption(rect.end-Vector2(rect.size.x-12,10),"© OSM contributors" if h<480 else "© OpenStreetMap contributors",9 if h<480 else 10)
 	var y:=h-360
 	if wide:
 		y=h-80
 		panel(Rect2(172,y,242,58))
 		caption(Vector2(184,y+25),"ON FOOT" if cargo and cargo.on_foot else "%03d mph / %s" % [roundi(speed),gear],22,GOLD,true)
-		caption(Vector2(184,y+46),"RETURN BOXES TO TRUCK" if cargo and cargo.on_foot else "FUEL %.1f GAL / %s" % [vehicle.fuel_gallons,"ON" if vehicle.engine_on else "OFF"],12)
+		caption(Vector2(184,y+46),"WALK OVER BOXES TO COLLECT" if cargo and cargo.on_foot else "FUEL %.1f GAL / %s" % [vehicle.fuel_gallons,"ON" if vehicle.engine_on else "OFF"],12)
 		return
 	if h<850:
 		y=h-190
 		panel(Rect2(196,y,346,102))
 		caption(Vector2(210,y+30),"ON FOOT" if cargo and cargo.on_foot else "%03d mph / %s" % [roundi(speed),gear],25,GOLD,true)
-		caption(Vector2(210,y+60),"RETURN BOXES TO TRUCK" if cargo and cargo.on_foot else "FUEL %.1f GAL / %s" % [vehicle.fuel_gallons,"ENGINE ON" if vehicle.engine_on else "ENGINE OFF"],14)
+		caption(Vector2(210,y+60),"WALK OVER BOXES TO COLLECT" if cargo and cargo.on_foot else "FUEL %.1f GAL / %s" % [vehicle.fuel_gallons,"ENGINE ON" if vehicle.engine_on else "ENGINE OFF"],14)
 		caption(Vector2(210,y+86),"CONDITION %d%% / %d BOXES" % [roundi(100-cargo.damage),cargo.recovered] if cargo else "FREE DRIVE",14,CYAN)
 		return
 	panel(Rect2(24,y,672,120))
 	if cargo and cargo.on_foot:
 		caption(Vector2(44,y+43),"ON FOOT",28,GOLD,true)
-		caption(Vector2(44,y+76),"Return boxes to truck / purple depot",18)
+		caption(Vector2(44,y+76),"Walk over boxes / Auto return to truck",18)
 	else:
 		caption(Vector2(44,y+48),"%03d" % roundi(speed),43,CREAM,true)
 		caption(Vector2(144,y+46),"mph / "+gear,20,CYAN,true)

@@ -34,7 +34,7 @@ func release_inputs() -> void:
 	fingers.clear();stick=Vector2.ZERO
 
 func _process(_delta:float) -> void:
-	var active:bool=game.driving and not game.paused and not game.options.visible and (game.dashboard.compact_layout() or OS.has_feature("mobile") or "--touch" in OS.get_cmdline_user_args())
+	var active:bool=game.driving and not game.paused and not game.options.visible and not (game.cargo and game.cargo.complete) and (game.dashboard.compact_layout() or OS.has_feature("mobile") or "--touch" in OS.get_cmdline_user_args())
 	if enabled and not active:release_inputs()
 	enabled=active;visible=active
 	if active:layout();queue_redraw()
@@ -75,7 +75,7 @@ func update_actions() -> void:
 	var held:Array=fingers.values()
 	var walking:bool=game.cargo and game.cargo.on_foot
 	var move:=stick.limit_length()
-	var actions:Dictionary={"steer_left":maxf(0,-move.x),"steer_right":maxf(0,move.x),"accelerate":maxf(float("gas" in held),maxf(0,-move.y) if walking else 0),"brake_reverse":maxf(float("brake" in held),maxf(0,move.y) if walking else 0),"handbrake":float("hand" in held and not walking),"sprint":float("hand" in held and walking)}
+	var actions:Dictionary={"steer_left":maxf(0,-move.x),"steer_right":maxf(0,move.x),"accelerate":maxf(float("gas" in held),maxf(0,-move.y)),"brake_reverse":maxf(float("brake" in held),maxf(0,move.y)),"handbrake":float("hand" in held and not walking),"sprint":float("hand" in held and walking)}
 	for action in actions:
 		if actions[action]>.06:Input.action_press(action,actions[action])
 		else:Input.action_release(action)
@@ -84,8 +84,7 @@ func _draw() -> void:
 	if not enabled:return
 	draw_set_transform(Vector2.ZERO,0,Vector2.ONE*size.x/720)
 	var walking:bool=game.cargo and game.cargo.on_foot
-	var labels:Dictionary={"gas":"MOVE" if walking else "GAS","brake":"BACK" if walking else "BRAKE","hand":"RUN" if walking else "HANDBRAKE","camera":"CAMERA","map":"GPS MAP","options":"OPTIONS","exit":"ENTER" if walking else "EXIT / WALK","upright":"RIGHT TRUCK"}
-	if walking and not game.cargo.carrying.is_empty():labels.exit="RETURN BOX"
+	var labels:Dictionary={"gas":"MOVE" if walking else "GAS","brake":"BACK" if walking else "BRAKE / REV","hand":"RUN" if walking else "HANDBRAKE","camera":"CAMERA","map":"GPS MAP","options":"OPTIONS","exit":"ENTER" if walking else "EXIT / WALK","upright":"RIGHT TRUCK"}
 	if walking:labels.camera=["CLOSE VIEW","HIGH VIEW","OVERHEAD"][game.cargo.actor.camera_view]
 	for key in regions:
 		var rect:Rect2=regions[key]
@@ -97,5 +96,7 @@ func _draw() -> void:
 			draw_circle(rect.get_center()+stick.limit_length()*rect.size.x*.30,rect.size.x*.14,Color("b393cf"))
 		else:
 			var text_size:=25 if size.y*720/size.x>=850 else 18
-			var label:String=labels[key];var width:=font.get_string_size(label,HORIZONTAL_ALIGNMENT_LEFT,-1,text_size).x
+			var label:String=labels[key]
+			while font.get_string_size(label,HORIZONTAL_ALIGNMENT_LEFT,-1,text_size).x>rect.size.x-14 and text_size>12:text_size-=1
+			var width:=font.get_string_size(label,HORIZONTAL_ALIGNMENT_LEFT,-1,text_size).x
 			draw_string(font,rect.get_center()+Vector2(-width/2,7),label,HORIZONTAL_ALIGNMENT_LEFT,-1,text_size,Color("fff0d2"))

@@ -34,6 +34,11 @@ let activeBrowser;
  await page.waitForTimeout(3000);
  await page.screenshot({path:'docs/web-phone-drive.png'});
  const cdp=await page.context().newCDPSession(page);
+ // Hold BRAKE / REV from rest: rendered reverse gear and touch geometry QA.
+ await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:311,y:606,id:3}]});
+ await page.waitForTimeout(2500);
+ await page.screenshot({path:'docs/web-phone-reverse.png'});
+ await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
  await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:94,y:575,id:1},{x:310,y:554,id:2}]});
  await page.waitForTimeout(750);
  await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});

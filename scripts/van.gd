@@ -9,6 +9,7 @@ var cockpit := false
 var camera: Camera3D
 var body: Node3D
 var reverse_delay := 0.0
+var delivery_complete:=false
 var reset_count := 0
 var fuel_gallons := 18.0
 const TANK_GALLONS := 24.0
@@ -356,6 +357,7 @@ func mapped_recovery_position(at: Vector3) -> Vector3:
 	return location_world.spawn_position
 
 func new_truck() -> void:
+	delivery_complete=false
 	crash_contact_active=false;crash_clear_time=0
 	dispose_roll_body()
 	flip_count = 0
@@ -514,6 +516,11 @@ func _process(delta: float) -> void:
 
 func _physics_process(delta: float) -> void:
 	if not active:
+		return
+	if delivery_complete:
+		engine_on=false;parking_brake=true;speed=0;velocity=Vector3.ZERO;planar_velocity=Vector3.ZERO
+		throttle_load=0;rpm=0;notice_time=maxf(0,notice_time-delta)
+		telemetry.emit(0,"P",distance)
 		return
 	update_crash_contact(delta)
 	# Run before disabled/rolled early returns too: damage must never strand a

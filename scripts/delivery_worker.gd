@@ -16,6 +16,9 @@ var shown_frame:AtlasTexture
 var facing:=0.0
 var facing_direction:="back"
 var shown_animation:=""
+var animation_speed:=0.0
+var gait_weight:=0.0
+var running_animation:=false
 const SHEET=preload("res://assets/art/presentation/worker-animations.png")
 const AXIAL_SHEET=preload("res://assets/art/presentation/worker-front-back.png")
 const REGIONS={
@@ -65,7 +68,7 @@ func show_frame(animation:String,index:int) -> void:
 
 func set_enabled(value:bool) -> void:
 	enabled=value;visible=value;visual.visible=value;set_physics_process(value)
-	collision_layer=2 if value else 0;collision_mask=1 if value else 0
+	collision_layer=2 if value else 0;collision_mask=(1|8) if value else 0
 	if value:camera.make_current();update_camera(1.0)
 
 func update_camera(weight:float) -> void:
@@ -118,8 +121,18 @@ func _physics_process(delta:float) -> void:
 	velocity.z=move_toward(velocity.z,direction.z*speed,delta*24)
 	velocity.y-=9.81*delta;move_and_slide()
 	if direction.length()>.1:facing=atan2(-direction.x,-direction.z)
-	var moving:=Vector2(velocity.x,velocity.z).length()>.15
-	phase+=delta*(TAU*2.7 if running else TAU*1.8)
-	update_illustration(moving,running)
+	# Drive cadence from real travel, so feet stop cycling when blocked by a wall.
+	animation_speed=Vector2(get_position_delta().x,get_position_delta().z).length()/delta
+	running_animation=running
 	update_camera(1-exp(-9*delta))
 	if global_position.y< -5:global_position=game.cargo.safe_foot_position;velocity=Vector3.ZERO
+
+func _process(delta:float) -> void:
+	if not enabled or not game.driving:return
+	gait_weight=lerpf(gait_weight,clampf(animation_speed/3,0,1),1-exp(-12*delta))
+	phase=fmod(phase+delta*animation_speed*TAU/2.35,TAU)
+	# Subtle continuous body motion bridges the original inked poses without
+	# stretching, blurring or replacing any of the supplied artwork.
+	visual.position.y=absf(sin(phase*2))*.045*gait_weight
+	visual.rotation.z=sin(phase)*.018*gait_weight
+	update_illustration(animation_speed>.15,running_animation)
