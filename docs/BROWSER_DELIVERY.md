@@ -1,5 +1,7 @@
 # Browser and delivery update — November 16, 2026
 
+Current November 17 behavior supersedes the historical notes below: impact severity drains the life bar and zero energy alone releases cargo; walk-over sparkle collection replaces carrying/depositing; this demo ends after the first 12-package route. Mobile has a dedicated illustrated dashboard. See [current mobile and damage rules](MOBILE_DASHBOARD.md) and [README](../README.md).
+
 Default location: training ring connected to a 1.3 km OpenStreetMap-derived downtown Cleveland street blockout. 1,238 road/path sections, 227 building footprints, Public Square park paths, an original procedural Terminal Tower landmark and eight physical traffic cars. Independence remains the second map. Street access and traffic rules are simplified for the game.
 
 The truck GLB has a hollow cargo bay and two rear-door pivots. The first two registered collisions after training keep cargo secured. The third disables the truck and ejects the entire fixed stage quota once: 12, then 16, then 20 packages. There is no timed or distance-based cargo leak. On foot the worker carries one package to the truck or purple depot. The third distinct crash disables the delivery truck, with automatic safe exit once settled. Position reset cannot bypass a spilled load.

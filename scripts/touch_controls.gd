@@ -11,6 +11,9 @@ var camera_recentered:=false
 var reverse_selected:=false
 var layout_size:=Vector2.ZERO
 var drawing_state:Array=[]
+const Layout=preload("res://scripts/hud_layout.gd")
+const Ink=preload("res://scripts/dashboard_ink.gd")
+const FACE=preload("res://assets/fonts/BarlowCondensed-Bold.ttf")
 
 func _ready() -> void:
 	mouse_filter=Control.MOUSE_FILTER_IGNORE
@@ -18,25 +21,7 @@ func _ready() -> void:
 
 func layout() -> void:
 	layout_size=size
-	var h:=size.y*720/size.x
-	regions={"gas":Rect2(552,h-218,140,94),"brake":Rect2(552,h-110,140,84),"stick":Rect2(24,h-226,208,208),"hand":Rect2(278,h-116,180,78),"camera":Rect2(24,112,156,52),"map":Rect2(198,112,156,52),"options":Rect2(24,178,156,52),"exit":Rect2(198,178,156,52),"upright":Rect2(278,h-214,180,70)}
-	if h>=850:
-		regions.camera.size.y=88;regions.map.size.y=88
-		regions.options=Rect2(24,214,156,88);regions.exit=Rect2(198,214,156,88)
-	if h<850:
-		regions.stick=Rect2(24,h-174,150,150)
-		regions.gas=Rect2(566,h-174,130,70)
-		regions.brake=Rect2(566,h-94,130,70)
-		regions.hand=Rect2(278,h-76,180,52)
-		regions.upright=Rect2(278,h-250,180,52)
-	if h<480:
-		for i in 4:regions[["camera","map","options","exit"][i]]=Rect2(24+i*124,80,112,38)
-		regions.stick=Rect2(20,h-152,128,128)
-		regions.gas=Rect2(582,h-152,118,56);regions.brake=Rect2(582,h-84,118,56)
-		regions.hand=Rect2(430,h-70,126,42);regions.upright=Rect2(430,h-122,126,42)
-	else:
-		for key in ["camera","map","options","exit"]:regions[key].position.y+=28
-	regions["gear"]=regions.upright
+	regions=Layout.regions(size.y*720/size.x)
 
 func release_inputs() -> void:
 	for action in ["accelerate","brake_reverse","steer_left","steer_right","handbrake","sprint"]:Input.action_release(action)
@@ -44,15 +29,15 @@ func release_inputs() -> void:
 
 func world_point(point:Vector2) -> bool:
 	var h:=size.y*720/size.x
-	if Rect2(16,12,688,64 if h<480 else 114).has_point(point):return false
+	if point.y<Layout.header_height(h):return false
 	for key in regions:
 		if key=="upright" and not game.van.overturned:continue
 		if key=="gear" and (game.van.overturned or (game.cargo and game.cargo.on_foot)):continue
 		if regions[key].has_point(point):return false
 	if game.dashboard.show_gps and game.van.location_world:
 		if game.dashboard.compact_map_rect().has_point(point):return false
-	var status:=Rect2(24,h-360,672,120) if h>=850 else (Rect2(172,h-80,242,58) if h<480 else Rect2(196,h-190,346,102))
-	return not status.has_point(point) and Rect2(0,0,720,h).has_point(point)
+	if Layout.prompt_rect(h).has_point(point) and game.recovery_back.visible:return false
+	return point.y<h-Layout.deck_height(h) and Rect2(0,0,720,h).has_point(point)
 
 func _process(delta:float) -> void:
 	var active:bool=game.driving and not game.paused and not game.options.visible and not (game.cargo and game.cargo.complete) and (game.dashboard.compact_layout() or OS.has_feature("mobile") or "--touch" in OS.get_cmdline_user_args())
@@ -70,7 +55,7 @@ func _process(delta:float) -> void:
 		if resized:layout()
 		var walking:bool=game.cargo and game.cargo.on_foot
 		var view:int=game.cargo.actor.camera_view if walking else -1
-		var current:Array=[stick,reverse_selected,walking,view,game.van.overturned,game.van.roll_settled]
+		var current:Array=[stick,reverse_selected,walking,view,game.van.overturned,game.van.roll_settled,game.van.steering,fingers.values()]
 		if resized or current!=drawing_state:
 			drawing_state=current;queue_redraw()
 
@@ -130,26 +115,39 @@ func _draw() -> void:
 	if not enabled:return
 	draw_set_transform(Vector2.ZERO,0,Vector2.ONE*size.x/720)
 	var walking:bool=game.cargo and game.cargo.on_foot
-	var labels:Dictionary={"gas":"MOVE" if walking else "GAS","brake":"BACK" if walking else "BRAKE / REV","hand":"RUN" if walking else "HANDBRAKE","camera":"CAMERA","map":"GPS MAP","options":"OPTIONS","exit":"ENTER" if walking else "EXIT / WALK","upright":"RIGHT TRUCK"}
-	labels["gear"]="GEAR: R" if reverse_selected else "GEAR: D"
-	if reverse_selected and not walking:labels.gas="REVERSE"
-	if game.van.overturned and not game.van.roll_settled:labels.upright="SETTLING…"
-	if walking:labels.camera=["TRAVEL VIEW","WIDE VIEW","SURVEY VIEW"][game.cargo.actor.camera_view]
+	var wide:=Layout.wide(size.y*720/size.x)
+	var labels:Dictionary={"gas":"MOVE" if walking else ("REV" if reverse_selected else "GAS"),"brake":"BACK" if walking else "BRAKE","hand":"RUN" if walking else "DRIFT","camera":"VIEW","map":"GPS","options":"SETUP","exit":"ENTER" if walking else "WALK","upright":"RECOVER" if game.van.roll_settled else "WAIT"}
+	labels["gear"]="R / D" if reverse_selected else "D / R"
 	for key in regions:
 		var rect:Rect2=regions[key]
 		if key=="upright" and not game.van.overturned:continue
 		if key=="gear" and (walking or game.van.overturned):continue
-		var style:=StyleBoxFlat.new();style.bg_color=Color(.07,.08,.13,.83);style.border_color=Color("ffca55");style.set_border_width_all(2);style.set_corner_radius_all(18)
-		draw_style_box(style,rect)
 		if key=="stick":
-			draw_arc(rect.get_center(),rect.size.x*.33,0,TAU,48,Color("9175a7"),3,true)
-			draw_circle(rect.get_center()+stick.limit_length()*rect.size.x*.30,rect.size.x*.14,Color("b393cf"))
+			if walking:
+				var at:=rect.get_center();var r:=rect.size.x*.4
+				draw_circle(at,r+8,Color(.07,.06,.1,.55));draw_arc(at,r,0,TAU,48,Color("b79abf"),3,true)
+				draw_arc(at,r-6,0,TAU,48,Color("5f397f"),2,true)
+				draw_circle(at+stick.limit_length()*r*.52,r*.25,Color("ad88c6"))
+			else:Ink.wheel(self,rect,game.van.steering,stick)
+			var wheel_label:="WALK" if walking else "STEER"
+			draw_string(FACE,rect.get_center()+Vector2(-18,rect.size.y*.47),wheel_label,HORIZONTAL_ALIGNMENT_LEFT,-1,11,Color("f3ebd8"))
+			continue
+		Ink.plate(self,rect,key in fingers.values(),key in ["camera","map","options","exit"])
+		var label:String=labels[key];var text_size:=11 if wide else 18
+		if key in ["camera","map","options","exit"]:
+			Ink.icon(self,key,rect.get_center()+Vector2(-12,0) if wide else rect.get_center()-Vector2(0,12),.64 if wide else 1.1)
+			var at:Vector2=rect.get_center()+Vector2(4,4) if wide else rect.get_center()+Vector2(-FACE.get_string_size(label,HORIZONTAL_ALIGNMENT_LEFT,-1,text_size).x/2,28)
+			draw_string(FACE,at,label,HORIZONTAL_ALIGNMENT_LEFT,-1,text_size,Color("f3ebd8"))
+		elif key in ["gas","brake"]:
+			# Physical ribbed pedals, warm accelerator and metal brake surfaces.
+			var tone:=Color("d8a267") if key=="gas" else Color("a4a9b1")
+			for i in 3:
+				var at:=rect.position+Vector2(15,12+i*7)
+				draw_line(at,at+Vector2(rect.size.x-30,0),Color("10121e"),5,true);draw_line(at,at+Vector2(rect.size.x-30,0),tone,2,true)
+			draw_string(FACE,rect.position+Vector2(15,rect.size.y-10),label,HORIZONTAL_ALIGNMENT_LEFT,-1,text_size,Color("f3ebd8"))
+		elif key=="hand" or key=="upright":
+			Ink.icon(self,key,rect.position+Vector2(23,rect.size.y/2),.65,Color("ffd044"))
+			draw_string(FACE,rect.position+Vector2(43,rect.size.y/2+6),label,HORIZONTAL_ALIGNMENT_LEFT,-1,text_size,Color("f3ebd8"))
 		else:
-			var text_size:=25 if size.y*720/size.x>=850 else 18
-			var label:String=labels[key]
-			while font.get_string_size(label,HORIZONTAL_ALIGNMENT_LEFT,-1,text_size).x>rect.size.x-14 and text_size>12:text_size-=1
-			var width:=font.get_string_size(label,HORIZONTAL_ALIGNMENT_LEFT,-1,text_size).x
-			draw_string(font,rect.get_center()+Vector2(-width/2,-1 if key=="camera" else 7),label,HORIZONTAL_ALIGNMENT_LEFT,-1,text_size,Color("fff0d2"))
-			if key=="camera":
-				var hint:="HOLD: RECENTER";var hint_size:=12 if rect.size.y<60 else 15
-				draw_string(font,rect.get_center()+Vector2(-font.get_string_size(hint,HORIZONTAL_ALIGNMENT_LEFT,-1,hint_size).x/2,14 if rect.size.y<60 else 17),hint,HORIZONTAL_ALIGNMENT_LEFT,-1,hint_size,Color("ffca55"))
+			var tone:=Color("ffd044") if reverse_selected else Color("8de0e9")
+			draw_string(FACE,rect.get_center()+Vector2(-FACE.get_string_size(label,HORIZONTAL_ALIGNMENT_LEFT,-1,text_size).x/2,6),label,HORIZONTAL_ALIGNMENT_LEFT,-1,text_size,tone)

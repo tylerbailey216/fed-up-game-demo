@@ -20,6 +20,8 @@ func _physics_process(delta:float) -> void:
 	if not command.is_empty():
 		JavaScriptBridge.eval("window.fedupQACommand=''")
 		if command=="reset":reset()
+		elif command=="light_hit":game.cargo.damage_hit(.18)
+		elif command=="energy_reset":game.cargo.damage=0;game.cargo.collision_count=0
 		elif command=="camera":
 			game.van.camera_high=false;game.van.camera_orbit=0;game.van.camera_pitch=0;game.van.set_view(false)
 		elif command=="ui_recovered":
@@ -55,7 +57,7 @@ func _physics_process(delta:float) -> void:
 			for person in game.city_life.citizens:person.hide();person.set_physics_process(false)
 		elif command=="spill":
 			reset()
-			for i in 3:game.cargo.damage_hit(1)
+			while game.cargo.damage<100:game.cargo.damage_hit(1)
 			game.cargo.toggle_foot()
 			game.cargo.actor.position=Vector3(400,.08,-75);game.cargo.actor.camera_angle=0
 			game.cargo.pickup_previous=game.cargo.actor.position

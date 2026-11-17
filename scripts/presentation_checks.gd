@@ -85,7 +85,7 @@ func recovery_review(game:Node) -> void:
 	game.start_drive();game.van.set_view(false)
 	game.van.position=game.cargo.checkpoint_position+Vector3(18,.15,0)
 	game.van.rotation.y=0;game.highway.entered=true
-	for i in 3:game.cargo.damage_hit(1)
+	while game.cargo.damage<100:game.cargo.damage_hit(1)
 	for i in 90:await get_tree().physics_frame
 	var actor:Node=game.cargo.actor
 	actor.set_physics_process(false);actor.camera_angle=.45;actor.camera_view=0

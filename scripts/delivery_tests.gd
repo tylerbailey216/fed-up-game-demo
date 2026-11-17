@@ -418,18 +418,31 @@ func run(game:Node,capture:bool) -> void:
 	check(game.highway.entered and game.van.position.x>285,"Actual construction-barrel gateway opens downtown: at=%s speed=%.2f impacts=%d" % [game.van.position,game.van.speed,game.cargo.collision_count])
 	var wall:=StaticBody3D.new();var collision:=CollisionShape3D.new();var shape:=BoxShape3D.new();shape.size=Vector3(1,4,16);collision.shape=shape;wall.add_child(collision);game.add_child(wall);wall.position=Vector3(345,2,-75)
 	game.cargo.collision_count=0;game.cargo.damage=0;game.cargo.seen_collision=game.van.crash_serial
-	for impact in 3:
+	# Three light bumps are no longer an automatic failure; energy is authoritative.
+	for impact in 5:game.cargo.damage_hit(.18)
+	check(game.cargo.collision_count==5 and is_equal_approx(game.cargo.damage,30) and game.cargo.spawned==0 and not game.van.wrecked,"More than three light bumps keep cargo secured while energy remains")
+	game.cargo.damage=99;game.cargo.collision_count=0
+	game.cargo.spill()
+	check(not game.cargo.spilled,"Direct spill cannot bypass positive truck energy")
+	game.cargo.damage_hit(.18)
+	check(game.cargo.spilled and game.van.wrecked and game.cargo.damage==100,"Final energy depletion disables and releases one fixed quota even on diagnostic crash one")
+	game.cargo.complete=true;game.cargo.next_stage();await frames(30)
+	game.cargo.armed=true;game.cargo.seen_collision=game.van.crash_serial
+	var previous_damage:=0.0
+	for impact in 12:
 		await drive_into_wall(game)
 		check(game.cargo.collision_count==impact+1,"Each distinct physical impact counts once")
-		check(is_equal_approx(game.dashboard.energy_fraction(),1.0-float(impact+1)/3.0),"Energy bar drains once per distinct crash")
-		if impact<2:
-			check(game.cargo.spawned==0 and not game.van.cargo_open and not game.van.wrecked,"First two impacts keep all packages secured and truck driveable")
+		check(game.cargo.damage>previous_damage and is_equal_approx(game.dashboard.energy_fraction(),1.0-game.cargo.damage/100),"Energy bar reflects actual impact damage")
+		previous_damage=game.cargo.damage
+		if game.cargo.damage<100:
+			check(game.cargo.spawned==0 and not game.van.cargo_open and not game.van.wrecked,"Positive energy keeps all packages secured and the truck driveable")
 		if impact==0 and game.cargo.collision_count!=1:
 			print("DELIVERY TEST FAIL: sustained first crash counted ",game.cargo.collision_count," collisions")
 			await game.quit_demo(1);return
-	check(game.cargo.spilled and game.van.wrecked and game.cargo.on_foot,"Third collision disables truck and forces foot recovery")
+		if game.cargo.spilled:break
+	check(game.cargo.spilled and game.van.wrecked and game.cargo.on_foot,"Depleted energy disables truck and forces foot recovery")
 	check(game.cargo.actor.position.y<game.van.position.y+.7,"Automatic exit never strands the worker on top of the crash barrier")
-	check(game.cargo.spawned==game.cargo.quota and game.cargo.quota==12,"Third impact releases exactly the full stage quota once")
+	check(game.cargo.spawned==game.cargo.quota and game.cargo.quota==12,"Zero energy releases exactly the full stage quota once")
 	check(game.vehicle_visuals.doors.size()==2 and absf(game.vehicle_visuals.doors[0].rotation.y)>1,"Both physical rear doors open")
 	var count:int=game.cargo.spawned
 	await frames(360)
@@ -472,8 +485,8 @@ func run_motorway(game:Node) -> void:
 		if impact>0:
 			Input.action_press("accelerate");await frames(180);Input.action_release("accelerate")
 			game.van.speed=0;game.van.planar_velocity=Vector3.ZERO;await frames(10)
-		game.van.register_collision(10,4);await frames(15)
-		check(game.cargo.spawned==(12 if impact==2 else 0),"Motorway also respects three-collision rule")
+		game.van.register_collision(24,20);await frames(15)
+		check(game.cargo.spawned==(12 if impact==2 else 0),"Motorway releases the load only when impact damage empties energy")
 	await frames(30)
 	check(game.cargo.on_foot and game.cargo.actor.is_on_floor(),"Motorway permits safe foot exit")
 	await check_package_safety(game)

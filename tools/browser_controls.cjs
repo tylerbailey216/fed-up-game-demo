@@ -22,6 +22,9 @@ const fs=require('fs');
   const up=async id=>{points=points.filter(p=>p.id!==id);await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:points});};
   const move=async(id,key,dx,dy)=>{const position=await coords(key,dx,dy);points=points.map(p=>p.id===id?{...position,id}:p);await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:points});};
   const wait=async(predicate,message)=>{try{await page.waitForFunction(predicate,null,{timeout:16000});}catch(e){throw new Error(message+' '+JSON.stringify(await state()));}};
+  for(let i=0;i<5;i++)await command('light_hit');
+  if(Math.abs((await state()).energy-.7)>.001||(await state()).on_foot)throw new Error('Five light bumps should preserve energy and cargo');
+  await command('energy_reset');
   await command('camera');
   if(touch){
    await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{id:71,x:width*.5,y:height*.5}]});
@@ -61,7 +64,7 @@ const fs=require('fs');
    await page.keyboard.down('s');await wait(()=>window.fedupQA.speed< -1,'Desktop reverse failed');await page.keyboard.up('s');
   }
   await command('spill');await wait(()=>window.fedupQA.on_foot,'Spill did not enable walking');
-  if((await state()).energy!==0)throw new Error('Third crash did not empty energy bar');
+  if((await state()).energy!==0)throw new Error('Energy-depleting impacts did not empty energy bar');
   if(touch)await down(5,'stick',0,-.36);else await page.keyboard.down('w');
   await wait(()=>window.fedupQA.collected>=1,'Walk-over contact did not collect');
   await page.screenshot({path:`docs/controls-auto-pickup-${width}x${height}.png`});

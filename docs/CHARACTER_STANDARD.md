@@ -53,7 +53,7 @@ Human and extraterrestrial NPCs follow the same indestructible cartoon rules. Co
 
 The common behavior sequence is normal activity -> collision reaction -> cartoon motion -> landing -> recovery -> resume activity. Use a brief recovery cooldown so repeated contacts cannot trap a citizen in a reaction loop. Remember the interrupted destination/activity, rejoin a reachable sidewalk or crossing, and safely relocate near the route if recovery becomes blocked. Civilian vehicles should similarly recover and resume traffic after comic spins or skids. Props can scatter and cause further reactions, within measured performance budgets.
 
-The player's delivery truck keeps its established mission rules: impacts one and two retain cargo; the third distinct crash disables the truck and releases the fixed load once. Collecting every required package restores it. The earlier first-collision spill example in the pasted brainstorming notes is superseded by this rule. Package recovery must preserve IDs and quota and remain possible after traffic interactions.
+The player's delivery truck uses the current life-bar rule: distinct impacts drain energy according to severity; zero energy disables it and releases the fixed load once. Collecting every required package restores it. This supersedes the earlier three-distinct-crash rule and first-collision spill example. Package recovery must preserve IDs and quota and remain possible after traffic interactions.
 
 ## Review before adding a citizen to the game
 

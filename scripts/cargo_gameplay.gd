@@ -82,7 +82,7 @@ func player_position() -> Vector3:
 	return actor.global_position if on_foot else game.van.global_position
 
 func spill() -> void:
-	if spilled or collision_count<3:return
+	if spilled or damage<100:return
 	spilled=true;game.van.cargo_open=true
 	for i in quota:drop_package()
 	game.van.notify_driver("TRUCK DISABLED / Recover %d packages" % quota)
@@ -106,14 +106,19 @@ func drop_package() -> void:
 	packages.append({"body":body,"state":"loose","id":spawned})
 	spawned+=1
 
-func damage_hit(_level:float) -> void:
+func impact_damage(level:float) -> float:
+	# Per distinct contact, based on its closing speed (van collision_level).
+	# A glancing bump costs 6; a maximum impact costs 44 energy.
+	return lerpf(6.0,44.0,pow(clampf((level-.18)/.82,0,1),1.35))
+
+func damage_hit(level:float) -> void:
 	if spilled or complete:return
-	collision_count+=1
-	damage=minf(100,collision_count/3.0*100)
-	if collision_count==3:
+	collision_count+=1 # Diagnostic only; never gates disable or package release.
+	damage=minf(100,damage+impact_damage(level))
+	if damage>=100:
 		game.van.wrecked=true;game.van.engine_on=false;game.van.cruise=false
 		spill()
-	else:game.van.notify_driver("LOW TRUCK ENERGY / LOAD SECURED" if collision_count==2 else "TRUCK DAMAGED / LOAD SECURED")
+	else:game.van.notify_driver("LOW TRUCK ENERGY / LOAD SECURED" if damage>=65 else "TRUCK DAMAGED / LOAD SECURED")
 
 func next_stage() -> void:
 	if not complete:return

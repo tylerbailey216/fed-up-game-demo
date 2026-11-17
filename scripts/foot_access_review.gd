@@ -2,7 +2,7 @@ extends Node
 func run(game:Node) -> void:
 	game.start_drive();game.van.position=Vector3(320,.15,9);game.van.rotation.y=game.cargo.checkpoint.rotation.y
 	game.van.set_view(false)
-	for i in 3:game.cargo.damage_hit(1)
+	while game.cargo.damage<100:game.cargo.damage_hit(1)
 	for frame in 70:await get_tree().physics_frame
 	var actor:Node=game.cargo.actor
 	actor.set_physics_process(false);actor.position=Vector3(332,.08,22);actor.camera_zoom=1

@@ -491,8 +491,8 @@ func build_ui() -> void:
 		credit.text = "Map data: © OpenStreetMap contributors / ODbL"
 		credit.uri = "https://www.openstreetmap.org/copyright"
 		choices.add_child(credit)
-	choices.add_child(text_label("Drive the city. Recover every package.\n3 collisions / One delivery to save.",20))
-	choices.add_child(text_label("WASD drive / X walk / C camera\nTouch controls on phones and tablets",18))
+	choices.add_child(text_label("Drive the city. Recover every package.\nWatch your truck energy / Save the delivery.",20))
+	choices.add_child(text_label("WASD drive / X walk / C camera\nTouch: landscape recommended / portrait supported",18))
 	if FileAccess.file_exists("res://data/build_version.json"):
 		var version:Dictionary=JSON.parse_string(FileAccess.get_file_as_string("res://data/build_version.json"))
 		choices.add_child(text_label("BUILD "+str(version.state_id),14))
@@ -852,18 +852,16 @@ func update_recovery_prompt() -> void:
 	var factor:float=hud.size.x/720 if compact else minf(hud.size.x/1280,hud.size.y/720)
 	var design:Vector2=hud.size/factor
 	var rect:=Rect2((design.x-500)/2,605,500,64)
-	if compact:
-		if design.y<480:rect=Rect2(172,design.y-80,242,58) if not complete else Rect2(172,design.y-80,384,58)
-		elif design.y<850:rect=Rect2(196,design.y-190,346,88)
-		else:rect=Rect2(24,design.y-360,672,88)
+	if compact:rect=preload("res://scripts/hud_layout.gd").prompt_rect(design.y)
 	var action:bool=complete or disabled or not compact
-	var action_width:float=140 if rect.size.x<400 else 180
+	var action_width:float=156 if compact and design.y>=600 else (140 if rect.size.x<400 else 180)
+	var action_height:float=88 if compact and design.y>=600 else 44
 	recovery_panel.position=rect.position*factor;recovery_panel.scale=Vector2.ONE*factor;recovery_panel.size=rect.size
 	recovery_back.position=recovery_panel.position;recovery_back.scale=Vector2.ONE*factor;recovery_back.size=rect.size
 	recovery_back.set_kind("complete" if complete else ("wait" if not van.roll_settled and recovering else "recover"))
 	recovery_status.position=Vector2(50,10)
 	recovery_status.size=Vector2(rect.size.x-62-(action_width+10 if action else 0),rect.size.y-20)
-	recovery_status.add_theme_font_size_override("font_size",16 if rect.size.x<400 else 22)
+	recovery_status.add_theme_font_size_override("font_size",24 if compact and design.y>=600 else (16 if rect.size.x<400 else 22))
 	recovery_status.text="ROUTE COMPLETE" if complete else ("TRUCK SETTLING" if recovering and not van.roll_settled else ("RIGHT TRUCK" if recovering else "TRUCK DISABLED"))
 	upright_button.visible=recovering and not compact
 	upright_button.disabled=not van.roll_settled
@@ -871,8 +869,8 @@ func update_recovery_prompt() -> void:
 	new_truck_button.visible=complete or disabled
 	new_truck_button.text="PLAY AGAIN" if complete else "NEW TRUCK"
 	for control in [upright_button,new_truck_button]:
-		control.position=Vector2(rect.size.x-action_width-10,(rect.size.y-44)/2)
-		control.size=Vector2(action_width,44);control.add_theme_font_size_override("font_size",18)
+		control.position=Vector2(rect.size.x-action_width-10,(rect.size.y-action_height)/2)
+		control.size=Vector2(action_width,action_height);control.add_theme_font_size_override("font_size",22 if compact and design.y>=600 else 18)
 
 func smoke_test() -> void:
 	assert(FileAccess.file_exists("res://data/empty_day.json"))

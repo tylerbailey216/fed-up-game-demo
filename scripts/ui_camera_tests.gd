@@ -24,6 +24,20 @@ func run(game:Node,captures:=false) -> Array[String]:
 		# This is the exact lingering state in the supplied screenshot.
 		van.flip_count=2;van.overturned=false;van.wrecked=false;cargo.complete=false;cargo.on_foot=false
 		game.update_hud(0,"N",0);await frames(2)
+		if dashboard.compact_layout():
+			game.touch_controls.layout()
+			var regions:Dictionary=game.touch_controls.regions
+			var keys:=["gas","brake","stick","hand","gear","camera","map","options","exit"]
+			var bounds:=Rect2(Vector2.ZERO,Vector2(720,dashboard.size.y*720/dashboard.size.x))
+			for i in keys.size():
+				check(bounds.encloses(regions[keys[i]]),"Touch control inside viewport: "+keys[i]+str(screen))
+				for j in range(i+1,keys.size()):check(not regions[keys[i]].intersects(regions[keys[j]]),"No overlapping touch controls: "+keys[i]+" / "+keys[j]+str(screen))
+			check(not dashboard.compact_map_rect().intersects(regions.camera),"GPS does not cover camera control")
+			var scene:Rect2=preload("res://scripts/hud_layout.gd").scene_rect(bounds.size.y)
+			if bounds.size.y>1100:check(scene.size.y/bounds.size.y>=.60,"Portrait clear driving corridor keeps at least sixty percent of screen height")
+		van.set_view(true);game.update_hud(0,"N",0);await frames(2)
+		await capture("illustrated-%dx%d" % [screen.x,screen.y],captures)
+		van.set_view(false);game.update_hud(0,"N",0)
 		check(not game.recovery_panel.visible and not game.recovery_back.visible,"A previously rolled, now-upright truck has no recovery overlay: "+str(screen))
 		await capture("upright-%dx%d" % [screen.x,screen.y],captures)
 		van.overturned=true;van.roll_settled=false;game.update_hud(0,"ROLLED",0);await frames(2)

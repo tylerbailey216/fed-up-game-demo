@@ -20,6 +20,7 @@ var traffic: Node
 var cargo: Node
 var last_redraw_us := 0
 var action_prompt_visible:=false
+var compact_art:=preload("res://scripts/compact_dashboard.gd").new()
 var touch_preview:=false # Native layout review only; normal play uses the device.
 const INK := Color("10121e")
 const PANEL := Color("202332")
@@ -148,8 +149,8 @@ func draw_package_guide() -> void:
 	var center:=size/2
 	var compact:=compact_layout();var factor:=size.x/720 if compact else minf(size.x/1280,size.y/720)
 	var design_height:=size.y/factor
-	var top:float=(370 if design_height>=850 else (132 if design_height<480 else 286))*factor if compact else 145*factor
-	var bottom:float=size.y-(380 if design_height>=850 else 195)*factor if compact else size.y-155*factor
+	var top:float=(240 if design_height>=600 else 90)*factor if compact else 145*factor
+	var bottom:float=size.y-(preload("res://scripts/hud_layout.gd").deck_height(design_height)+20)*factor if compact else size.y-155*factor
 	bottom=maxf(top+45,bottom)
 	var bounds:=Rect2(Vector2(22,top),Vector2(size.x-44,bottom-top))
 	var behind:=camera.is_position_behind(target)
@@ -207,9 +208,7 @@ func compact_layout() -> bool:
 	return touch_preview or size.x/maxf(1,size.y)<1.6 or DisplayServer.is_touchscreen_available()
 
 func compact_map_rect() -> Rect2:
-	var h:=size.y/(size.x/720)
-	if h<480:return Rect2(170,122,534,90) if expanded_map else Rect2(538,80,166,90)
-	return Rect2(24,282 if h>=850 else 138,672,minf(440,h-690) if h>=850 else h-340) if expanded_map else Rect2(378,140,326,210 if h>=850 else 150)
+	return preload("res://scripts/hud_layout.gd").map_rect(size.y/(size.x/720),expanded_map)
 
 func location_name() -> String:
 	if vehicle.location_world:
@@ -226,51 +225,7 @@ func draw_packages(rect:Rect2) -> void:
 		draw_rect(Rect2(stop-Vector2.ONE*5,Vector2.ONE*10),INK,false,1)
 
 func draw_compact() -> void:
-	var factor:=size.x/720
-	var h:=size.y/factor
-	draw_set_transform(Vector2.ZERO,0,Vector2.ONE*factor)
-	var wide:=h<480
-	panel(Rect2(16,12 if wide else 16,688,60 if wide else 110))
-	caption(Vector2(32,37 if wide else 48),"FedUp",22 if wide else 28,CREAM,true)
-	caption(Vector2(162,36 if wide else 45),location_name(),14 if wide else 20,GOLD,true)
-	caption(Vector2(32,61 if wide else 77),"TRUCK",11 if wide else 16,GOLD,true)
-	draw_energy(Rect2(96,49,240,15) if wide else Rect2(150,61,540,20))
-	if cargo:draw_objective_line(Vector2(360,61) if wide else Vector2(32,107),330 if wide else 658,13 if wide else 18)
-	if show_gps and vehicle.location_world:
-		var rect:=compact_map_rect()
-		panel(rect,Color("202f36"))
-		vehicle.location_world.draw_map(self,rect,cargo.player_position() if cargo else vehicle.position)
-		draw_packages(rect)
-		caption(rect.position+Vector2(12,22),"GOLD: BOXES / BLUE: STOP",10 if h<480 else 13,GOLD,true)
-		caption(rect.end-Vector2(rect.size.x-12,10),"© OSM contributors" if h<480 else "© OpenStreetMap contributors",9 if h<480 else 10)
-	if action_prompt_visible:return
-	var y:=h-360
-	if wide:
-		y=h-80
-		panel(Rect2(172,y,242,58))
-		caption(Vector2(184,y+25),"ON FOOT" if cargo and cargo.on_foot else "%03d mph / %s" % [roundi(speed),gear],22,GOLD,true)
-		caption(Vector2(184,y+46),"WALK OVER BOXES TO COLLECT" if cargo and cargo.on_foot else "FUEL %.1f GAL / %s" % [vehicle.fuel_gallons,"ON" if vehicle.engine_on else "OFF"],12)
-		return
-	if h<850:
-		y=h-190
-		panel(Rect2(196,y,346,102))
-		caption(Vector2(210,y+30),"ON FOOT" if cargo and cargo.on_foot else "%03d mph / %s" % [roundi(speed),gear],25,GOLD,true)
-		caption(Vector2(210,y+60),"WALK OVER BOXES TO COLLECT" if cargo and cargo.on_foot else "FUEL %.1f GAL / %s" % [vehicle.fuel_gallons,"ENGINE ON" if vehicle.engine_on else "ENGINE OFF"],14)
-		caption(Vector2(210,y+86),"%d BOXES SECURED" % cargo.recovered if cargo else "FREE DRIVE",14,CYAN)
-		return
-	panel(Rect2(24,y,672,120))
-	if cargo and cargo.on_foot:
-		caption(Vector2(44,y+43),"ON FOOT",28,GOLD,true)
-		caption(Vector2(44,y+76),"Walk over boxes / Auto return to truck",18)
-	else:
-		caption(Vector2(44,y+48),"%03d" % roundi(speed),43,CREAM,true)
-		caption(Vector2(144,y+46),"mph / "+gear,20,CYAN,true)
-		caption(Vector2(44,y+81),"FUEL %.1f GAL    ENGINE %s" % [vehicle.fuel_gallons,"ON" if vehicle.engine_on else "OFF"],16,GOLD)
-		caption(Vector2(342,y+40),"HAZARDS" if vehicle.hazards else "TURN SIGNALS",18,CREAM)
-		var flash:=fmod(vehicle.blink_time,1.0)<.5
-		shape([Vector2(330,y+27),Vector2(342,y+19),Vector2(342,y+35)],Color("73d998") if flash and (vehicle.hazards or vehicle.indicator==-1) else Color("4b5159"),1)
-		shape([Vector2(665,y+27),Vector2(653,y+19),Vector2(653,y+35)],Color("73d998") if flash and (vehicle.hazards or vehicle.indicator==1) else Color("4b5159"),1)
-		caption(Vector2(342,y+73),"LOAD SECURED" if not cargo or not cargo.spilled else "RECOVER LOST PACKAGES",14,CYAN)
+	compact_art.draw(self)
 
 func energy_fraction() -> float:
 	return clampf(1.0-cargo.damage/100.0,0,1) if cargo else clampf(1.0-vehicle.flip_count/3.0,0,1)
