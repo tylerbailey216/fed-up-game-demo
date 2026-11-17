@@ -135,12 +135,22 @@ func next_stage() -> void:
 	game.van.active=true
 	game.van.notify_driver("STAGE %d / %s / %d PACKAGES" % [stage_index+1,stages[stage_index].name,quota])
 
+func can_enter_truck() -> bool:
+	return on_foot and not complete and not game.van.wrecked and actor.position.distance_to(game.van.position)<=5
+
+func entry_instruction(touch:=false) -> String:
+	if not on_foot:return ""
+	if game.van.wrecked:return "COLLECT %d PACKAGES TO REPAIR TRUCK" % remaining_packages()
+	if can_enter_truck():return "TAP ENTER TO DRIVE TRUCK" if touch else "PRESS X TO ENTER TRUCK"
+	var meters:=roundi(actor.position.distance_to(game.van.position))
+	return "TRUCK %d m / TAP ENTER WHEN BESIDE IT" % meters if touch else "TRUCK %d m / PRESS X WHEN BESIDE IT" % meters
+
 func toggle_foot() -> void:
 	if on_foot:
 		if game.van.wrecked:
 			show_popup("TRUCK DISABLED / %d PACKAGES LEFT" % remaining_packages() if remaining_packages()>0 else "PACKAGES RETURNING / PLEASE WAIT")
 			return
-		if actor.position.distance_to(game.van.position)>5:game.van.notify_driver("Get closer to the truck to enter");return
+		if not can_enter_truck():game.van.notify_driver(entry_instruction(game.dashboard.touch_input()));return
 		on_foot=false;actor.set_enabled(false);game.van.driver_on_foot=false;game.van.parking_brake=false;game.van.engine_on=true;game.van.set_view(false)
 		return
 	if absf(game.van.speed)>1 and not game.van.wrecked:game.van.notify_driver("Stop before leaving the truck");return
@@ -249,7 +259,8 @@ func _physics_process(delta:float) -> void:
 
 func objective() -> String:
 	if complete:return "DEMO COMPLETE / ALL %d DELIVERED" % quota
-	if load_restored:return "LOAD SECURED / ENTER TRUCK" if on_foot else "STOP AT GOLD COLLECTION BAY / GPS"
+	if on_foot and not game.van.wrecked:return entry_instruction()
+	if load_restored:return "STOP AT GOLD COLLECTION BAY / GPS"
 	if not armed:return "TRAINING / Push past orange barrels to enter downtown"
 	if not spilled:return "STAGE %d / %d PACKAGES SECURED" % [stage_index+1,quota]
 	return "WALK OVER BOXES / %d LEFT / %d SECURED" % [remaining_packages(),recovered]

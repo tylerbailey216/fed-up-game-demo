@@ -66,6 +66,20 @@ func run(game:Node,captures:=false) -> Array[String]:
 		check(game.recovery_back.get_global_rect().size.y<=120*game.recovery_panel.scale.y,"Completion cannot inherit an oversized container height")
 		await capture("complete-%dx%d" % [screen.x,screen.y],captures)
 		cargo.complete=false
+	# Entry instructions persist after notices expire and follow the real gate.
+	cargo.on_foot=true;van.wrecked=false;van.notice_time=0;cargo.popup_time=0
+	cargo.actor.position=van.position+Vector3(3.5,0,0)
+	check(cargo.can_enter_truck() and cargo.entry_instruction().contains("PRESS X"),"Nearby available truck shows X entry instruction")
+	check(cargo.entry_instruction(true).contains("TAP ENTER"),"Touch entry instruction names the visible ENTER button")
+	dashboard.touch_preview=false
+	check(dashboard.touch_input() or dashboard.status_message().contains("PRESS X"),"Narrow desktop windows retain keyboard instructions rather than implying a touch device")
+	game.get_window().size=Vector2i(1280,720);dashboard.touch_preview=false;game.responsive_layout();game.update_hud(0,"N",0);await frames(3)
+	await capture("truck-entry-ready",captures)
+	cargo.actor.position=van.position+Vector3(20,0,0)
+	check(not cargo.can_enter_truck() and cargo.entry_instruction().contains("20 m"),"Far truck shows distance without implying immediate entry")
+	van.wrecked=true
+	check(not cargo.can_enter_truck() and cargo.entry_instruction().contains("REPAIR"),"Disabled truck explains the recovery requirement")
+	cargo.on_foot=false
 	van.flip_count=0;van.overturned=false;van.roll_settled=false;van.wrecked=false
 	dashboard.touch_preview=false;game.get_window().size=Vector2i(1280,720);game.responsive_layout()
 	van.reset_vehicle();van.set_physics_process(true);cargo.set_physics_process(true);await frames(5)

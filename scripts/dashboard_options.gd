@@ -37,7 +37,7 @@ func _ready() -> void:
 	gps.add_child(game.text_label("Local loop destinations",18))
 	for target in 4:
 		game.button(game.navigation.DESTINATIONS[target],game.navigation.select_target.bind(target),gps)
-	gps.add_child(game.text_label("M map · N next destination · G recenter · V mirror\nDrag the world to orbit/tilt; wheel zooms.\nF refuels the demo van anywhere while stopped.",14))
+	gps.add_child(game.text_label("M map · N next destination · G recenter · V mirror\nX exits / re-enters the truck when beside it.\nCollect all lost boxes before entering a disabled truck.\nDrag the world to orbit/tilt; wheel zooms.\nF refuels the demo van anywhere while stopped.",14))
 	var vehicle := add_tab("Vehicle")
 	var grid := GridContainer.new()
 	grid.columns = 2

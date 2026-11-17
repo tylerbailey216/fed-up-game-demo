@@ -492,7 +492,7 @@ func build_ui() -> void:
 		credit.uri = "https://www.openstreetmap.org/copyright"
 		choices.add_child(credit)
 	choices.add_child(text_label("Drive the city. Recover every package.\nWatch your truck energy / Save the delivery.",20))
-	choices.add_child(text_label("WASD drive / X walk / C camera\nTouch: landscape recommended / portrait supported",18))
+	choices.add_child(text_label("WASD drive / X exit or re-enter truck / C camera\nTouch: landscape recommended / portrait supported",18))
 	if FileAccess.file_exists("res://data/build_version.json"):
 		var version:Dictionary=JSON.parse_string(FileAccess.get_file_as_string("res://data/build_version.json"))
 		choices.add_child(text_label("BUILD "+str(version.state_id),14))

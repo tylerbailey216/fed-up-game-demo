@@ -72,9 +72,9 @@ func draw(c:Control) -> void:
 	var walking:bool=c.cargo and c.cargo.on_foot
 	if walking:
 		Ink.icon(c,"exit",housing.position+Vector2(36,45),1.3,CYAN)
-		text(c,housing.position+Vector2(65,37),"ON FOOT",24,GOLD)
+		text(c,housing.position+Vector2(65,37),"TRUCK READY" if c.cargo.can_enter_truck() else "ON FOOT",24,GOLD)
 		text(c,housing.position+Vector2(65,58),"%02d / %02d SECURED" % [c.cargo.recovered,c.cargo.quota],17)
-		text(c,housing.position+Vector2(15,housing.size.y-14),"WALK OVER BOXES / AUTO RETURN",12,CYAN)
+		text(c,housing.position+Vector2(15,housing.size.y-14),(("TAP ENTER TO DRIVE" if c.touch_input() else "PRESS X TO DRIVE") if c.cargo.can_enter_truck() else ("BESIDE TRUCK / TAP ENTER" if c.touch_input() else "BESIDE TRUCK / PRESS X")) if not c.vehicle.wrecked else "WALK OVER BOXES / AUTO RETURN",12,CYAN)
 	elif not c.action_prompt_visible:
 		var speed_at:=Vector2(232,h-63) if wide else Vector2(294,y+77)
 		var rpm_at:=Vector2(317,h-65) if wide else Vector2(414,y+75)

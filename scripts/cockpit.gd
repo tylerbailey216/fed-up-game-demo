@@ -132,7 +132,12 @@ func _draw() -> void:
 		if vehicle:
 			caption(Vector2(1034,676),"FUEL %.1f GAL / %d MI EST." % [vehicle.fuel_gallons,roundi(vehicle.fuel_gallons*18)],11,GOLD)
 			draw_status()
-	if show_controls:
+	if cargo and cargo.on_foot:
+		caption(Vector2(278,701),"X ENTER TRUCK WHEN NEAR / WASD WALK / SHIFT RUN / DRAG LOOK / G RECENTER",14,CREAM,true)
+		if cargo.can_enter_truck():
+			preload("res://scripts/dashboard_ink.gd").plate(self,Rect2(1004,606,252,54),false,true)
+			caption(Vector2(1020,640),"[X]  ENTER TRUCK",22,GOLD,true)
+	elif show_controls:
 		caption(Vector2(278,701),"WASD DRIVE  Q/E BLINKERS  H HAZARD  L LIGHTS  TAB OPTIONS",12,CREAM,true)
 	else:
 		caption(Vector2(278,701),"WASD WALK / SHIFT RUN / X ENTER / DRAG LOOK / G RECENTER" if cargo and cargo.on_foot else "TAB OPTIONS / M MAP / C VIEW / DRAG LOOK / G RECENTER / ESC PAUSE",12,CREAM,true)
@@ -174,6 +179,7 @@ func draw_package_guide() -> void:
 	caption(label_at,label,font_size,GOLD)
 
 func status_message() -> String:
+	if cargo and cargo.on_foot and not vehicle.wrecked and not cargo.complete:return cargo.entry_instruction(touch_input()).to_upper()
 	var message:String=cargo.objective() if cargo else ""
 	if vehicle.notice_time>0:message=vehicle.notice
 	if mission_message_active():
@@ -189,6 +195,7 @@ func mission_message_active() -> bool:
 	return cargo and cargo.popup_time>0 and (vehicle.notice_time<=0 or cargo.popup_last_at>=vehicle.notice_last_at)
 
 func message_time() -> float:
+	if cargo and cargo.on_foot and not vehicle.wrecked and not cargo.complete:return 0
 	return cargo.popup_time if mission_message_active() else vehicle.notice_time
 
 func draw_objective_line(at:Vector2,width:float,text_size:int) -> void:
@@ -203,6 +210,9 @@ func draw_objective_line(at:Vector2,width:float,text_size:int) -> void:
 	draw_string(face,at,fitted,HORIZONTAL_ALIGNMENT_LEFT,width,text_size,tone)
 	if time>0:
 		draw_line(at+Vector2(0,5),at+Vector2(width*clampf(time/2.6,0,1),5),Color(tone,.65*tone.a),1,true)
+
+func touch_input() -> bool:
+	return touch_preview or DisplayServer.is_touchscreen_available() or OS.has_feature("mobile") or "--touch" in OS.get_cmdline_user_args()
 
 func compact_layout() -> bool:
 	return touch_preview or size.x/maxf(1,size.y)<1.6 or DisplayServer.is_touchscreen_available()

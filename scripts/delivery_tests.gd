@@ -203,7 +203,9 @@ func check_street_contacts(game:Node) -> void:
 
 func check_finish(game:Node,capture:bool) -> void:
 	var cargo:Node=game.cargo
-	cargo.actor.position=game.van.position+Vector3(3.5,0,0);cargo.toggle_foot();await frames(5)
+	cargo.actor.position=game.van.position+Vector3(3.5,0,0)
+	check(cargo.can_enter_truck() and game.dashboard.status_message().contains("PRESS X"),"Repaired truck advertises the actual desktop entry key")
+	var enter:=InputEventKey.new();enter.keycode=KEY_X;enter.pressed=true;game._unhandled_key_input(enter);await frames(5)
 	check(not cargo.on_foot and game.van.engine_on,"After all returns, player can enter and drive the repaired truck")
 	Input.action_press("accelerate");await frames(45);Input.action_release("accelerate")
 	check(game.van.speed>1,"Repaired truck responds to gas")
