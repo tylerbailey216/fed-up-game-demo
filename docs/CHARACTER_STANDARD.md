@@ -10,6 +10,8 @@ Every new character must look as though the same artist created it for this game
 
 ## Shared visual language
 
+The November 17 user-supplied `FedUp Pedestrian Character Lineup.png` is preserved without pixel changes at `assets/source/style/pedestrian-character-lineup.png`. It is the cast design reference for new citizens: retain each selected character's identity, outfit, colors and proportions while extending the established driver animation conventions. The current two citizen atlases predate this lineup and are not conversions of those designs. Use the supplied lineup for the next cast expansion; do not represent recolored existing citizens as newly authored designs from it.
+
 - Exaggerated, compact cartoon proportions with a strong, readable silhouette.
 - Bold, clean black outlines; match their visual weight to the driver at the same on-screen scale.
 - Flat color areas and consistent cel shading, with the driver's treatment of highlights and shadows.

@@ -9,12 +9,15 @@ var font:Font
 var camera_hold:=0.0
 var camera_recentered:=false
 var reverse_selected:=false
+var layout_size:=Vector2.ZERO
+var drawing_state:Array=[]
 
 func _ready() -> void:
 	mouse_filter=Control.MOUSE_FILTER_IGNORE
 	font=ThemeDB.fallback_font
 
 func layout() -> void:
+	layout_size=size
 	var h:=size.y*720/size.x
 	regions={"gas":Rect2(552,h-218,140,94),"brake":Rect2(552,h-110,140,84),"stick":Rect2(24,h-226,208,208),"hand":Rect2(278,h-116,180,78),"camera":Rect2(24,112,156,52),"map":Rect2(198,112,156,52),"options":Rect2(24,178,156,52),"exit":Rect2(198,178,156,52),"upright":Rect2(278,h-214,180,70)}
 	if h>=850:
@@ -46,7 +49,14 @@ func _process(delta:float) -> void:
 		if camera_hold>=.55 and not camera_recentered:
 			camera_recentered=true;game.cargo.actor.recenter_camera()
 	else:camera_hold=0;camera_recentered=false
-	if active:layout();queue_redraw()
+	if active:
+		var resized:bool=layout_size!=size
+		if resized:layout()
+		var walking:bool=game.cargo and game.cargo.on_foot
+		var view:int=game.cargo.actor.camera_view if walking else -1
+		var current:Array=[stick,reverse_selected,walking,view,game.van.overturned]
+		if resized or current!=drawing_state:
+			drawing_state=current;queue_redraw()
 
 func _input(event:InputEvent) -> void:
 	if not enabled:return

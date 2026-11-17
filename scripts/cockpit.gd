@@ -18,6 +18,7 @@ var show_controls := false
 var expanded_map := false
 var traffic: Node
 var cargo: Node
+var last_redraw_us := 0
 const INK := Color("10121e")
 const PANEL := Color("202332")
 const CREAM := Color("f3ebd8")
@@ -42,7 +43,12 @@ func update_state(kph: float, current_gear: String, meters: float, steer: float,
 	steering = steer
 	phase = angle
 	inside = cockpit
-	queue_redraw()
+	# Keep telemetry current; reuse the recorded drawing between HUD updates.
+	# Vehicle simulation and character animation retain their own cadence.
+	var now := Time.get_ticks_usec()
+	if now-last_redraw_us >= 33333:
+		last_redraw_us=now
+		queue_redraw()
 
 func caption(at: Vector2, value: String, size_px: int, color := CREAM, bold := false) -> void:
 	var face: Font = title_font if bold else font

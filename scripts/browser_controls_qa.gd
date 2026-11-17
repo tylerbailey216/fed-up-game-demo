@@ -20,6 +20,20 @@ func _physics_process(delta:float) -> void:
 	if not command.is_empty():
 		JavaScriptBridge.eval("window.fedupQACommand=''")
 		if command=="reset":reset()
+		elif command=="half_resolution":game.get_viewport().scaling_3d_scale=.5
+		elif command=="short_view":game.get_viewport().get_camera_3d().far=550
+		elif command=="quiet_camera":game.cargo.actor.set_physics_process(false)
+		elif command=="hide_hud":
+			game.hud.hide();game.dashboard.set_process(false);game.touch_controls.set_process(false)
+		elif command=="hide_world":game.highway.hide()
+		elif command=="quiet_citizens":
+			for person in game.city_life.citizens:person.set_physics_process(false)
+		elif command=="quiet_traffic":
+			game.traffic.set_physics_process(false)
+			for car in game.traffic.cars:car.set_physics_process(false);car.freeze=true
+		elif command=="quiet_audio":game.master_volume=0;game.audio_manager.master_volume=0
+		elif command=="hide_citizens":
+			for person in game.city_life.citizens:person.hide();person.set_physics_process(false)
 		elif command=="spill":
 			reset()
 			for i in 3:game.cargo.damage_hit(1)
@@ -40,4 +54,8 @@ func _physics_process(delta:float) -> void:
 		var r:Rect2=game.touch_controls.regions[key]
 		regions[key]=[r.position.x*scale/size.x,r.position.y*scale/size.y,r.size.x*scale/size.x,r.size.y*scale/size.y]
 	var data:Dictionary={"build":JSON.parse_string(FileAccess.get_file_as_string("res://data/build_version.json")).state_id,"speed":game.van.speed,"position":[game.van.position.x,game.van.position.z],"on_foot":game.cargo.on_foot,"collected":game.cargo.recovered,"quota":game.cargo.quota,"restored":game.cargo.load_restored,"hands_empty":not game.cargo.actor.held.visible,"distance_to_truck":game.cargo.actor.position.distance_to(game.van.position),"reverse":game.touch_controls.reverse_selected,"regions":regions,"citizens":game.city_life.citizens.size(),"cars":game.traffic.cars.size()}
+	data["physics_ms"]=Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS)*1000
+	data["process_ms"]=Performance.get_monitor(Performance.TIME_PROCESS)*1000
+	data["draw_calls"]=Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)
+	data["primitives"]=Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME)
 	JavaScriptBridge.eval("window.fedupQA="+JSON.stringify(data))

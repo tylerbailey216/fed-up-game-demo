@@ -8,6 +8,8 @@ This pass uses the supplied Comic Truck Driving Simulator HUD, Driving Simulator
 
 ## Shared style
 
+The November 17 user-supplied `FedUp Vehicle Look Sheet.png` is preserved unchanged at `assets/source/style/vehicle-look-sheet.png`. It establishes the delivery vehicles, compact, sedan, taxi, pickup, SUV, buses, emergency/service vehicles and scooter designs. Use its rounded silhouettes, proportions, trim and palette for subsequent modeled vehicles. The existing procedural traffic fleet is not a completed conversion of this sheet. The companion pedestrian lineup is governed by [CHARACTER_STANDARD.md](CHARACTER_STANDARD.md). Both sheets are source references excluded from the browser runtime export.
+
 - Ink: nearly black violet `#10121e`, thin architectural edges, heavier cockpit silhouettes.
 - Brand: purple `#6a39a0`, orange `#f78c2f`, gold `#ffd044`, warm white `#f3ebd8`.
 - World: slate asphalt, warm concrete, stepped blue-gray shadows, olive foliage with bright leaf planes, muted brick/cream/glass facades, saturated blue sky and cream clouds.
