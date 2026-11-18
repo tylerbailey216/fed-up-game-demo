@@ -5,12 +5,15 @@ var clock:=0.0
 var cooldown:=0.0
 var previous:PackedFloat32Array=PackedFloat32Array()
 var previous_brush:=0.0
+var wheel_contacts:Array[Dictionary]=[]
+var sample_serial:=0
 
 func update(delta:float) -> void:
 	van.stunts.scan_curb(delta)
 	cooldown=maxf(0,cooldown-delta);clock+=delta
 	if clock<.05:return
 	clock=0
+	wheel_contacts.clear();sample_serial+=1
 	if van.overturned or van.wrecked or van.stunts.active:
 		van.ground_tilt=Vector2.ZERO;previous.clear();return
 	var levels:=PackedFloat32Array();var sidewalk:=0
@@ -24,6 +27,9 @@ func update(delta:float) -> void:
 			if not hit.is_empty() and hit.collider is StaticBody3D and absf(hit.position.y-van.position.y)<.7:
 				height=hit.position.y
 				if hit.collider.get_meta("surface_kind","")=="sidewalk":sidewalk+=1
+			if not hit.is_empty() and hit.collider is StaticBody3D and hit.normal.y>.65 and absf(hit.position.y-van.position.y)<.38:
+				wheel_contacts.append({"position":hit.position,"normal":hit.normal,"kind":preload("res://scripts/terrain_surface.gd").kind(van,hit)})
+			else:wheel_contacts.append({})
 			levels.append(height)
 	var front:float=(levels[0]+levels[1])*.5;var rear:float=(levels[2]+levels[3])*.5
 	var left:float=(levels[0]+levels[2])*.5;var right:float=(levels[1]+levels[3])*.5

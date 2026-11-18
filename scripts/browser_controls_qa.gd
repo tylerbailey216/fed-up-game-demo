@@ -20,6 +20,12 @@ func _physics_process(delta:float) -> void:
 	if not command.is_empty():
 		JavaScriptBridge.eval("window.fedupQACommand=''")
 		if command=="reset":reset()
+		elif command=="terrain_grass" or command=="terrain_road":
+			game.touch_controls.release_inputs();game.van.new_truck()
+			if command=="terrain_grass":game.van.position=Vector3(0,.15,-450);game.van.rotation.y=0
+			game.van.set_view(false);game.terrain_particles.clear()
+		elif command=="terrain_fx_off":game.terrain_particles.hide();game.terrain_particles.set_physics_process(false)
+		elif command=="terrain_fx_on":game.terrain_particles.show();game.terrain_particles.set_physics_process(true)
 		elif command=="curb_prepare":
 			game.touch_controls.release_inputs();game.van.new_truck()
 			var start:=Vector3(250,0,-75);var direction:Vector3=(game.highway.entry-start).normalized()
@@ -85,6 +91,9 @@ func _physics_process(delta:float) -> void:
 	var data:Dictionary={"build":JSON.parse_string(FileAccess.get_file_as_string("res://data/build_version.json")).state_id,"speed":game.van.speed,"position":[game.van.position.x,game.van.position.z],"on_foot":game.cargo.on_foot,"collected":game.cargo.recovered,"quota":game.cargo.quota,"restored":game.cargo.load_restored,"hands_empty":not game.cargo.actor.held.visible,"distance_to_truck":game.cargo.actor.position.distance_to(game.van.position),"reverse":game.touch_controls.reverse_selected,"regions":regions,"citizens":game.city_life.citizens.size(),"cars":game.traffic.cars.size()}
 	data["physics_ms"]=Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS)*1000
 	data["energy"]=game.dashboard.energy_fraction()
+	data["terrain_emitted"]=game.terrain_particles.emitted;data["terrain_live"]=game.terrain_particles.live_count()
+	data["terrain_chips"]=game.terrain_particles.chips_emitted;data["terrain_dust"]=game.terrain_particles.dust_emitted
+	data["terrain_wheels"]=game.terrain_particles.last_wheels;data["terrain_limit"]=game.terrain_particles.CAPACITY+game.terrain_particles.DUST_CAPACITY
 	data["jump_active"]=game.van.stunts.active;data["jump_launches"]=game.van.stunts.launch_serial
 	data["jump_height"]=game.van.position.y;data["jump_airtime"]=game.van.stunts.peak_air_time
 	data["jump_landings"]=game.van.stunts.landing_serial;data["jump_closing"]=game.van.stunts.last_landing_speed

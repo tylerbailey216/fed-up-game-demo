@@ -32,6 +32,7 @@ var upright_button: Button
 var new_truck_button: Button
 var traffic: Node3D
 var tire_marks: Node3D
+var terrain_particles:Node3D
 var outerbelt := false
 var map_button: Button
 var switching_location := false
@@ -54,6 +55,7 @@ func _ready() -> void:
 	outerbelt = bool(get_tree().get_meta("outerbelt")) if get_tree().has_meta("outerbelt") else ("--outerbelt" in args or "--outerbelt-test" in args or "--outerbelt-capture" in args)
 	highway = preload("res://scripts/independence.gd").new() if outerbelt else (Highway.new() if legacy_test else preload("res://scripts/downtown.gd").new())
 	add_child(highway)
+	if outerbelt:preload("res://scripts/terrain_surface.gd").motorway_index(highway)
 	var environment := WorldEnvironment.new()
 	var settings := Environment.new()
 	settings.background_mode = Environment.BG_SKY
@@ -83,6 +85,8 @@ func _ready() -> void:
 	tire_marks = preload("res://scripts/tire_marks.gd").new()
 	tire_marks.van = van
 	add_child(tire_marks)
+	terrain_particles=preload("res://scripts/terrain_particles.gd").new()
+	terrain_particles.van=van;add_child(terrain_particles)
 	var shadow := MeshInstance3D.new()
 	var shadow_mesh := PlaneMesh.new()
 	shadow_mesh.size = Vector2(3.1,6.0)
@@ -131,6 +135,11 @@ func _ready() -> void:
 		var jump_tests:=preload("res://scripts/stunt_tests.gd").new();add_child(jump_tests)
 		var failed:Array[String]=await jump_tests.run(self,"--stunt-capture" in args)
 		print("STUNT TEST PASS" if failed.is_empty() else "STUNT TEST FAIL: "+str(failed))
+		await quit_demo(0 if failed.is_empty() else 1);return
+	if "--terrain-test" in args:
+		var terrain_tests:=preload("res://scripts/terrain_tests.gd").new();add_child(terrain_tests)
+		var failed:Array[String]=await terrain_tests.run(self,"--terrain-capture" in args)
+		print("TERRAIN TEST PASS" if failed.is_empty() else "TERRAIN TEST FAIL: "+str(failed))
 		await quit_demo(0 if failed.is_empty() else 1);return
 	if "--delivery-test" in args or "--delivery-capture" in args:
 		var tests:=preload("res://scripts/delivery_tests.gd").new()

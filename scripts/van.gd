@@ -494,6 +494,7 @@ func reset_vehicle() -> void:
 	if stunts.active:dispose_roll_body()
 	stunts.cancel()
 	surface_sampler.previous.clear()
+	surface_sampler.wheel_contacts.clear();surface_sampler.sample_serial+=1
 	# Position reset must not erase rollover damage or bypass the recovery wait.
 	if overturned:
 		recover_upright()

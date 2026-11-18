@@ -27,6 +27,8 @@ jobs:
           Godot_v4.5.1-stable_linux.x86_64 --headless --editor --import --quit
           Godot_v4.5.1-stable_linux.x86_64 --headless --fixed-fps 60 -- --delivery-test
           Godot_v4.5.1-stable_linux.x86_64 --headless --fixed-fps 60 -- --stunt-test
+          Godot_v4.5.1-stable_linux.x86_64 --headless --fixed-fps 60 -- --terrain-test
+          Godot_v4.5.1-stable_linux.x86_64 --headless --fixed-fps 60 -- --outerbelt --terrain-test
         timeout-minutes: 5
       - name: Export browser demo
         run: |

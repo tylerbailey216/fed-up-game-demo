@@ -35,7 +35,10 @@ func on_road(at:Vector3,exclude:="",margin:=0.0) -> bool:
 func triangle(a:Vector3,b:Vector3,c:Vector3,color:Color) -> void:
 	if (b-a).cross(c-a).y>0:var swap:=b;b=c;c=swap
 	var center:Vector3=(a+b+c)/3
-	var cell:=Vector2i(floori(center.x/96),floori(center.z/96));var origin:=Vector3(cell.x*96,0,cell.y*96)
+	# Green island tops need their own collider/material identity; their beige
+	# bevels remain curb, and adjacent concrete must never emit grass fragments.
+	var cell:=Vector3i(floori(center.x/96),floori(center.z/96),1 if color==Color("829b60") else 0)
+	var origin:=Vector3(cell.x*96,0,cell.y*96)
 	if not surfaces.has(cell):
 		var tool:=SurfaceTool.new();tool.begin(Mesh.PRIMITIVE_TRIANGLES);surfaces[cell]=tool;faces[cell]=PackedVector3Array()
 	for p in [a,b,c]:surfaces[cell].set_color(color);surfaces[cell].add_vertex(p-origin)
@@ -106,6 +109,7 @@ func finish() -> void:
 		var tool:SurfaceTool=surfaces[cell];tool.generate_normals()
 		var visual:=MeshInstance3D.new();visual.mesh=tool.commit();visual.material_override=material;visual.position=origin
 		visual.visibility_range_end=330;visual.visibility_range_end_margin=24;add_child(visual);meshes.append(visual)
-		var body:=StaticBody3D.new();body.position=origin;body.set_meta("surface_kind","sidewalk");body.add_to_group("raised_street_surface")
+		var body:=StaticBody3D.new();body.position=origin;body.set_meta("surface_kind","grass" if cell.z==1 else "sidewalk");body.add_to_group("raised_street_surface")
+		if cell.z==1:body.set_meta("terrain_kind","grass")
 		var shape:=CollisionShape3D.new();var mesh:=ConcavePolygonShape3D.new();mesh.backface_collision=true;mesh.set_faces(faces[cell]);shape.shape=mesh;body.add_child(shape);add_child(body)
 	surfaces.clear();faces.clear()

@@ -62,6 +62,8 @@ def save(message):
     initial=source_id()
     run([GODOT,'--headless','--path','.', '--fixed-fps','60','--','--delivery-test'],env)
     run([GODOT,'--headless','--path','.', '--fixed-fps','60','--','--stunt-test'],env)
+    run([GODOT,'--headless','--path','.', '--fixed-fps','60','--','--terrain-test'],env)
+    run([GODOT,'--headless','--path','.', '--fixed-fps','60','--','--outerbelt','--terrain-test'],env)
     run([GODOT,'--headless','--path','.', '--fixed-fps','60','--','--outerbelt','--delivery-test'],env)
     run([GODOT,'--headless','--path','.', '--fixed-fps','60','--','--location-switch-test'],env)
     run([GODOT,'--headless','--path','.', '--script','tools/export_licenses.gd'],env)
