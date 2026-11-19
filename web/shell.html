@@ -31,7 +31,7 @@ $GODOT_HEAD_INCLUDE
 <canvas id="canvas" tabindex="0">This game needs a browser with WebGL 2 and WebAssembly.</canvas>
 <main id="loading" aria-label="FedUp Driver is loading">
  <div class="layout">
-  <header class="identity"><p class="eyebrow">Cleveland delivery adventure</p><h1 aria-label="FedUp Driver"><span class="fedup">Fed<span class="up">Up</span></span><span class="driver">DRIVER</span></h1><div class="route"><svg viewBox="0 0 24 32" aria-hidden="true"><path d="M12 0C5 0 1 5 1 11c0 8 11 21 11 21s11-13 11-21C23 5 19 0 12 0Zm0 6a5 5 0 1 1 0 10 5 5 0 0 1 0-10Z"/></svg><span>Public Square / Tower City</span></div><p class="tagline">Your truck. Your city.<br>Every package counts.</p></header>
+  <header class="identity"><p class="eyebrow">Cleveland delivery adventure</p><h1 aria-label="FedUp Driver"><span class="fedup">Fed<span class="up">Up</span></span><span class="driver">DRIVER</span></h1><div class="route"><svg viewBox="0 0 24 32" aria-hidden="true"><path d="M12 0C5 0 1 5 1 11c0 8 11 21 11 21s11-13 11-21C23 5 19 0 12 0Zm0 6a5 5 0 1 1 0 10 5 5 0 0 1 0-10Z"/></svg><span>Delivery Mayhem / Cleveland</span></div><p class="tagline">One block. One delivery.<br>Every package counts.</p></header>
   <figure class="illustration"><img src="presentation/cleveland-key-art.png" width="1536" height="1024" alt="The FedUp delivery worker holding a package beside the FedUp truck in Cleveland Public Square" fetchpriority="high"><figcaption class="stamp">SIGNED. SEALED. ALMOST DELIVERED.</figcaption></figure>
  </div>
  <section class="loading-area" aria-label="Download progress"><p class="status" id="status" aria-live="polite">Packing your route…</p><span class="percent" id="percent" aria-hidden="true">—</span><div class="track indeterminate" id="track" role="progressbar" aria-label="Loading game" aria-valuemin="0" aria-valuemax="100"><div class="fill" id="fill"></div></div><p class="footnote" id="footnote">First delivery? The city downloads once. Keep this tab open while we get your truck ready.</p><span class="edition">BROWSER DEMO / CLEVELAND, OH</span><p id="error" role="alert"></p><button id="retry" type="button">TRY AGAIN</button><noscript>Please enable JavaScript to play.</noscript></section>
@@ -40,6 +40,7 @@ $GODOT_HEAD_INCLUDE
 <script>
 const config=$GODOT_CONFIG;
 if(new URLSearchParams(location.search).get('qa')==='controls')config.args=['--','--browser-controls-qa'];
+if(new URLSearchParams(location.search).get('qa')==='arcade')config.args=['--','--browser-controls-qa','--arcade-qa'];
 const engine=new Engine(config);
 const missing=Engine.getMissingFeatures({threads:$GODOT_THREADS_ENABLED});
 const status=document.querySelector('#status'),track=document.querySelector('#track'),fill=document.querySelector('#fill'),percent=document.querySelector('#percent'),error=document.querySelector('#error');

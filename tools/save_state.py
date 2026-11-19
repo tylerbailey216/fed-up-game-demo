@@ -60,6 +60,8 @@ def save(message):
     run(['python','tools/build_traffic_shaders.py'])
     run([GODOT,'--headless','--path','.', '--editor','--import','--quit'],env)
     initial=source_id()
+    run([GODOT,'--headless','--path','.', '--fixed-fps','60','--','--arcade-test'],env)
+    run([GODOT,'--headless','--path','.', '--fixed-fps','60','--','--arcade-switch-test'],env)
     run([GODOT,'--headless','--path','.', '--fixed-fps','60','--','--delivery-test'],env)
     run([GODOT,'--headless','--path','.', '--fixed-fps','60','--','--stunt-test'],env)
     run([GODOT,'--headless','--path','.', '--fixed-fps','60','--','--terrain-test'],env)

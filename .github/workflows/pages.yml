@@ -25,6 +25,7 @@ jobs:
       - name: Import and check gameplay
         run: |
           Godot_v4.5.1-stable_linux.x86_64 --headless --editor --import --quit
+          Godot_v4.5.1-stable_linux.x86_64 --headless --fixed-fps 60 -- --arcade-test
           Godot_v4.5.1-stable_linux.x86_64 --headless --fixed-fps 60 -- --delivery-test
           Godot_v4.5.1-stable_linux.x86_64 --headless --fixed-fps 60 -- --stunt-test
           Godot_v4.5.1-stable_linux.x86_64 --headless --fixed-fps 60 -- --terrain-test

@@ -25,3 +25,4 @@ docs/independence-performance*.json
 docs/*RENDER_SAMPLE.txt
 docs/save-state-status.json
 docs/presentation-profile*.json
+/tools/arcade-*.png*

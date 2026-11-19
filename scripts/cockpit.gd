@@ -222,12 +222,16 @@ func compact_map_rect() -> Rect2:
 
 func location_name() -> String:
 	if vehicle.location_world:
+		if vehicle.location_world.get("is_arcade"):return "CLEVELAND / DELIVERY MAYHEM"
 		return "CLEVELAND / PUBLIC SQUARE" if vehicle.location_world.get("is_downtown") else "INDEPENDENCE, OH"
 	return "TRAINING LOOP"
 
 func draw_packages(rect:Rect2) -> void:
 	if not cargo or not vehicle.location_world:return
 	if vehicle.location_world.has_method("map_point"):
+		if cargo.arcade_run and not cargo.arcade_run.route_finished():
+			var next:Vector2=vehicle.location_world.map_point(cargo.arcade_run.target(),rect)
+			draw_circle(next,6,Color("c995ff"));draw_circle(next,3,INK)
 		for item in cargo.packages:
 			if item.state=="loose" and is_instance_valid(item.body):draw_circle(vehicle.location_world.map_point(item.body.position,rect),3.5,GOLD)
 		var stop:Vector2=vehicle.location_world.map_point(cargo.checkpoint_position,rect)
@@ -278,7 +282,7 @@ func draw_route() -> void:
 		vehicle.location_world.draw_map(self,rect,cargo.player_position() if cargo else vehicle.position)
 		draw_packages(rect)
 		caption(rect.position+Vector2(12,20),location_name(),11,GOLD,true)
-		caption(rect.position+Vector2(12,rect.size.y-10),"© OpenStreetMap contributors",10,CREAM)
+		caption(rect.position+Vector2(12,rect.size.y-10),"PURPLE: ROUTE / BLUE: STOP" if cargo and cargo.arcade_run else "© OpenStreetMap contributors",10,CREAM)
 		return
 	if traffic and traffic.in_city(vehicle.position):
 		caption(rect.position+Vector2(12,22),"LIVE CITY / FREE ROAM",12,GOLD,true)

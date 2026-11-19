@@ -34,7 +34,9 @@ var traffic: Node3D
 var tire_marks: Node3D
 var terrain_particles:Node3D
 var outerbelt := false
+var arcade:=false
 var map_button: Button
+var arcade_button:Button
 var switching_location := false
 var cargo: Node3D
 var touch_controls: Node
@@ -53,7 +55,13 @@ func _ready() -> void:
 	for flag in ["--driving-test","--crash-test","--traffic-test","--traffic-capture","--offroad-test","--offroad-capture","--handling-test","--handling-capture","--smoke-test"]:
 		if flag in args: legacy_test = true
 	outerbelt = bool(get_tree().get_meta("outerbelt")) if get_tree().has_meta("outerbelt") else ("--outerbelt" in args or "--outerbelt-test" in args or "--outerbelt-capture" in args)
-	highway = preload("res://scripts/independence.gd").new() if outerbelt else (Highway.new() if legacy_test else preload("res://scripts/downtown.gd").new())
+	var validation_run:=false
+	for flag in args:
+		if flag.ends_with("-test") or flag.ends_with("-capture") or flag in ["--capture","--presentation-check","--browser-controls-qa"]:validation_run=true
+	var location:String=str(get_tree().get_meta("location","motorway" if outerbelt else ("city" if validation_run or legacy_test or "--city" in args else "arcade")))
+	if not get_tree().has_meta("location") and ("--arcade-test" in args or "--arcade-capture" in args or "--arcade-qa" in args or "--arcade-switch-test" in args):location="arcade"
+	outerbelt=location=="motorway";arcade=location=="arcade" and not legacy_test
+	highway = preload("res://scripts/arcade_world.gd").new() if arcade else (preload("res://scripts/independence.gd").new() if outerbelt else (Highway.new() if legacy_test else preload("res://scripts/downtown.gd").new()))
 	add_child(highway)
 	if outerbelt:preload("res://scripts/terrain_surface.gd").motorway_index(highway)
 	var environment := WorldEnvironment.new()
@@ -98,13 +106,13 @@ func _ready() -> void:
 	van.add_child(shadow)
 	van.contact_shadow=shadow
 	van.reset_vehicle()
-	traffic = preload("res://scripts/downtown_traffic.gd").new() if not outerbelt and not legacy_test else preload("res://scripts/traffic_district.gd").new()
+	traffic = preload("res://scripts/arcade_traffic.gd").new() if arcade else (preload("res://scripts/downtown_traffic.gd").new() if not outerbelt and not legacy_test else preload("res://scripts/traffic_district.gd").new())
 	traffic.game = self
 	traffic.highway = highway
 	traffic.disabled_world = outerbelt
 	add_child(traffic)
 	if not outerbelt and not legacy_test:
-		city_life=preload("res://scripts/city_life.gd").new();city_life.game=self;add_child(city_life)
+		city_life=preload("res://scripts/arcade_life.gd").new() if arcade else preload("res://scripts/city_life.gd").new();city_life.game=self;add_child(city_life)
 	van.telemetry.connect(update_hud)
 	navigation = preload("res://scripts/navigation.gd").new()
 	navigation.location_world = null if legacy_test else highway
@@ -125,7 +133,7 @@ func _ready() -> void:
 	audio_manager.process_mode = Node.PROCESS_MODE_PAUSABLE
 	add_child(audio_manager)
 	if "--browser-controls-qa" in args and OS.has_feature("web"):
-		var fixture:=preload("res://scripts/browser_controls_qa.gd").new();fixture.game=self;add_child(fixture)
+		var fixture:Node=preload("res://scripts/arcade_browser_qa.gd").new() if arcade else preload("res://scripts/browser_controls_qa.gd").new();fixture.game=self;add_child(fixture)
 	if "--presentation-check" in args:
 		var review:=preload("res://scripts/presentation_checks.gd").new()
 		add_child(review)
@@ -136,6 +144,9 @@ func _ready() -> void:
 		var failed:Array[String]=await jump_tests.run(self,"--stunt-capture" in args)
 		print("STUNT TEST PASS" if failed.is_empty() else "STUNT TEST FAIL: "+str(failed))
 		await quit_demo(0 if failed.is_empty() else 1);return
+	if "--arcade-test" in args or "--arcade-capture" in args:
+		var tests:=preload("res://scripts/arcade_tests.gd").new();add_child(tests)
+		await tests.run(self,"--arcade-capture" in args);return
 	if "--terrain-test" in args:
 		var terrain_tests:=preload("res://scripts/terrain_tests.gd").new();add_child(terrain_tests)
 		var failed:Array[String]=await terrain_tests.run(self,"--terrain-capture" in args)
@@ -150,6 +161,19 @@ func _ready() -> void:
 	if bool(get_tree().get_meta("start_selected_location",false)):
 		get_tree().remove_meta("start_selected_location")
 		start_drive()
+	if "--arcade-switch-test" in args:
+		var step:=int(get_tree().get_meta("arcade_switch_step",0))
+		var expected:String=["arcade","city","motorway","arcade"][step]
+		var actual:String="arcade" if arcade else ("motorway" if outerbelt else "city")
+		if actual!=expected or (step>0 and (not driving or menu.visible)):
+			push_error("ARCADE SWITCH TEST FAIL: "+actual+" expected "+expected);await quit_demo(1);return
+		if step<3:
+			get_tree().set_meta("arcade_switch_step",step+1)
+			if step<2:map_button.pressed.emit()
+			else:arcade_button.pressed.emit()
+			return
+		print("ARCADE SWITCH TEST PASS: arcade -> city -> motorway -> arcade through menu buttons")
+		await quit_demo();return
 	if "--location-switch-test" in args:
 		var stage := int(get_tree().get_meta("switch_test_stage",0))
 		var expected := (stage%2==0) if "--outerbelt" in args else (stage%2==1)
@@ -469,6 +493,7 @@ func build_ui() -> void:
 	hud.move_child(dashboard,0)
 	menu_art = preload("res://scripts/menu_art.gd").new()
 	menu_art.outerbelt = outerbelt
+	menu_art.arcade=arcade
 	layer.add_child(menu_art)
 	menu_art.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	menu = PanelContainer.new()
@@ -493,20 +518,24 @@ func build_ui() -> void:
 	menu_title = text_label("LET'S DELIVER.",40)
 	menu_title.add_theme_font_override("font",preload("res://assets/fonts/Bangers-Regular.ttf"))
 	choices.add_child(menu_title)
-	choices.add_child(text_label("INDEPENDENCE / I-480 + I-77\nOHIO MOTORWAY" if outerbelt else "PUBLIC SQUARE + TOWER CITY\nCLEVELAND, OHIO",24))
-	start_button = button("Drive Independence, Ohio / I-480" if outerbelt else "Train / Public Square, Cleveland",start_drive,choices)
+	choices.add_child(text_label("DELIVERY MAYHEM\nONE BLOCK / EVERY PACKAGE COUNTS" if arcade else ("INDEPENDENCE / I-480 + I-77\nOHIO MOTORWAY" if outerbelt else "PUBLIC SQUARE + TOWER CITY\nCLEVELAND, OHIO"),24))
+	start_button = button("Start Delivery Mayhem" if arcade else ("Drive Independence, Ohio / I-480" if outerbelt else "Train / Public Square, Cleveland"),start_drive,choices)
 	var primary:=StyleBoxFlat.new();primary.bg_color=Color("ffcb47");primary.border_color=Color("130d1b");primary.set_border_width_all(3);primary.set_corner_radius_all(3);primary.shadow_color=Color("130d1b");primary.shadow_size=3
 	for state in ["normal","hover","pressed","focus"]:start_button.add_theme_stylebox_override(state,primary)
 	start_button.add_theme_color_override("font_color",Color("23152f"));start_button.add_theme_color_override("font_hover_color",Color("23152f"));start_button.add_theme_color_override("font_focus_color",Color("23152f"))
 	map_button = button("Drive Public Square, Cleveland" if outerbelt else "Drive Independence, Ohio / I-480",func(): switch_location(true),choices)
+	if arcade:
+		map_button.text="Explore Public Square / Tower City"
+		button("Explore Independence / I-480",func():switch_location(true,"motorway"),choices)
+	else:arcade_button=button("Delivery Mayhem / short arcade route",func():switch_location(true,"arcade"),choices)
 	button("Dashboard / Audio [Tab]",toggle_options,choices)
 	button("Fullscreen / windowed",toggle_fullscreen,choices)
-	if not legacy_test:
+	if not legacy_test and not arcade:
 		var credit := LinkButton.new()
 		credit.text = "Map data: © OpenStreetMap contributors / ODbL"
 		credit.uri = "https://www.openstreetmap.org/copyright"
 		choices.add_child(credit)
-	choices.add_child(text_label("Drive the city. Recover every package.\nWatch your truck energy / Save the delivery.",20))
+	choices.add_child(text_label("Follow purple route markers. Stop at the gold bay.\nEmpty energy? Walk over every lost box to repair." if arcade else "Drive the city. Recover every package.\nWatch your truck energy / Save the delivery.",20))
 	choices.add_child(text_label("WASD drive / X exit or re-enter truck / C camera\nTouch: landscape recommended / portrait supported",18))
 	if FileAccess.file_exists("res://data/build_version.json"):
 		var version:Dictionary=JSON.parse_string(FileAccess.get_file_as_string("res://data/build_version.json"))
@@ -571,6 +600,8 @@ func build_ui() -> void:
 	touch_controls.game=self
 	hud.add_child(touch_controls)
 	touch_controls.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	if arcade:
+		var report:=preload("res://scripts/delivery_report.gd").new();report.name="DeliveryReport";report.game=self;hud.add_child(report)
 	get_viewport().disable_3d=true
 
 func responsive_layout() -> void:
@@ -711,20 +742,22 @@ func toggle_fullscreen() -> void:
 	var full := DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN
 	DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED if full else DisplayServer.WINDOW_MODE_FULLSCREEN)
 
-func switch_location(start_on_load := false) -> void:
+func switch_location(start_on_load := false,destination:="") -> void:
 	if switching_location:
 		return
 	switching_location = true
 	start_button.disabled = true
 	map_button.disabled = true
-	menu_title.text = "LOADING CLEVELAND..." if outerbelt else "LOADING OHIO..."
+	var selected:String=destination if not destination.is_empty() else ("city" if outerbelt or arcade else "motorway")
+	menu_title.text = "LOADING YOUR ROUTE..."
 	get_tree().paused = false
 	van.active = false
 	van.dispose_roll_body()
 	save_options()
 	audio_manager.shutdown()
 	traffic.shutdown()
-	get_tree().set_meta("outerbelt",not outerbelt)
+	get_tree().set_meta("outerbelt",selected=="motorway")
+	get_tree().set_meta("location",selected)
 	get_tree().set_meta("start_selected_location",start_on_load)
 	await get_tree().process_frame
 	get_tree().reload_current_scene()
@@ -741,7 +774,9 @@ func start_drive() -> void:
 	van.camera_manual = false
 	menu.hide()
 	menu_art.hide()
-	van.set_view(true if entering else van.cockpit)
+	if arcade and entering:
+		van.camera_high=true;van.camera_pitch=.12;van.camera_zoom=1.05;van.set_view(false)
+	else:van.set_view(true if entering else van.cockpit)
 	if cargo:
 		cargo.pause_packages(false)
 		if cargo.on_foot: cargo.actor.camera.make_current()
@@ -855,7 +890,7 @@ func update_hud(speed: float, gear: String, distance: float) -> void:
 
 func update_recovery_prompt() -> void:
 	if not recovery_panel:return
-	var complete:bool=cargo and cargo.complete
+	var complete:bool=cargo and cargo.complete and not arcade
 	var recovering:bool=van.overturned and not (cargo and cargo.on_foot)
 	var disabled:bool=not cargo and van.wrecked
 	recovery_panel.visible=complete or recovering or disabled

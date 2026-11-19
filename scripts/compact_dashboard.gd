@@ -41,7 +41,7 @@ func draw(c:Control) -> void:
 	var header:=Rect2(14,10,692,76) if not wide else Rect2(12,8,394,50)
 	Ink.plate(c,header,false,true)
 	c.draw_string(LOGO,Vector2(28,43 if not wide else 37),"FedUp",HORIZONTAL_ALIGNMENT_LEFT,-1,34 if not wide else 28,CREAM)
-	text(c,Vector2(140,34) if not wide else Vector2(120,26),"CLEVELAND / PUBLIC SQUARE" if c.vehicle.location_world and c.vehicle.location_world.get("is_downtown") else "I-480 / I-77 / OHIO",17 if not wide else 11,GOLD)
+	text(c,Vector2(140,34) if not wide else Vector2(120,26),c.location_name(),17 if not wide else 11,GOLD)
 	if wide:
 		c.draw_energy(Rect2(120,33,270,9));c.draw_objective_line(Vector2(18,73),530,13)
 	else:
@@ -53,8 +53,8 @@ func draw(c:Control) -> void:
 		c.draw_rect(r.grow(-6),Color("1b3038"))
 		c.vehicle.location_world.draw_map(c,r.grow(-8),c.cargo.player_position() if c.cargo else c.vehicle.position)
 		c.draw_packages(r.grow(-8))
-		text(c,r.position+Vector2(10,17),"GPS / GOLD: BOXES",11,GOLD)
-		text(c,r.end-Vector2(r.size.x-8,7),"© OpenStreetMap",9,CREAM)
+		text(c,r.position+Vector2(10,17),"GPS / PURPLE: ROUTE" if c.cargo and c.cargo.arcade_run and not c.cargo.spilled else "GPS / GOLD: BOXES",11,GOLD)
+		text(c,r.end-Vector2(r.size.x-8,7),"PURPLE: ROUTE / BLUE: STOP" if c.cargo and c.cargo.arcade_run else "© OpenStreetMap",9,CREAM)
 	var deck:float=Layout.deck_height(h);var y:=h-deck
 	# Reuse the actual cab's authored hatching, seams and vent trim at native aspect.
 	c.shape([Vector2(0,y+20),Vector2(190,y),Vector2(530,y),Vector2(720,y+20),Vector2(720,h),Vector2(0,h)],Color("3a2c45"),4)

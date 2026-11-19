@@ -27,6 +27,7 @@ var popup_time:=0.0
 var popup_last_at:=-10000
 var safety:=preload("res://scripts/package_safety.gd").new()
 var pickup_previous:=Vector3.ZERO
+var arcade_run:Node3D
 
 func pause_packages(value:bool) -> void:
 	for item in packages:
@@ -41,10 +42,14 @@ func _ready() -> void:
 	seen_collision=game.van.crash_serial
 	safety.cargo=self
 	build_checkpoint()
+	if game.arcade:
+		arcade_run=preload("res://scripts/arcade_run.gd").new();arcade_run.cargo=self;add_child(arcade_run)
 
 func build_checkpoint() -> void:
 	checkpoint=Node3D.new();add_child(checkpoint)
-	if game.outerbelt:
+	if game.arcade:
+		checkpoint_position=game.highway.delivery_position;checkpoint.rotation.y=game.highway.delivery_heading
+	elif game.outerbelt:
 		var road:Dictionary=game.highway.nearest_road(game.highway.spawn_position-game.van.global_basis.z*140)
 		checkpoint_position=road.point
 		checkpoint.rotation.y=game.highway.spawn_heading
@@ -73,6 +78,7 @@ func show_popup(message:String) -> void:
 	popup=message;popup_time=2.6;popup_last_at=now
 
 func remaining_packages() -> int:
+	if arcade_run and not spilled:return 0 # The untouched manifest is already aboard.
 	var count:=0
 	for item in packages:
 		if item.state!="loose":count+=1
@@ -114,7 +120,9 @@ func impact_damage(level:float) -> float:
 func damage_hit(level:float) -> void:
 	if spilled or complete:return
 	collision_count+=1 # Diagnostic only; never gates disable or package release.
+	var before:=damage
 	damage=minf(100,damage+impact_damage(level))
+	if arcade_run:arcade_run.energy_used+=damage-before
 	if damage>=100:
 		game.van.wrecked=true;game.van.engine_on=false;game.van.cruise=false
 		spill()
@@ -133,7 +141,9 @@ func next_stage() -> void:
 	safety.ready=false;safety.clock=0;safety.rescued=0;safety.audit_clock=0;safety.index=0
 	game.van.cargo_open=false;game.van.new_truck();seen_collision=game.van.crash_serial
 	game.van.active=true
-	game.van.notify_driver("STAGE %d / %s / %d PACKAGES" % [stage_index+1,stages[stage_index].name,quota])
+	if arcade_run:
+		arcade_run.reset();game.van.notify_driver("NEW DELIVERY / FOLLOW PURPLE MARKERS / STOP AT GOLD BAY")
+	else:game.van.notify_driver("STAGE %d / %s / %d PACKAGES" % [stage_index+1,stages[stage_index].name,quota])
 
 func can_enter_truck() -> bool:
 	return on_foot and not complete and not game.van.wrecked and actor.position.distance_to(game.van.position)<=5
@@ -222,12 +232,13 @@ func update_checkpoint(delta:float) -> void:
 	if inside and not checkpoint_inside and not complete:
 		remaining_notice=remaining_packages()
 		if remaining_notice>0:show_popup("COLLECTION INCOMPLETE\n%d MORE PACKAGES TO COLLECT" % remaining_notice)
-		elif not load_restored:show_popup("PACKAGES RETURNING / WAIT FOR THE LOAD")
+		elif arcade_run and not arcade_run.route_finished():show_popup("FOLLOW THE PURPLE ROUTE / %d MARKERS LEFT" % (game.highway.route_points.size()-arcade_run.route_index))
+		elif not delivery_ready():show_popup("PACKAGES RETURNING / WAIT FOR THE LOAD")
 		else:show_popup("COLLECTION POINT / STOP THE TRUCK")
 	if not inside and checkpoint_inside and popup.begins_with("COLLECTION"):popup_time=0
 	checkpoint_inside=inside
 	if complete:return
-	if not inside or on_foot or not load_restored or absf(game.van.speed)>.35:
+	if not inside or on_foot or not delivery_ready() or absf(game.van.speed)>.35 or game.van.overturned or game.van.stunts.active:
 		checkpoint_hold=0;return
 	checkpoint_hold+=delta
 	if checkpoint_hold>=1.2:
@@ -235,6 +246,10 @@ func update_checkpoint(delta:float) -> void:
 		game.van.delivery_complete=true
 		game.van.speed=0;game.van.planar_velocity=Vector3.ZERO;game.van.velocity=Vector3.ZERO
 		show_popup("DEMO COMPLETE!\nALL %d PACKAGES DELIVERED" % quota)
+
+func delivery_ready() -> bool:
+	if arcade_run:return arcade_run.route_finished() and (not spilled or load_restored)
+	return load_restored
 
 func _physics_process(delta:float) -> void:
 	if not game.driving:return
@@ -257,11 +272,13 @@ func _physics_process(delta:float) -> void:
 		if on_foot and near.distance_to(Vector2(body.global_position.x,body.global_position.z))<1.15 and absf(at.y-body.global_position.y)<1.8:recover_package(item)
 	pickup_previous=at
 	if spilled and recovered==quota and not load_restored:restore_load()
+	if arcade_run:arcade_run.update(delta)
 	update_checkpoint(delta)
 
 func objective() -> String:
 	if complete:return "DEMO COMPLETE / ALL %d DELIVERED" % quota
 	if on_foot and not game.van.wrecked:return entry_instruction()
+	if arcade_run and (not spilled or load_restored):return arcade_run.guidance()
 	if load_restored:return "STOP AT GOLD COLLECTION BAY / GPS"
 	if not armed:return "TRAINING / Push past orange barrels to enter downtown"
 	if not spilled:return "STAGE %d / %d PACKAGES SECURED" % [stage_index+1,quota]
