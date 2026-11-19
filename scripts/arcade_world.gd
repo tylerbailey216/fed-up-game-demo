@@ -12,6 +12,12 @@ var entry:=Vector3(46,0,51.5)
 var route_points:Array[Vector3]=[Vector3(46,0,35),Vector3(46,0,-40),Vector3(-40,0,-51.5),Vector3(-46,0,40)]
 var street_paths:Array[Array]=[]
 var streets:Node3D
+var cutaway_buildings:Array[Dictionary]=[]
+var cutaway_count:=0
+var facade_material:ShaderMaterial
+var cutaway_clock:=0.0
+var cutaway_audit_us:=0
+var radial_probes:Array[Vector3]=[]
 
 func _ready() -> void:
 	var floor_mesh:=block(self,Vector3(0,-.35,0),Vector3(600,.6,600),Color("7f9465"),true)
@@ -59,23 +65,89 @@ func road(a:Vector3,b:Vector3,title:String) -> void:
 		var dash:=block(self,p+Vector3.UP*.022,Vector3(.12,.025,3),Color("eed083"));dash.rotation.y=deck.rotation.y
 
 func building(at:Vector3,dimensions:Vector3,tone:Color) -> void:
-	block(self,at+Vector3.UP*dimensions.y*.5,dimensions,tone,true)
-	block(self,at+Vector3.UP*(dimensions.y+.2),Vector3(dimensions.x+1,.6,dimensions.z+1),Color("3b3a48"))
-	block(self,at+Vector3.UP*3,Vector3(dimensions.x+.4,.35,dimensions.z+.4),Color("eee0c3"))
+	# Keep an honest footprint when tall foreground walls cut away.
+	block(self,at+Vector3.UP*.35,Vector3(dimensions.x,.7,dimensions.z),tone.darkened(.2))
+	block(self,at+Vector3.UP*.72,Vector3(dimensions.x+.15,.06,dimensions.z+.15),tone.darkened(.4))
+	for sign_value in [-1,1]:
+		block(self,at+Vector3(sign_value*dimensions.x*.5,.77,0),Vector3(.09,.05,dimensions.z),Color("a18aad"))
+		block(self,at+Vector3(0,.77,sign_value*dimensions.z*.5),Vector3(dimensions.x,.05,.09),Color("a18aad"))
+	var root:=Node3D.new();root.position=at;add_child(root)
+	var first:=boxes.size()
+	var main:=block(root,Vector3.UP*dimensions.y*.5,dimensions,tone,true)
+	var collider:StaticBody3D=main.get_child(0);collider.set_meta("camera_cover",root)
+	block(root,Vector3.UP*(dimensions.y+.2),Vector3(dimensions.x+1,.6,dimensions.z+1),Color("3b3a48"))
+	block(root,Vector3.UP*3,Vector3(dimensions.x+.4,.35,dimensions.z+.4),Color("eee0c3"))
 	for floor_index in range(1,int(dimensions.y/3)):
 		for s in [-1,1]:
-			block(self,at+Vector3(0,4+floor_index*2.6,s*(dimensions.z*.5+.04)),Vector3(dimensions.x-2,1.35,.1),Color("365463"))
-			block(self,at+Vector3(s*(dimensions.x*.5+.04),4+floor_index*2.6,0),Vector3(.1,1.35,dimensions.z-2),Color("365463"))
+			block(root,Vector3(0,4+floor_index*2.6,s*(dimensions.z*.5+.04)),Vector3(dimensions.x-2,1.35,.1),Color("365463"))
+			block(root,Vector3(s*(dimensions.x*.5+.04),4+floor_index*2.6,0),Vector3(.1,1.35,dimensions.z-2),Color("365463"))
 	for s in [-1,1]:
-		block(self,at+Vector3(0,1.55,s*(dimensions.z*.5+.06)),Vector3(dimensions.x-3,2.5,.12),Color("29434c"))
-		var awning:=block(self,at+Vector3(0,3.2,s*(dimensions.z*.5+.75)),Vector3(dimensions.x-1,.22,1.7),Color("6a39a0"));awning.rotation.x=s*.12
+		block(root,Vector3(0,1.55,s*(dimensions.z*.5+.06)),Vector3(dimensions.x-3,2.5,.12),Color("29434c"))
+		var awning:=block(root,Vector3(0,3.2,s*(dimensions.z*.5+.75)),Vector3(dimensions.x-1,.22,1.7),Color("6a39a0"));awning.rotation.x=s*.12
+	# One vertex-colored facade draw per building allows individual cutaways
+	# without splitting it into dozens of material draws or touching collision.
+	if not facade_material:
+		facade_material=art.material(Color.WHITE).duplicate();facade_material.set_shader_parameter("use_vertex_color",true)
+		art.cache["arcade_facades"]=facade_material
+	var tool:=SurfaceTool.new();tool.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for index in range(first,boxes.size()):
+		var box:MeshInstance3D=boxes[index]
+		var arrays:Array=box.mesh.surface_get_arrays(0)
+		var vertices:PackedVector3Array=arrays[Mesh.ARRAY_VERTEX];var normals:PackedVector3Array=arrays[Mesh.ARRAY_NORMAL]
+		var indices:PackedInt32Array=arrays[Mesh.ARRAY_INDEX]
+		var color:Color=box.material_override.get_shader_parameter("base_color")
+		for vertex in indices:
+			tool.set_color(color);tool.set_normal(box.basis*normals[vertex]);tool.add_vertex(box.transform*vertices[vertex])
+		for child in box.get_children():
+			if child is StaticBody3D:child.reparent(self,true)
+		box.queue_free()
+	boxes.resize(first)
+	var visual:=MeshInstance3D.new();visual.mesh=tool.commit();visual.material_override=facade_material;root.add_child(visual)
+	cutaway_buildings.append({"root":root,"collider":collider,"low":at-Vector3(dimensions.x*.5+1,0,dimensions.z*.5+1),"high":at+Vector3(dimensions.x*.5+1,dimensions.y+1,dimensions.z*.5+1),"hold":0.0,"kind":"building"})
+	var cover:Dictionary=cutaway_buildings.back();cover.bounds=AABB(cover.low,cover.high-cover.low)
 
 func tree(at:Vector3) -> void:
 	tree_collision(at,.28,3.2);block(self,at+Vector3.UP*1.6,Vector3(.45,3.2,.45),Color("65503a"))
 	var leaf:=SphereMesh.new();leaf.radial_segments=7;leaf.rings=3
 	var poses:Array[Transform3D]=[]
 	for i in 5:poses.append(Transform3D(Basis().scaled(Vector3(2.7,3,2.5)),at+Vector3(cos(i*TAU/5)*1.35,4.6+float(i%2)*.8,sin(i*TAU/5)*1.35)))
-	batch_mesh(leaf,poses,Color("638443"),true)
+	var canopy:=batch_mesh(leaf,poses,Color("638443"),true)
+	cutaway_buildings.append({"root":canopy,"low":at+Vector3(-4,2.8,-4),"high":at+Vector3(4,7.3,4),"hold":0.0,"kind":"tree"})
+	var cover:Dictionary=cutaway_buildings.back();cover.bounds=AABB(cover.low,cover.high-cover.low)
+
+func segment_covers(from:Vector3,to:Vector3,low:Vector3,high:Vector3) -> bool:
+	return AABB(low,high-low).intersects_segment(from,to)!=null
+
+func update_cutaways(camera:Camera3D,focus:Vector3,walking:bool,delta:=.016) -> void:
+	cutaway_clock+=delta
+	if delta>0 and cutaway_clock<.08:return
+	var elapsed:=maxf(.08,cutaway_clock);cutaway_clock=0
+	var started:=Time.get_ticks_usec()
+	if radial_probes.is_empty():
+		for i in 8:radial_probes.append(Vector3(cos(i*TAU/8),0,sin(i*TAU/8)))
+	var radius:float=6 if walking else 9
+	var samples:Array[Vector3]=[focus,Vector3(focus.x,.2,focus.z)]
+	for probe in radial_probes:samples.append(Vector3(focus.x,.4,focus.z)+probe*radius)
+	var from:=camera.global_position
+	var low:=Vector3(minf(from.x,focus.x-radius),-100,minf(from.z,focus.z-radius))
+	var high:=Vector3(maxf(from.x,focus.x+radius),100,maxf(from.z,focus.z+radius))
+	cutaway_count=0
+	for cover in cutaway_buildings:
+		var blocks:=false
+		if cover.high.x>=low.x and cover.low.x<=high.x and cover.high.z>=low.z and cover.low.z<=high.z:
+			var bounds:AABB=cover.bounds
+			for sample in samples:
+				# A point inside a building cannot be playable ground to reveal.
+				if sample.x>cover.low.x and sample.x<cover.high.x and sample.z>cover.low.z and sample.z<cover.high.z:continue
+				if bounds.intersects_segment(from,sample)!=null:blocks=true;break
+		cover.hold=.3 if blocks else maxf(0,float(cover.hold)-elapsed)
+		cover.root.visible=float(cover.hold)<=0
+		if not cover.root.visible:cutaway_count+=1
+	cutaway_audit_us=Time.get_ticks_usec()-started
+
+func restore_cutaways() -> void:
+	for cover in cutaway_buildings:cover.root.show();cover.hold=0
+	cutaway_count=0
 
 func sign_at(at:Vector3,value:String,yaw:float) -> void:
 	block(self,at,Vector3(13,1.8,.22),Color("253b3d"),true)

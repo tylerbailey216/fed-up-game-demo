@@ -19,7 +19,9 @@ func run(game:Node,capture:=false) -> void:
 	game.start_drive();var cargo:Node=game.cargo;var run_state:Node=cargo.arcade_run
 	check(game.arcade and not game.outerbelt,"Dedicated compact world selected")
 	check(game.traffic.cars.size()==10 and game.city_life.citizens.size()==16,"Bounded live traffic and existing citizen cast")
-	check(not game.van.cockpit and game.van.camera_high,"Raised chase starts with free camera orbit available")
+	check(not game.van.cockpit and game.van.camera_high and is_instance_valid(game.fixed_camera),"Arcade starts in the stable elevated map view")
+	var cameras:=preload("res://scripts/fixed_camera_tests.gd").new();add_child(cameras)
+	failures.append_array(await cameras.run(game,capture))
 	game.traffic.set_physics_process(false);game.city_life.set_physics_process(false)
 	for car in game.traffic.cars:car.freeze=true
 	for person in game.city_life.citizens:person.set_physics_process(false)

@@ -133,31 +133,46 @@ func _draw() -> void:
 			caption(Vector2(1034,676),"FUEL %.1f GAL / %d MI EST." % [vehicle.fuel_gallons,roundi(vehicle.fuel_gallons*18)],11,GOLD)
 			draw_status()
 	if cargo and cargo.on_foot:
-		caption(Vector2(278,701),"X ENTER TRUCK WHEN NEAR / WASD WALK / SHIFT RUN / DRAG LOOK / G RECENTER",14,CREAM,true)
+		caption(Vector2(278,701),"X ENTER TRUCK / WASD SCREEN MOVE / SHIFT RUN / C OVERVIEW" if cargo.arcade_run else "X ENTER TRUCK WHEN NEAR / WASD WALK / SHIFT RUN / DRAG LOOK / G RECENTER",14,CREAM,true)
 		if cargo.can_enter_truck():
 			preload("res://scripts/dashboard_ink.gd").plate(self,Rect2(1004,606,252,54),false,true)
 			caption(Vector2(1020,640),"[X]  ENTER TRUCK",22,GOLD,true)
 	elif show_controls:
 		caption(Vector2(278,701),"WASD DRIVE  Q/E BLINKERS  H HAZARD  L LIGHTS  TAB OPTIONS",12,CREAM,true)
 	else:
-		caption(Vector2(278,701),"WASD WALK / SHIFT RUN / X ENTER / DRAG LOOK / G RECENTER" if cargo and cargo.on_foot else "TAB OPTIONS / M MAP / C VIEW / DRAG LOOK / G RECENTER / ESC PAUSE",12,CREAM,true)
+		caption(Vector2(278,701),"C PLAY / OVERVIEW / G RESET VIEW / M MAP / ESC PAUSE" if cargo and cargo.arcade_run else ("WASD WALK / SHIFT RUN / X ENTER / DRAG LOOK / G RECENTER" if cargo and cargo.on_foot else "TAB OPTIONS / M MAP / C VIEW / DRAG LOOK / G RECENTER / ESC PAUSE"),12,CREAM,true)
 	caption(Vector2(280,108),"%05.2f mi  /  %s" % [distance/1609.344,location_name()],13,CREAM)
 	draw_package_guide()
 
 func draw_package_guide() -> void:
-	if not cargo or not cargo.on_foot:return
-	var item:Dictionary=cargo.safety.nearest()
-	if item.is_empty():return
-	var camera:Camera3D=cargo.actor.camera
-	var target:Vector3=item.body.global_position+Vector3.UP*.9
+	if not cargo or cargo.complete:return
+	var camera:Camera3D=cargo.actor.camera if cargo.on_foot else vehicle.camera
+	var target:=Vector3.ZERO
+	var label:=""
+	var tone:=GOLD
+	if cargo.on_foot:
+		var item:Dictionary=cargo.safety.nearest()
+		if not item.is_empty():
+			target=item.body.global_position+Vector3.UP*.9
+			label="BOX %02d" % (int(item.id)+1)
+		elif cargo.arcade_run:
+			target=vehicle.global_position+Vector3.UP;label="TRUCK";tone=CYAN
+		else:return
+	elif cargo.arcade_run:
+		target=cargo.arcade_run.target()+Vector3.UP*.4
+		label="COLLECTION" if cargo.arcade_run.route_finished() else "ROUTE %d/%d" % [cargo.arcade_run.route_index+1,cargo.game.highway.route_points.size()]
+		tone=CYAN if cargo.arcade_run.route_finished() else Color("c995ff")
+	else:return
 	var projected:=camera.unproject_position(target)
 	var center:=size/2
 	var compact:=compact_layout();var factor:=size.x/720 if compact else minf(size.x/1280,size.y/720)
 	var design_height:=size.y/factor
 	var top:float=(240 if design_height>=600 else 90)*factor if compact else 145*factor
 	var bottom:float=size.y-(preload("res://scripts/hud_layout.gd").deck_height(design_height)+20)*factor if compact else size.y-155*factor
+	if cargo.arcade_run and compact:bottom-=35*factor
 	bottom=maxf(top+45,bottom)
 	var bounds:=Rect2(Vector2(22,top),Vector2(size.x-44,bottom-top))
+	if cargo.arcade_run and not compact:bounds=Rect2((size-Vector2(1280,720)*factor)*.5+Vector2(260,145)*factor,Vector2(730,385)*factor)
 	var behind:=camera.is_position_behind(target)
 	if behind:projected=center-(projected-center)
 	var at:=projected.clamp(bounds.position,bounds.end)
@@ -167,16 +182,16 @@ func draw_package_guide() -> void:
 		var direction:Vector2=(projected-center).normalized()
 		if direction.is_zero_approx():direction=Vector2.DOWN
 		var side:=Vector2(-direction.y,direction.x)
-		shape([at+direction*12,at-direction*8+side*7,at-direction*8-side*7],GOLD,2)
+		shape([at+direction*12,at-direction*8+side*7,at-direction*8-side*7],tone,2)
 	else:
-		shape([at+Vector2(0,-9),at+Vector2(7,0),at+Vector2(0,9),at+Vector2(-7,0)],GOLD,2)
-	var meters:=roundi(cargo.actor.global_position.distance_to(item.body.global_position))
-	var label:="BOX %02d / %d m" % [int(item.id)+1,meters]
+		shape([at+Vector2(0,-9),at+Vector2(7,0),at+Vector2(0,9),at+Vector2(-7,0)],tone,2)
+	var meters:=roundi(cargo.player_position().distance_to(target))
+	label+=" / %d m" % meters
 	var font_size:=clampi(roundi(18*factor),12,20)
 	var width:=font.get_string_size(label,HORIZONTAL_ALIGNMENT_LEFT,-1,font_size).x
-	var label_at:=Vector2(clampf(at.x-width/2,12,size.x-width-12),minf(at.y+28,bottom+28))
-	panel(Rect2(label_at+Vector2(-6,-font_size-2),Vector2(width+12,font_size+10)),PANEL,GOLD,1)
-	caption(label_at,label,font_size,GOLD)
+	var label_at:=Vector2(clampf(at.x-width/2,bounds.position.x+8,bounds.end.x-width-8),minf(at.y+28,bottom+28))
+	panel(Rect2(label_at+Vector2(-6,-font_size-2),Vector2(width+12,font_size+10)),PANEL,tone,1)
+	caption(label_at,label,font_size,tone)
 
 func status_message() -> String:
 	if cargo and cargo.on_foot and not vehicle.wrecked and not cargo.complete:return cargo.entry_instruction(touch_input()).to_upper()
@@ -270,7 +285,9 @@ func draw_brand() -> void:
 	caption(Vector2(130,45),"DRIVING SIMULATOR",17,GOLD,true)
 	caption(Vector2(36,85),"DOWNTOWN / CLEVELAND" if vehicle.location_world and vehicle.location_world.get("is_downtown") else ("I-480 / I-77 / OHIO" if vehicle.location_world else "TRAINING / CITY EXIT AHEAD"),13,GOLD,true)
 	panel(Rect2(1100,20,153,34),PANEL,GOLD,2)
-	caption(Vector2(1112,43),"C  SWITCH VIEW",14,CREAM,true)
+	var view_label:="C  SWITCH VIEW"
+	if cargo and cargo.arcade_run and is_instance_valid(cargo.game.fixed_camera):view_label="C  CLOSER VIEW" if cargo.game.fixed_camera.preset==1 else "C  OVERVIEW"
+	caption(Vector2(1112,43),view_label,14,CREAM,true)
 
 func draw_route() -> void:
 	var rect := Rect2(23,521,220,165) if not expanded_map else Rect2(305,125,670,365)

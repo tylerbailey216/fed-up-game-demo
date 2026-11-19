@@ -187,7 +187,8 @@ func toggle_foot() -> void:
 	if not found:game.van.notify_driver("No safe space beside truck - recover it first");return
 	on_foot=true;game.van.driver_on_foot=true;game.van.parking_brake=true;game.van.engine_on=false;game.van.set_view(false)
 	actor.global_position=at;safe_foot_position=at;actor.velocity=Vector3.ZERO;actor.set_enabled(true)
-	actor.camera_angle=game.van.rotation.y;actor.facing=actor.camera_angle;actor.look_ahead=Vector3.ZERO;actor.update_camera(1)
+	actor.camera_angle=preload("res://scripts/fixed_arcade_camera.gd").BEARING if game.arcade else game.van.rotation.y
+	actor.facing=actor.camera_angle;actor.look_ahead=Vector3.ZERO;actor.update_camera(1)
 	pickup_previous=actor.global_position
 	game.van.notify_driver("ON FOOT - WASD move / Shift run / X enter truck")
 

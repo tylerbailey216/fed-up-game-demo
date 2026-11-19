@@ -458,6 +458,13 @@ func _ready() -> void:
 	set_view(false)
 
 func set_view(inside: bool) -> void:
+	if fixed_arcade_view():
+		cockpit=false;camera_high=true;camera_orbit=0;camera_pitch=0;camera_zoom=1
+		if body:body.visible=true
+		if not driver_on_foot:camera.make_current()
+		var rig:Node=get_parent().get("fixed_camera")
+		if is_instance_valid(rig):rig.update_camera(0)
+		return
 	inside = inside and not overturned
 	cockpit = inside
 	camera.position = Vector3(-0.55, 2.3, -1.65) if inside else Vector3(0, 5.3, 10)
@@ -470,6 +477,7 @@ func set_view(inside: bool) -> void:
 		camera.make_current()
 
 func cycle_camera() -> void:
+	if fixed_arcade_view():get_parent().fixed_camera.cycle_view();return
 	if cockpit:
 		camera_high=false;set_view(false)
 	elif not camera_high:
@@ -480,12 +488,14 @@ func cycle_camera() -> void:
 	camera_pitch=0
 
 func orbit_camera(amount:float,pitch_amount:float=0.0) -> void:
+	if fixed_arcade_view():return
 	if cockpit:camera_high=false;set_view(false)
 	camera_manual=false
 	camera_orbit=wrapf(camera_orbit+amount,-PI,PI)
 	camera_pitch=clampf(camera_pitch+pitch_amount,-.18,.72)
 
 func recenter_camera() -> void:
+	if fixed_arcade_view():get_parent().fixed_camera.recenter();return
 	camera_orbit=0;camera_pitch=0;camera_zoom=1;camera_manual=false
 	chase_heading=rotation.y
 	notify_driver("CAMERA CENTERED / DRAG TO LOOK AROUND")
@@ -532,6 +542,7 @@ func reset_vehicle() -> void:
 	set_view(cockpit)
 
 func _process(delta: float) -> void:
+	if fixed_arcade_view():return
 	if not active or camera_manual or driver_on_foot:
 		return
 	if cockpit:
@@ -552,6 +563,9 @@ func _process(delta: float) -> void:
 	if is_instance_valid(roll_body):excluded.append(roll_body.get_rid())
 	camera.global_position = camera_rig.resolve(get_world_3d().direct_space_state,focus,chase_position,excluded)
 	camera.look_at(focus)
+
+func fixed_arcade_view() -> bool:
+	return is_instance_valid(location_world) and location_world.get("is_arcade")==true
 
 func _physics_process(delta: float) -> void:
 	if not active:

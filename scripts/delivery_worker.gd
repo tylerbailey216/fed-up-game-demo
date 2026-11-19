@@ -92,6 +92,10 @@ func set_enabled(value:bool) -> void:
 	if value:camera.make_current();update_camera(1.0)
 
 func update_camera(weight:float) -> void:
+	if game.arcade:
+		camera_angle=preload("res://scripts/fixed_arcade_camera.gd").BEARING;camera_pitch=0;camera_zoom=1;look_ahead=Vector3.ZERO
+		if weight>=1 and is_instance_valid(game.fixed_camera):game.fixed_camera.update_camera(0)
+		return
 	var offsets:Array[Vector3]=[Vector3(0,5.2,10),Vector3(0,8,15),Vector3(0,22,9)]
 	var base:Vector3=offsets[camera_view]
 	var tilt:=clampf(atan2(base.y,base.z)+camera_pitch,.2,1.34)
@@ -119,13 +123,16 @@ func update_camera(weight:float) -> void:
 	camera.look_at(focus+look_ahead)
 
 func cycle_camera() -> void:
+	if game.arcade:game.fixed_camera.cycle_view();return
 	camera_view=(camera_view+1)%3
 
 func orbit_camera(amount:float,pitch_amount:float=0.0) -> void:
+	if game.arcade:return
 	camera_angle=wrapf(camera_angle+amount,-PI,PI)
 	camera_pitch=clampf(camera_pitch+pitch_amount,-.28,.35)
 
 func recenter_camera() -> void:
+	if game.arcade:game.fixed_camera.recenter();return
 	camera_view=0;camera_pitch=0;camera_angle=facing
 	game.van.notify_driver("LOOK AHEAD / Drag or swipe to orbit and tilt")
 
@@ -148,8 +155,10 @@ func update_illustration(moving:bool,_running:bool) -> void:
 
 func _physics_process(delta:float) -> void:
 	if not enabled or not game.driving:return
-	if Input.is_physical_key_pressed(KEY_Q):orbit_camera(delta*1.6)
-	if Input.is_physical_key_pressed(KEY_E):orbit_camera(-delta*1.6)
+	if game.arcade:camera_angle=preload("res://scripts/fixed_arcade_camera.gd").BEARING
+	else:
+		if Input.is_physical_key_pressed(KEY_Q):orbit_camera(delta*1.6)
+		if Input.is_physical_key_pressed(KEY_E):orbit_camera(-delta*1.6)
 	var input:=Vector2(Input.get_axis("steer_left","steer_right"),Input.get_axis("accelerate","brake_reverse")).limit_length()
 	var direction:=Basis(Vector3.UP,camera_angle)*Vector3(input.x,0,input.y)
 	var running:=Input.is_action_pressed("sprint")

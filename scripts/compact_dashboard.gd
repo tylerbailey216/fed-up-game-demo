@@ -47,7 +47,7 @@ func draw(c:Control) -> void:
 	else:
 		text(c,Vector2(140,52),"TRUCK ENERGY",12,GOLD);c.draw_energy(Rect2(230,42,460,11))
 		c.draw_objective_line(Vector2(28,76),660,17)
-	if not wide:text(c,Vector2(24,211),"HOLD VIEW: RECENTER   /   SWIPE ROAD: LOOK",12,CREAM)
+	if not wide:text(c,Vector2(24,211),"VIEW: PLAY / OVERVIEW   /   FIXED MAP ANGLE" if c.cargo and c.cargo.arcade_run else "HOLD VIEW: RECENTER   /   SWIPE ROAD: LOOK",12,CREAM)
 	if c.show_gps and c.vehicle.location_world:
 		var r:Rect2=c.compact_map_rect();Ink.plate(c,r)
 		c.draw_rect(r.grow(-6),Color("1b3038"))

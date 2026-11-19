@@ -79,7 +79,7 @@ func _input(event:InputEvent) -> void:
 					"gear":reverse_selected=not reverse_selected
 					"stick":stick=(pos-regions.stick.get_center())/80
 				get_viewport().set_input_as_handled();break
-			if not fingers.has(event.index) and world_point(pos):
+			if not game.arcade and not fingers.has(event.index) and world_point(pos):
 				fingers[event.index]="orbit";get_viewport().set_input_as_handled()
 		else:
 			if fingers.get(event.index)=="stick":stick=Vector2.ZERO
@@ -88,6 +88,7 @@ func _input(event:InputEvent) -> void:
 	elif event is InputEventScreenDrag and fingers.get(event.index)=="stick":
 		stick=(event.position/scale_factor-regions.stick.get_center())/80
 	elif event is InputEventScreenDrag and fingers.get(event.index)=="orbit":
+		if game.arcade:return
 		if game.cargo and game.cargo.on_foot:game.cargo.actor.orbit_camera(-event.relative.x/scale_factor*.009,event.relative.y/scale_factor*.006)
 		else:game.van.orbit_camera(-event.relative.x/scale_factor*.009,event.relative.y/scale_factor*.006)
 		get_viewport().set_input_as_handled()

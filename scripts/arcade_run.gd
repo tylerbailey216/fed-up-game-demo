@@ -19,7 +19,8 @@ func _ready() -> void:
 func reset() -> void:
 	route_index=0;elapsed=0;energy_used=0;refresh_marker()
 	var van:Node=cargo.game.van
-	van.camera_high=true;van.camera_orbit=0;van.camera_pitch=.12;van.camera_zoom=1.05;van.set_view(false)
+	van.camera_high=true;van.camera_orbit=0;van.camera_pitch=0;van.camera_zoom=1;van.set_view(false)
+	if is_instance_valid(cargo.game.fixed_camera):cargo.game.fixed_camera.recenter()
 
 func target() -> Vector3:
 	var points:Array=cargo.game.highway.route_points

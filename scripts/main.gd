@@ -35,6 +35,7 @@ var tire_marks: Node3D
 var terrain_particles:Node3D
 var outerbelt := false
 var arcade:=false
+var fixed_camera:Node3D
 var map_button: Button
 var arcade_button:Button
 var switching_location := false
@@ -126,6 +127,8 @@ func _ready() -> void:
 		add_child(cargo)
 	build_ui()
 	responsive_layout()
+	if arcade:
+		fixed_camera=preload("res://scripts/fixed_arcade_camera.gd").new();fixed_camera.game=self;add_child(fixed_camera)
 	audio_manager = preload("res://scripts/game_audio.gd").new()
 	audio_manager.van = van
 	audio_manager.master_volume = master_volume
@@ -568,6 +571,7 @@ func build_ui() -> void:
 	camera_shortcut.position = Vector2(1100,20)
 	camera_shortcut.size = Vector2(153,34)
 	camera_shortcut.tooltip_text = "Cycle cockpit / chase / raised view [C]. Right-drag to orbit; wheel to zoom."
+	if arcade:camera_shortcut.tooltip_text="Fixed map angle. C / VIEW switches Play and Overview distance; G resets Play view."
 	camera_shortcut.focus_mode = Control.FOCUS_NONE
 	for state in ["normal","pressed","focus","hover"]:
 		camera_shortcut.add_theme_stylebox_override(state,StyleBoxEmpty.new())
@@ -634,6 +638,7 @@ func resize_menu_buttons(node:Node,compact:bool) -> void:
 	for child in node.get_children():resize_menu_buttons(child,compact)
 
 func toggle_camera() -> void:
+	if arcade:fixed_camera.cycle_view();return
 	if cargo and cargo.on_foot:
 		cargo.actor.cycle_camera()
 		return
@@ -775,7 +780,7 @@ func start_drive() -> void:
 	menu.hide()
 	menu_art.hide()
 	if arcade and entering:
-		van.camera_high=true;van.camera_pitch=.12;van.camera_zoom=1.05;van.set_view(false)
+		fixed_camera.preset=0;van.set_view(false);fixed_camera.update_camera(0)
 	else:van.set_view(true if entering else van.cockpit)
 	if cargo:
 		cargo.pause_packages(false)
@@ -844,7 +849,7 @@ func _unhandled_key_input(event: InputEvent) -> void:
 func _input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and not event.pressed and camera_drag_button==event.button_index:camera_drag_button=0
 	if not driving or paused or (options and options.visible):camera_drag_button=0
-	if driving and not paused and not options.visible:
+	if driving and not paused and not options.visible and not arcade:
 		var walking:bool=cargo and cargo.on_foot
 		if event is InputEventMouseButton and event.device!=-1 and event.button_index in [MOUSE_BUTTON_LEFT,MOUSE_BUTTON_RIGHT]:
 			if event.pressed and can_drag_camera(event.position):camera_drag_button=event.button_index
@@ -864,6 +869,7 @@ func _input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 
 func can_drag_camera(at:Vector2) -> bool:
+	if arcade:return false
 	if dashboard.compact_layout():return touch_controls.world_point(at/(touch_controls.size.x/720))
 	var factor:=minf(hud.size.x/1280,hud.size.y/720)
 	var point:Vector2=(at-(hud.size-Vector2(1280,720)*factor)*.5)/factor
