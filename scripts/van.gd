@@ -90,6 +90,7 @@ var surface_bump_serial:=0
 var surface_bump_strength:=0.0
 var contact_shadow:Node3D
 var stunts:=preload("res://scripts/vehicle_stunts.gd").new()
+var arcade_drive:=preload("res://scripts/arcade_drive.gd").new()
 var surface_sampler:=preload("res://scripts/vehicle_surface.gd").new()
 
 func pause_crash(paused: bool) -> void:
@@ -405,6 +406,7 @@ func refuel() -> bool:
 		notify_driver("Stop to refuel")
 		return false
 	fuel_gallons = TANK_GALLONS
+	if fixed_arcade_view() and not wrecked and not overturned and not driver_on_foot:engine_on=true
 	notify_driver("Demo service: tank refilled")
 	return true
 
@@ -564,61 +566,7 @@ func _process(delta: float) -> void:
 	camera.global_position = camera_rig.resolve(get_world_3d().direct_space_state,focus,chase_position,excluded)
 	camera.look_at(focus)
 
-func fixed_arcade_view() -> bool:
-	return is_instance_valid(location_world) and location_world.get("is_arcade")==true
-
-func _physics_process(delta: float) -> void:
-	if not active:
-		return
-	notice_time=maxf(0,notice_time-delta)
-	surface_sampler.update(delta)
-	if delivery_complete:
-		engine_on=false;parking_brake=true;speed=0;velocity=Vector3.ZERO;planar_velocity=Vector3.ZERO
-		throttle_load=0;rpm=0
-		telemetry.emit(0,"P",distance)
-		return
-	update_crash_contact(delta)
-	# Run before disabled/rolled early returns too: damage must never strand a
-	# vehicle under the world or let the camera pass through the skyline shell.
-	if outside_driveable_world():
-		recover_to_road()
-	blink_time += delta
-	collision_cooldown = maxf(0,collision_cooldown-delta)
-	wall_ride_time = maxf(0,wall_ride_time-delta)
-	if stunts.active:
-		stunts.tick(delta)
-		telemetry.emit(absf(speed)*3.6,gear_text() if not stunts.active else ("AIR" if not roll_body.supported else "LANDING"),distance)
-		return
-	if driver_on_foot and not overturned and not wrecked:
-		engine_on = false
-		speed = 0
-		planar_velocity = Vector3.ZERO
-		throttle_load = 0
-		rpm = 0
-		velocity = Vector3(0,velocity.y-9.81*delta,0)
-		move_and_slide()
-		telemetry.emit(0,"ON FOOT",distance)
-		return
-	if overturned or wrecked:
-		if overturned:
-			simulate_crash(delta)
-			if not overturned and not wrecked:
-				telemetry.emit(0,gear_text(),distance)
-				return
-		impact_strength = move_toward(impact_strength,0,delta*8)
-		engine_on = false
-		cruise = false
-		speed = 0.0
-		rpm = 0.0
-		throttle_load = 0.0
-		brake_load = 0.0
-		if not overturned:
-			velocity = Vector3(0,velocity.y-22.0*delta,0)
-			move_and_slide()
-		telemetry.emit(0, "DISABLED" if wrecked else ("IMPACT" if location_world and not flip_registered else "ROLLED"),distance)
-		return
-	impact_strength = move_toward(impact_strength,0,delta*8)
-	wall_timer = maxf(0,wall_timer-delta)
+func update_simulator_drive(delta:float) -> float:
 	var throttle := Input.get_action_strength("accelerate")
 	var previous_speed := speed
 	var brake := Input.get_action_strength("brake_reverse")
@@ -680,6 +628,65 @@ func _physics_process(delta: float) -> void:
 	var stop_squeal := brake_load*clampf((-acceleration-4.0)/5.0,0,1)
 	var squeal_target := maxf(turn_squeal,stop_squeal)*clampf((absf(speed)-4.0)/7.0,0,1)
 	tire_squeal = move_toward(tire_squeal,squeal_target,delta*(8 if squeal_target>tire_squeal else 4))
+	return throttle
+
+func fixed_arcade_view() -> bool:
+	return is_instance_valid(location_world) and location_world.get("is_arcade")==true
+
+func _physics_process(delta: float) -> void:
+	if not active:
+		return
+	notice_time=maxf(0,notice_time-delta)
+	surface_sampler.update(delta)
+	if delivery_complete:
+		engine_on=false;parking_brake=true;speed=0;velocity=Vector3.ZERO;planar_velocity=Vector3.ZERO
+		throttle_load=0;rpm=0
+		telemetry.emit(0,"P",distance)
+		return
+	update_crash_contact(delta)
+	# Run before disabled/rolled early returns too: damage must never strand a
+	# vehicle under the world or let the camera pass through the skyline shell.
+	if outside_driveable_world():
+		recover_to_road()
+	blink_time += delta
+	collision_cooldown = maxf(0,collision_cooldown-delta)
+	wall_ride_time = maxf(0,wall_ride_time-delta)
+	if stunts.active:
+		stunts.tick(delta)
+		telemetry.emit(absf(speed)*3.6,gear_text() if not stunts.active else ("AIR" if not roll_body.supported else "LANDING"),distance)
+		return
+	if driver_on_foot and not overturned and not wrecked:
+		engine_on = false
+		speed = 0
+		planar_velocity = Vector3.ZERO
+		throttle_load = 0
+		rpm = 0
+		velocity = Vector3(0,velocity.y-9.81*delta,0)
+		move_and_slide()
+		telemetry.emit(0,"ON FOOT",distance)
+		return
+	if overturned or wrecked:
+		if overturned:
+			simulate_crash(delta)
+			if not overturned and not wrecked:
+				telemetry.emit(0,gear_text(),distance)
+				return
+		impact_strength = move_toward(impact_strength,0,delta*8)
+		engine_on = false
+		cruise = false
+		speed = 0.0
+		rpm = 0.0
+		throttle_load = 0.0
+		brake_load = 0.0
+		if not overturned:
+			velocity = Vector3(0,velocity.y-22.0*delta,0)
+			move_and_slide()
+		telemetry.emit(0, "DISABLED" if wrecked else ("IMPACT" if location_world and not flip_registered else "ROLLED"),distance)
+		return
+	impact_strength = move_toward(impact_strength,0,delta*8)
+	wall_timer = maxf(0,wall_timer-delta)
+	var throttle:float=arcade_drive.update(self,delta) if fixed_arcade_view() else update_simulator_drive(delta)
+	var forward:Vector3=-global_transform.basis.z
 	velocity.x = planar_velocity.x
 	velocity.z = planar_velocity.z
 	if wall_timer > 0:

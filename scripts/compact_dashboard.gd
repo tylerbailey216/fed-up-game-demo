@@ -37,6 +37,8 @@ func gauge(c:Control,at:Vector2,r:float,value:float,maximum:float,label:String,d
 	text(c,at+Vector2(-FACE.get_string_size(label,HORIZONTAL_ALIGNMENT_LEFT,-1,10).x/2,r*.84),label,10,GOLD)
 func draw(c:Control) -> void:
 	var factor:float=c.size.x/720;var h:float=c.size.y/factor;var wide:=Layout.wide(h)
+	var mayhem:bool=c.cargo and c.cargo.arcade_run
+	var walking:bool=c.cargo and c.cargo.on_foot
 	c.draw_set_transform(Vector2.ZERO,0,Vector2.ONE*factor)
 	var header:=Rect2(14,10,692,76) if not wide else Rect2(12,8,394,50)
 	Ink.plate(c,header,false,true)
@@ -47,7 +49,9 @@ func draw(c:Control) -> void:
 	else:
 		text(c,Vector2(140,52),"TRUCK ENERGY",12,GOLD);c.draw_energy(Rect2(230,42,460,11))
 		c.draw_objective_line(Vector2(28,76),660,17)
-	if not wide:text(c,Vector2(24,211),"VIEW: PLAY / OVERVIEW   /   FIXED MAP ANGLE" if c.cargo and c.cargo.arcade_run else "HOLD VIEW: RECENTER   /   SWIPE ROAD: LOOK",12,CREAM)
+	if not wide:
+		var hint:="POINT TO WALK / WALK OVER BOXES" if walking else "POINT TO DRIVE / RELEASE TO STOP"
+		text(c,Vector2(24,211),hint if mayhem else "HOLD VIEW: RECENTER   /   SWIPE ROAD: LOOK",22 if mayhem else 12,GOLD if mayhem else CREAM)
 	if c.show_gps and c.vehicle.location_world:
 		var r:Rect2=c.compact_map_rect();Ink.plate(c,r)
 		c.draw_rect(r.grow(-6),Color("1b3038"))
@@ -69,7 +73,9 @@ func draw(c:Control) -> void:
 	Ink.plate(c,housing,false,true)
 	for at in [housing.position+Vector2(10,11),housing.end-Vector2(10,11)]:
 		c.draw_circle(at,4,INK);c.draw_circle(at,2,Color("ac9694"));c.draw_line(at-Vector2(2,1),at+Vector2(2,1),INK,1,true)
-	var walking:bool=c.cargo and c.cargo.on_foot
+	if mayhem and wide:
+		text(c,Vector2(438,h-92),"POINT TO WALK" if walking else "POINT TO DRIVE",17,GOLD)
+		text(c,Vector2(438,h-72),"WALK OVER BOXES" if walking else "RELEASE TO STOP",12,CREAM)
 	if walking:
 		Ink.icon(c,"exit",housing.position+Vector2(36,45),1.3,CYAN)
 		text(c,housing.position+Vector2(65,37),"TRUCK READY" if c.cargo.can_enter_truck() else "ON FOOT",24,GOLD)

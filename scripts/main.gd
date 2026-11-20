@@ -539,7 +539,7 @@ func build_ui() -> void:
 		credit.uri = "https://www.openstreetmap.org/copyright"
 		choices.add_child(credit)
 	choices.add_child(text_label("Follow purple route markers. Stop at the gold bay.\nEmpty energy? Walk over every lost box to repair." if arcade else "Drive the city. Recover every package.\nWatch your truck energy / Save the delivery.",20))
-	choices.add_child(text_label("WASD drive / X exit or re-enter truck / C camera\nTouch: landscape recommended / portrait supported",18))
+	choices.add_child(text_label("WASD / arrows or thumbstick: point to drive\nRelease to stop / X enter or exit / C or VIEW distance" if arcade else "WASD drive / X exit or re-enter truck / C camera\nTouch: landscape recommended / portrait supported",18))
 	if FileAccess.file_exists("res://data/build_version.json"):
 		var version:Dictionary=JSON.parse_string(FileAccess.get_file_as_string("res://data/build_version.json"))
 		choices.add_child(text_label("BUILD "+str(version.state_id),14))
@@ -682,6 +682,8 @@ func save_options() -> void:
 	local_options.save("user://driver_options.cfg")
 
 func dashboard_key(key: int) -> void:
+	# Mayhem has automatic drive/stop, without simulator toggles that can lock it.
+	if arcade and key in [KEY_I,KEY_P,KEY_T]:return
 	match key:
 		KEY_Q: van.set_indicator(-1)
 		KEY_E: van.set_indicator(1)

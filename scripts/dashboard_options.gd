@@ -34,10 +34,14 @@ func _ready() -> void:
 		check.toggled.connect(func(value: bool): game.dashboard.set(field,value))
 		checks[field] = check
 		gps.add_child(check)
-	gps.add_child(game.text_label("Local loop destinations",18))
-	for target in 4:
-		game.button(game.navigation.DESTINATIONS[target],game.navigation.select_target.bind(target),gps)
-	gps.add_child(game.text_label("M map · N next destination · G recenter · V mirror\nX exits / re-enters the truck when beside it.\nCollect all lost boxes before entering a disabled truck.\nDrag the world to orbit/tilt; wheel zooms.\nF refuels the demo van anywhere while stopped.",14))
+	if not game.arcade:
+		gps.add_child(game.text_label("Local loop destinations",18))
+		for target in 4:
+			game.button(game.navigation.DESTINATIONS[target],game.navigation.select_target.bind(target),gps)
+	if game.arcade:
+		gps.add_child(game.text_label("POINT TO DRIVE / RELEASE TO STOP\nWASD, arrow keys or the MOVE thumbstick.\nThe truck turns toward your screen direction.\nC / VIEW changes distance; the streets stay aligned.\nX / WALK exits; X / ENTER re-enters beside the truck.\nWalk over every loose box to repair an empty life bar.\nFollow purple markers, then stop at the gold bay.",14))
+	else:
+		gps.add_child(game.text_label("M map · N next destination · G recenter · V mirror\nX exits / re-enters the truck when beside it.\nCollect all lost boxes before entering a disabled truck.\nDrag the world to orbit/tilt; wheel zooms.\nF refuels the demo van anywhere while stopped.",14))
 	var vehicle := add_tab("Vehicle")
 	var grid := GridContainer.new()
 	grid.columns = 2
@@ -45,9 +49,13 @@ func _ready() -> void:
 	grid.add_theme_constant_override("v_separation",8)
 	vehicle.add_child(grid)
 	for item in [["Ignition [I]",KEY_I],["Headlights [L]",KEY_L],["High beam [K]",KEY_K],["Hazards [H]",KEY_H],["Left signal [Q]",KEY_Q],["Right signal [E]",KEY_E],["Parking brake [P]",KEY_P],["Cruise [T]",KEY_T],["Demo refuel [F]",KEY_F],["Horn [B]",KEY_B]]:
+		if game.arcade and item[1] in [KEY_I,KEY_P,KEY_T]:continue
 		var control: Button = game.button(item[0],game.dashboard_key.bind(item[1]),grid)
 		control.custom_minimum_size = Vector2(270,80)
-	vehicle.add_child(game.text_label("B holds horn · Space handbrake/drift · R resets\nC switches to the turning chase camera.\nCruise requires 12 mph; brakes cancel cruise.\nRefuel only while stopped; use I to restart if empty.",15))
+	if game.arcade:
+		vehicle.add_child(game.text_label("Automatic acceleration, turning and braking.\nDown means travel down the screen, not reverse gear.\nRelease movement to stop; no separate pedals needed.\nB horn / F refuel while stopped / U recover rollover.",15))
+	else:
+		vehicle.add_child(game.text_label("B holds horn · Space handbrake/drift · R resets\nC switches to the turning chase camera.\nCruise requires 12 mph; brakes cancel cruise.\nRefuel only while stopped; use I to restart if empty.",15))
 	var audio := add_tab("Audio")
 	for channel in ["Master volume","Nature / ambience"]:
 		audio.add_child(game.text_label(channel,18))

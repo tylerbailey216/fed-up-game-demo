@@ -1,0 +1,34 @@
+[
+  {
+    "width": 768,
+    "height": 1024,
+    "touch": true,
+    "performance": {
+      "fps": 59.38242280285034,
+      "p95_ms": 17.100000000000364
+    },
+    "actual_lap": {
+      "distance": 416.22913849211596,
+      "road_gap": 2.5093536376952983,
+      "corners": [
+        true,
+        true,
+        true,
+        true
+      ],
+      "crashes": 0
+    },
+    "fixed_camera": {
+      "view_rotation": [
+        -1.04719758033752,
+        1.19209289550781e-7,
+        0
+      ],
+      "preset": 0,
+      "cutaways": 1
+    },
+    "draw_calls": 216,
+    "physics_ms": 7.5,
+    "errors": []
+  }
+]

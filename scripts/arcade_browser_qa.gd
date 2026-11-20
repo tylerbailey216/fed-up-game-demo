@@ -10,6 +10,13 @@ func park(at:Vector3) -> void:
 	game.touch_controls.release_inputs();game.van.position=at+Vector3.UP*.15
 	game.van.speed=0;game.van.velocity=Vector3.ZERO;game.van.planar_velocity=Vector3.ZERO;game.van.parking_brake=true
 
+func quiet_population() -> void:
+	game.traffic.set_physics_process(false);game.city_life.set_physics_process(false)
+	for car in game.traffic.cars:
+		car.set_physics_process(false);car.freeze=true;car.collision_layer=0;car.collision_mask=0
+	for citizen in game.city_life.citizens:
+		citizen.set_physics_process(false);citizen.collision_layer=0;citizen.collision_mask=0
+
 func _physics_process(delta:float) -> void:
 	clock+=delta
 	if clock<.1:return
@@ -20,9 +27,11 @@ func _physics_process(delta:float) -> void:
 		JavaScriptBridge.eval("window.fedupQACommand=''")
 		match command:
 			"quiet":
-				game.traffic.set_physics_process(false);game.city_life.set_physics_process(false)
-				for car in game.traffic.cars:car.freeze=true
-				for citizen in game.city_life.citizens:citizen.set_physics_process(false)
+				quiet_population()
+			"lap":
+				# One reset before the lap; all subsequent travel uses real controls.
+				game.touch_controls.release_inputs();cargo.complete=true;cargo.next_stage()
+				quiet_population();game.van.parking_brake=false
 			"drive":game.van.parking_brake=false
 			"fixed_pause":game.fixed_camera.set_process(false)
 			"fixed_resume":game.fixed_camera.set_process(true)
@@ -56,6 +65,14 @@ func _physics_process(delta:float) -> void:
 	data["view_preset"]=game.fixed_camera.preset;data["cutaways"]=game.highway.cutaway_count
 	data["cutaway_ms"]=game.highway.cutaway_audit_us/1000.0
 	data["process_ms"]=Performance.get_monitor(Performance.TIME_PROCESS)*1000
+	data["truck"]=[game.van.position.x,game.van.position.y,game.van.position.z]
+	data["heading"]=game.van.rotation.y;data["velocity"]=[game.van.planar_velocity.x,game.van.planar_velocity.z]
+	data["lap_corners"]=[[46,51.5],[46,-51.5],[-46,-51.5],[-46,51.5]]
+	data["bay"]=[cargo.checkpoint_position.x,cargo.checkpoint_position.z]
+	data["crashes"]=game.van.crash_serial;data["resets"]=game.van.reset_count;data["offroad"]=game.van.offroad_recoveries
+	data["stick"]=[game.touch_controls.stick.x,game.touch_controls.stick.y]
+	data["fingers"]=game.touch_controls.fingers
+	data["move_input"]=[Input.get_axis("steer_left","steer_right"),Input.get_axis("accelerate","brake_reverse")]
 	if cargo.on_foot:
 		data["actor"]=[cargo.actor.position.x,cargo.actor.position.y,cargo.actor.position.z]
 		data["walk_angle"]=cargo.actor.camera_angle

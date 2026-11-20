@@ -8,10 +8,16 @@ static func map_rect(h:float,expanded:bool) -> Rect2:
 	return Rect2(588,68,116,72) if wide(h) else Rect2(524,102,180,124)
 static func prompt_rect(h:float) -> Rect2:
 	return Rect2(166,h-174,390,50) if wide(h) else Rect2(206,h-240,374,116)
-static func regions(h:float) -> Dictionary:
+static func regions(h:float,arcade:=false) -> Dictionary:
 	var result:Dictionary={}
 	for i in 4:
 		result[["camera","map","options","exit"][i]]=Rect2(426+i*70,10,62,44) if wide(h) else Rect2(20+i*100,102,88,88)
+	if arcade:
+		# A single screen-direction stick owns movement in Delivery Mayhem.
+		# Omitted pedals/gear cannot leave invisible touch regions over the road.
+		result["stick"]=Rect2(18,h-142,132,132) if wide(h) else Rect2(18,h-192,172,172)
+		result["upright"]=Rect2(590,h-72,112,60) if wide(h) else Rect2(594,h-102,108,88)
+		return result
 	if wide(h):
 		result.merge({"stick":Rect2(18,h-142,132,132),"gas":Rect2(590,h-140,112,60),"brake":Rect2(590,h-72,112,60),"hand":Rect2(430,h-54,128,42),"gear":Rect2(430,h-104,128,42)})
 	else:

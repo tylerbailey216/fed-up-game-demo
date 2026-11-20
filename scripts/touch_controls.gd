@@ -1,5 +1,5 @@
 extends Control
-## Independent finger tracking permits simultaneous steering, gas and braking.
+## A Mayhem direction stick and independent simulator steering/pedal fingers.
 var game:Node
 var fingers:Dictionary={}
 var stick:=Vector2.ZERO
@@ -10,6 +10,7 @@ var camera_hold:=0.0
 var camera_recentered:=false
 var reverse_selected:=false
 var layout_size:=Vector2.ZERO
+var layout_walking:=false
 var drawing_state:Array=[]
 const Layout=preload("res://scripts/hud_layout.gd")
 const Ink=preload("res://scripts/dashboard_ink.gd")
@@ -21,11 +22,19 @@ func _ready() -> void:
 
 func layout() -> void:
 	layout_size=size
-	regions=Layout.regions(size.y*720/size.x)
+	layout_walking=game.cargo and game.cargo.on_foot
+	var h:=size.y*720/size.x
+	regions=Layout.regions(h,game.arcade)
+	if game.arcade and layout_walking:
+		regions["hand"]=Rect2(430,h-54,128,42) if Layout.wide(h) else Rect2(340,h-102,118,88)
 
 func release_inputs() -> void:
 	for action in ["accelerate","brake_reverse","steer_left","steer_right","handbrake","sprint"]:Input.action_release(action)
 	fingers.clear();stick=Vector2.ZERO
+
+func set_stick(point:Vector2) -> void:
+	var reach:float=regions.stick.size.x*.4 if game.arcade else 80.0
+	stick=(point-regions.stick.get_center())/reach
 
 func world_point(point:Vector2) -> bool:
 	var h:=size.y*720/size.x
@@ -43,7 +52,7 @@ func _process(delta:float) -> void:
 	var active:bool=game.driving and not game.paused and not game.options.visible and not (game.cargo and game.cargo.complete) and (game.dashboard.compact_layout() or OS.has_feature("mobile") or "--touch" in OS.get_cmdline_user_args())
 	if enabled and not active:release_inputs()
 	enabled=active;visible=active
-	if active and "camera" in fingers.values():
+	if active and not game.arcade and "camera" in fingers.values():
 		camera_hold+=delta
 		if camera_hold>=.55 and not camera_recentered:
 			camera_recentered=true
@@ -51,9 +60,9 @@ func _process(delta:float) -> void:
 			else:game.van.recenter_camera()
 	else:camera_hold=0;camera_recentered=false
 	if active:
-		var resized:bool=layout_size!=size
-		if resized:layout()
 		var walking:bool=game.cargo and game.cargo.on_foot
+		var resized:bool=layout_size!=size or layout_walking!=walking
+		if resized:layout()
 		var view:int=game.cargo.actor.camera_view if walking else -1
 		var current:Array=[stick,reverse_selected,walking,view,game.van.overturned,game.van.roll_settled,game.van.steering,fingers.values()]
 		if resized or current!=drawing_state:
@@ -77,7 +86,7 @@ func _input(event:InputEvent) -> void:
 					"exit":if game.cargo:game.cargo.interact()
 					"upright":game.van.recover_upright()
 					"gear":reverse_selected=not reverse_selected
-					"stick":stick=(pos-regions.stick.get_center())/80
+					"stick":set_stick(pos)
 				get_viewport().set_input_as_handled();break
 			if not game.arcade and not fingers.has(event.index) and world_point(pos):
 				fingers[event.index]="orbit";get_viewport().set_input_as_handled()
@@ -86,7 +95,7 @@ func _input(event:InputEvent) -> void:
 			if fingers.get(event.index)=="camera" and not camera_recentered:game.toggle_camera()
 			fingers.erase(event.index)
 	elif event is InputEventScreenDrag and fingers.get(event.index)=="stick":
-		stick=(event.position/scale_factor-regions.stick.get_center())/80
+		set_stick(event.position/scale_factor)
 	elif event is InputEventScreenDrag and fingers.get(event.index)=="orbit":
 		if game.arcade:return
 		if game.cargo and game.cargo.on_foot:game.cargo.actor.orbit_camera(-event.relative.x/scale_factor*.009,event.relative.y/scale_factor*.006)
@@ -100,7 +109,7 @@ func update_actions() -> void:
 	var walking:bool=game.cargo and game.cargo.on_foot
 	var move:=stick.limit_length()
 	var actions:Dictionary={"steer_left":maxf(0,-move.x),"steer_right":maxf(0,move.x),"accelerate":maxf(float("gas" in held),maxf(0,-move.y)),"brake_reverse":maxf(float("brake" in held),maxf(0,move.y)),"handbrake":float("hand" in held and not walking),"sprint":float("hand" in held and walking)}
-	if not walking:
+	if not walking and not game.arcade:
 		# Pulling the stick selects reverse, including while another finger
 		# holds gas. Direction remains selected when the stick recenters.
 		if move.y>.4:reverse_selected=true
@@ -108,6 +117,10 @@ func update_actions() -> void:
 		var pedal:float=maxf(float("gas" in held),absf(move.y) if absf(move.y)>.24 else 0)
 		actions.accelerate=0.0 if reverse_selected else pedal
 		actions.brake_reverse=maxf(float("brake" in held),pedal if reverse_selected else 0.0)
+	elif game.arcade:
+		# Both truck and worker consume a screen-direction vector in Mayhem.
+		# Releasing the stick releases every axis; reverse is never latched.
+		reverse_selected=false
 	for action in actions:
 		if actions[action]>.06:Input.action_press(action,actions[action])
 		else:Input.action_release(action)
@@ -124,13 +137,17 @@ func _draw() -> void:
 		if key=="upright" and not game.van.overturned:continue
 		if key=="gear" and (walking or game.van.overturned):continue
 		if key=="stick":
-			if walking:
+			if walking or game.arcade:
 				var at:=rect.get_center();var r:=rect.size.x*.4
 				draw_circle(at,r+8,Color(.07,.06,.1,.55));draw_arc(at,r,0,TAU,48,Color("b79abf"),3,true)
 				draw_arc(at,r-6,0,TAU,48,Color("5f397f"),2,true)
+				if game.arcade:
+					for direction in [Vector2.UP,Vector2.RIGHT,Vector2.DOWN,Vector2.LEFT]:
+						var tip:Vector2=at+direction*(r-12);var base:Vector2=at+direction*(r-19);var side:=Vector2(-direction.y,direction.x)*3.5
+						draw_polyline(PackedVector2Array([base+side,tip,base-side]),Color("d5bdde"),2,true)
 				draw_circle(at+stick.limit_length()*r*.52,r*.25,Color("ad88c6"))
 			else:Ink.wheel(self,rect,game.van.steering,stick)
-			var wheel_label:="WALK" if walking else "STEER"
+			var wheel_label:="MOVE" if game.arcade else ("WALK" if walking else "STEER")
 			draw_string(FACE,rect.get_center()+Vector2(-18,rect.size.y*.47),wheel_label,HORIZONTAL_ALIGNMENT_LEFT,-1,11,Color("f3ebd8"))
 			continue
 		Ink.plate(self,rect,key in fingers.values(),key in ["camera","map","options","exit"])

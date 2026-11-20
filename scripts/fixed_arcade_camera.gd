@@ -1,6 +1,6 @@
 extends Node3D
 ## One world bearing for truck and worker. Following never changes the angle.
-const BEARING:=PI/4
+const BEARING:=0.0 # Streets and directional controls share the screen axes.
 const ELEVATION:=PI/3
 const Layout=preload("res://scripts/hud_layout.gd")
 var game:Node

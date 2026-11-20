@@ -2,6 +2,7 @@ extends Node
 ## Exercise player-facing camera behavior, including the actual input paths.
 var failures:Array[String]=[]
 const Layout=preload("res://scripts/hud_layout.gd")
+const Fixed=preload("res://scripts/fixed_arcade_camera.gd")
 
 func check(value:bool,message:String) -> void:
 	if not value:failures.append(message);push_error("FIXED CAMERA TEST FAIL: "+message)
@@ -98,7 +99,7 @@ func run(game:Node,captures:=false) -> Array[String]:
 	# Use normal exit so the test catches a truck-heading override of foot input.
 	van.position=Vector3(0,.15,25);van.rotation=Vector3(0,-PI/2,0);cargo.toggle_foot();actor.set_physics_process(false);fixed.update_camera(0)
 	check(cargo.on_foot and actor.camera.is_current(),"Leaving truck selects the fixed foot camera")
-	check(is_equal_approx(actor.camera_angle,PI/4) and same_basis(reference,actor.camera.global_basis),"Foot camera and movement keep the same world bearing after exit")
+	check(is_equal_approx(actor.camera_angle,Fixed.BEARING) and same_basis(reference,actor.camera.global_basis),"Foot camera and movement keep the same world bearing after exit")
 	await check_walking(game)
 	var cutaways_seen:=0
 	for dimensions in [Vector2i(1280,720),Vector2i(720,1280),Vector2i(844,390),Vector2i(768,1024)]:
@@ -106,10 +107,18 @@ func run(game:Node,captures:=false) -> Array[String]:
 		for mode in 2:
 			fixed.preset=mode
 			cargo.on_foot=false;van.driver_on_foot=false;van.position=Vector3(0,.15,25);fixed.update_camera(0);game.update_hud(0,"N",van.distance)
+			game.touch_controls.layout()
+			check(not game.touch_controls.regions.has("gas") and not game.touch_controls.regions.has("hand"),"Driving exposes one MOVE stick without simulator pedals or drift")
 			visible_point(game,van.camera,van.position+Vector3.UP*1.5,"Truck remains in clear gameplay area "+str(dimensions)+" / "+str(mode))
 			for direction in [Vector3.RIGHT,Vector3.LEFT,Vector3.FORWARD,Vector3.BACK]:visible_point(game,van.camera,van.position+direction*5+Vector3.UP*.1,"Nearby driving ground is visible "+str(dimensions))
 			await capture("truck-%dx%d-view%d" % [dimensions.x,dimensions.y,mode],captures)
 			cargo.on_foot=true;van.driver_on_foot=true;actor.camera.make_current()
+			game.touch_controls.layout()
+			if dimensions.x!=1280:
+				game.touch_controls.enabled=true
+				check(game.touch_controls.regions.has("hand") and not game.touch_controls.regions.hand.intersects(game.touch_controls.regions.stick),"On-foot RUN remains separate from MOVE in "+str(dimensions))
+				touch(game,"hand",91,true);check(Input.is_action_pressed("sprint"),"RUN touch requests sprint")
+				touch(game,"hand",91,false);check(not Input.is_action_pressed("sprint"),"RUN release clears sprint")
 			game.update_hud(0,"ON FOOT",van.distance)
 			for point in [Vector3(-36,.2,-40),Vector3(-12,.2,-14),Vector3(12,.2,-40),Vector3(36,.2,-14),Vector3(-36,.2,14),Vector3(-12,.2,40)]:
 				actor.position=point;actor.velocity=Vector3.ZERO;fixed.update_camera(0)
@@ -154,18 +163,19 @@ func check_inputs(game:Node,reference:Basis) -> void:
 	game.set_resolution(Vector2i(720,1280));game.dashboard.touch_preview=true;game.update_hud(0,"N",van.distance);await frames(4)
 	game.touch_controls.enabled=true;game.touch_controls.layout()
 	fixed.update_camera(0);var phone_basis:Basis=van.camera.global_basis
-	touch(game,"gas",51,true);touch(game,"stick",52,true,Vector2(55,0))
+	touch(game,"stick",52,true,Vector2(55,-55))
 	var scale:float=game.touch_controls.size.x/720
 	var point:Vector2=Layout.scene_rect(game.touch_controls.size.y/scale).get_center()*scale
 	var finger:=InputEventScreenTouch.new();finger.index=53;finger.pressed=true;finger.position=point;game.touch_controls._input(finger)
 	var drag:=InputEventScreenDrag.new();drag.index=53;drag.relative=Vector2(170,110)*scale;drag.position=point+drag.relative;game.touch_controls._input(drag)
 	finger.pressed=false;game.touch_controls._input(finger);fixed.update_camera(0)
-	check(Input.is_action_pressed("accelerate") and Input.is_action_pressed("steer_right"),"Touching the scene does not steal gas or steering fingers")
+	check(Input.is_action_pressed("accelerate") and Input.is_action_pressed("steer_right"),"Touching the scene does not steal the held directional stick")
 	check(same_basis(phone_basis,van.camera.global_basis) and fixed.preset==0,"World swipes cannot orbit or tilt the fixed camera")
-	touch(game,"gas",51,false);touch(game,"stick",52,false)
+	touch(game,"stick",52,false)
+	check(not Input.is_action_pressed("accelerate") and not Input.is_action_pressed("steer_right"),"Stick release clears every driving direction")
 	touch(game,"camera",54,true);touch(game,"camera",54,false);check(fixed.preset==1,"Mobile VIEW selects the second stable distance")
 	touch(game,"camera",55,true);game.touch_controls._process(.6);touch(game,"camera",55,false)
-	check(fixed.preset==0,"Holding VIEW restores the default fixed view")
+	check(fixed.preset==0,"Holding and releasing VIEW changes distance once without changing angle")
 	game.touch_controls.release_inputs();game.set_resolution(Vector2i(1280,720));game.dashboard.touch_preview=false;game.update_hud(0,"N",van.distance);await frames(4)
 	fixed.update_camera(0)
 
@@ -186,11 +196,13 @@ func check_walking(game:Node) -> void:
 	actor.set_physics_process(false);fixed.update_camera(0)
 	check(is_equal_approx(actor.camera_angle,bearing),"Q/E cannot turn the fixed walking movement basis")
 	actor.facing=-PI/2;actor.recenter_camera();fixed.update_camera(0)
-	check(is_equal_approx(actor.camera_angle,PI/4) and fixed.preset==0,"Foot recenter keeps world bearing instead of turning toward the worker")
+	check(is_equal_approx(actor.camera_angle,Fixed.BEARING) and fixed.preset==0,"Foot recenter keeps world bearing instead of turning toward the worker")
 
 func check_truck_cutaway(game:Node) -> void:
 	var van:Node=game.van;var actor:Node=game.cargo.actor;var fixed:Node=game.fixed_camera
-	van.position=Vector3(0,.15,25);van.rotation=Vector3.ZERO;fixed.recenter()
+	van.position=Vector3(0,.15,25);van.rotation=Vector3.ZERO
+	# Disabled vehicle physics still needs a server tick to publish its transform.
+	await frames(3);fixed.recenter()
 	var occlusions:=0
 	for offset in [Vector3(0,0,-2.9),Vector3(-1.5,0,-2.6),Vector3(-1.6,0,0)]:
 		actor.position=van.position+offset;fixed.update_camera(0)

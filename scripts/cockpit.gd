@@ -137,10 +137,12 @@ func _draw() -> void:
 		if cargo.can_enter_truck():
 			preload("res://scripts/dashboard_ink.gd").plate(self,Rect2(1004,606,252,54),false,true)
 			caption(Vector2(1020,640),"[X]  ENTER TRUCK",22,GOLD,true)
+	elif cargo and cargo.arcade_run:
+		caption(Vector2(278,701),"WASD / ARROWS: POINT TO DRIVE / RELEASE TO STOP / C VIEW / X WALK",12,CREAM,true)
 	elif show_controls:
 		caption(Vector2(278,701),"WASD DRIVE  Q/E BLINKERS  H HAZARD  L LIGHTS  TAB OPTIONS",12,CREAM,true)
 	else:
-		caption(Vector2(278,701),"C PLAY / OVERVIEW / G RESET VIEW / M MAP / ESC PAUSE" if cargo and cargo.arcade_run else ("WASD WALK / SHIFT RUN / X ENTER / DRAG LOOK / G RECENTER" if cargo and cargo.on_foot else "TAB OPTIONS / M MAP / C VIEW / DRAG LOOK / G RECENTER / ESC PAUSE"),12,CREAM,true)
+		caption(Vector2(278,701),"WASD / ARROWS: POINT TO DRIVE / RELEASE TO STOP / C VIEW / X WALK" if cargo and cargo.arcade_run else ("WASD WALK / SHIFT RUN / X ENTER / DRAG LOOK / G RECENTER" if cargo and cargo.on_foot else "TAB OPTIONS / M MAP / C VIEW / DRAG LOOK / G RECENTER / ESC PAUSE"),12,CREAM,true)
 	caption(Vector2(280,108),"%05.2f mi  /  %s" % [distance/1609.344,location_name()],13,CREAM)
 	draw_package_guide()
 

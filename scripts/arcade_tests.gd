@@ -22,12 +22,14 @@ func run(game:Node,capture:=false) -> void:
 	check(not game.van.cockpit and game.van.camera_high and is_instance_valid(game.fixed_camera),"Arcade starts in the stable elevated map view")
 	var cameras:=preload("res://scripts/fixed_camera_tests.gd").new();add_child(cameras)
 	failures.append_array(await cameras.run(game,capture))
+	var driving:=preload("res://scripts/arcade_driving_tests.gd").new();add_child(driving)
+	failures.append_array(await driving.run(game,capture))
 	game.traffic.set_physics_process(false);game.city_life.set_physics_process(false)
 	for car in game.traffic.cars:car.freeze=true
 	for person in game.city_life.citizens:person.set_physics_process(false)
 	await check_surfaces(game)
 	game.van.parking_brake=false;var before:Vector3=game.van.position
-	Input.action_press("accelerate");await frames(140);Input.action_release("accelerate")
+	Input.action_press("steer_right");await frames(140);Input.action_release("steer_right")
 	check(game.van.position.distance_to(before)>5 and game.van.is_on_floor(),"Actual driving input moves the truck along the compact road")
 	await park(game,cargo.checkpoint_position);await frames(85)
 	check(not cargo.complete and run_state.route_index==0,"Bay cannot skip the route")
