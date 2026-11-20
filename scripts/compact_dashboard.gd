@@ -39,15 +39,20 @@ func draw(c:Control) -> void:
 	var factor:float=c.size.x/720;var h:float=c.size.y/factor;var wide:=Layout.wide(h)
 	var mayhem:bool=c.cargo and c.cargo.arcade_run
 	var walking:bool=c.cargo and c.cargo.on_foot
+	var zen:bool=c.zen_mode()
 	c.draw_set_transform(Vector2.ZERO,0,Vector2.ONE*factor)
 	var header:=Rect2(14,10,692,76) if not wide else Rect2(12,8,394,50)
 	Ink.plate(c,header,false,true)
 	c.draw_string(LOGO,Vector2(28,43 if not wide else 37),"FedUp",HORIZONTAL_ALIGNMENT_LEFT,-1,34 if not wide else 28,CREAM)
 	text(c,Vector2(140,34) if not wide else Vector2(120,26),c.location_name(),17 if not wide else 11,GOLD)
 	if wide:
-		c.draw_energy(Rect2(120,33,270,9));c.draw_objective_line(Vector2(18,73),530,13)
+		if zen:text(c,Vector2(120,45),"NO TIMER / NO QUOTA",12,CYAN)
+		else:c.draw_energy(Rect2(120,33,270,9))
+		c.draw_objective_line(Vector2(18,73),530,13)
 	else:
-		text(c,Vector2(140,52),"TRUCK ENERGY",12,GOLD);c.draw_energy(Rect2(230,42,460,11))
+		if zen:text(c,Vector2(140,54),"TAKE YOUR TIME / FOLLOW CYAN GPS TO THE NEXT AREA",14,CYAN)
+		else:
+			text(c,Vector2(140,52),"TRUCK ENERGY",12,GOLD);c.draw_energy(Rect2(230,42,460,11))
 		c.draw_objective_line(Vector2(28,76),660,17)
 	if not wide:
 		var hint:="POINT TO WALK / WALK OVER BOXES" if walking else "POINT TO DRIVE / RELEASE TO STOP"
@@ -57,7 +62,7 @@ func draw(c:Control) -> void:
 		c.draw_rect(r.grow(-6),Color("1b3038"))
 		c.vehicle.location_world.draw_map(c,r.grow(-8),c.cargo.player_position() if c.cargo else c.vehicle.position)
 		c.draw_packages(r.grow(-8))
-		text(c,r.position+Vector2(10,17),"GPS / PURPLE: ROUTE" if c.cargo and c.cargo.arcade_run and not c.cargo.spilled else "GPS / GOLD: BOXES",11,GOLD)
+		text(c,r.position+Vector2(10,17),"GPS / PURPLE: ROUTE" if c.cargo and c.cargo.arcade_run and not c.cargo.spilled else ("GPS / CYAN: NEXT AREA" if zen else "GPS / GOLD: BOXES"),11,GOLD)
 		text(c,r.end-Vector2(r.size.x-8,7),"PURPLE: ROUTE / BLUE: STOP" if c.cargo and c.cargo.arcade_run else "© OpenStreetMap",9,CREAM)
 	var deck:float=Layout.deck_height(h);var y:=h-deck
 	# Reuse the actual cab's authored hatching, seams and vent trim at native aspect.
@@ -79,7 +84,7 @@ func draw(c:Control) -> void:
 	if walking:
 		Ink.icon(c,"exit",housing.position+Vector2(36,45),1.3,CYAN)
 		text(c,housing.position+Vector2(65,37),"TRUCK READY" if c.cargo.can_enter_truck() else "ON FOOT",24,GOLD)
-		text(c,housing.position+Vector2(65,58),"%02d / %02d SECURED" % [c.cargo.recovered,c.cargo.quota],17)
+		text(c,housing.position+Vector2(65,58),"TAKE A STROLL" if zen else "%02d / %02d SECURED" % [c.cargo.recovered,c.cargo.quota],17)
 		text(c,housing.position+Vector2(15,housing.size.y-14),(("TAP ENTER TO DRIVE" if c.touch_input() else "PRESS X TO DRIVE") if c.cargo.can_enter_truck() else ("BESIDE TRUCK / TAP ENTER" if c.touch_input() else "BESIDE TRUCK / PRESS X")) if not c.vehicle.wrecked else "WALK OVER BOXES / AUTO RETURN",12,CYAN)
 	elif not c.action_prompt_visible:
 		var speed_at:=Vector2(232,h-63) if wide else Vector2(294,y+77)

@@ -116,9 +116,13 @@ func _draw() -> void:
 	if inside:
 		draw_cab()
 	draw_brand()
-	panel(Rect2(1012,78,242,48))
-	caption(Vector2(1025,95),"TRUCK ENERGY",12,GOLD,true)
-	draw_energy(Rect2(1025,102,216,14))
+	if zen_mode():
+		panel(Rect2(1012,78,242,48))
+		caption(Vector2(1025,108),"ZEN DRIVE / NO RUSH",18,CYAN,true)
+	else:
+		panel(Rect2(1012,78,242,48))
+		caption(Vector2(1025,95),"TRUCK ENERGY",12,GOLD,true)
+		draw_energy(Rect2(1025,102,216,14))
 	if cargo:
 		draw_objective_line(Vector2(375,89),600,14)
 	if show_gps:
@@ -148,6 +152,7 @@ func _draw() -> void:
 
 func draw_package_guide() -> void:
 	if not cargo or cargo.complete:return
+	if zen_mode() and not cargo.on_foot:return
 	var camera:Camera3D=cargo.actor.camera if cargo.on_foot else vehicle.camera
 	var target:=Vector3.ZERO
 	var label:=""
@@ -157,7 +162,7 @@ func draw_package_guide() -> void:
 		if not item.is_empty():
 			target=item.body.global_position+Vector3.UP*.9
 			label="BOX %02d" % (int(item.id)+1)
-		elif cargo.arcade_run:
+		elif cargo.arcade_run or zen_mode():
 			target=vehicle.global_position+Vector3.UP;label="TRUCK";tone=CYAN
 		else:return
 	elif cargo.arcade_run:
@@ -237,7 +242,11 @@ func compact_layout() -> bool:
 func compact_map_rect() -> Rect2:
 	return preload("res://scripts/hud_layout.gd").map_rect(size.y/(size.x/720),expanded_map)
 
+func zen_mode() -> bool:
+	return cargo and cargo.game.get("zen")==true
+
 func location_name() -> String:
+	if zen_mode():return "ZEN / OPEN ROAD" if cargo.game.outerbelt else "ZEN / CITY STREETS"
 	if vehicle.location_world:
 		if vehicle.location_world.get("is_arcade"):return "CLEVELAND / DELIVERY MAYHEM"
 		return "CLEVELAND / PUBLIC SQUARE" if vehicle.location_world.get("is_downtown") else "INDEPENDENCE, OH"
@@ -245,6 +254,12 @@ func location_name() -> String:
 
 func draw_packages(rect:Rect2) -> void:
 	if not cargo or not vehicle.location_world:return
+	if zen_mode():
+		var connections:Node=cargo.game.zen_connections
+		if connections:
+			var point:Vector2=vehicle.location_world.map_point(connections.exit_position,rect)
+			draw_circle(point,6,CYAN);draw_circle(point,3,INK)
+		return
 	if vehicle.location_world.has_method("map_point"):
 		if cargo.arcade_run and not cargo.arcade_run.route_finished():
 			var next:Vector2=vehicle.location_world.map_point(cargo.arcade_run.target(),rect)
@@ -284,8 +299,8 @@ func draw_brand() -> void:
 	draw_polyline(PackedVector2Array([Vector2(27,20),Vector2(337,20),Vector2(321,56),Vector2(15,56),Vector2(27,20)]),GOLD,2,true)
 	shape([Vector2(25,63),Vector2(258,63),Vector2(250,96),Vector2(16,96)],PURPLE,3)
 	caption(Vector2(37,46),"FedUp",28,CREAM,true)
-	caption(Vector2(130,45),"DRIVING SIMULATOR",17,GOLD,true)
-	caption(Vector2(36,85),"DOWNTOWN / CLEVELAND" if vehicle.location_world and vehicle.location_world.get("is_downtown") else ("I-480 / I-77 / OHIO" if vehicle.location_world else "TRAINING / CITY EXIT AHEAD"),13,GOLD,true)
+	caption(Vector2(130,45),"ZEN DRIVE" if zen_mode() else "DRIVING SIMULATOR",17,GOLD,true)
+	caption(Vector2(36,85),location_name() if zen_mode() else "DOWNTOWN / CLEVELAND" if vehicle.location_world and vehicle.location_world.get("is_downtown") else ("I-480 / I-77 / OHIO" if vehicle.location_world else "TRAINING / CITY EXIT AHEAD"),13,GOLD,true)
 	panel(Rect2(1100,20,153,34),PANEL,GOLD,2)
 	var view_label:="C  SWITCH VIEW"
 	if cargo and cargo.arcade_run and is_instance_valid(cargo.game.fixed_camera):view_label="C  CLOSER VIEW" if cargo.game.fixed_camera.preset==1 else "C  OVERVIEW"

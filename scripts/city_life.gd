@@ -14,6 +14,7 @@ func add_citizen(at:Vector3,route:Array[Vector3],index:int) -> CharacterBody3D:
 	var person:=preload("res://scripts/citizen.gd").new();person.district=self
 	var keys:Array=definitions.keys();person.design_id=keys[index%keys.size()];person.definition=definitions[person.design_id]
 	person.route=route;person.waypoint=(index%route.size()+1)%route.size();person.pace=.9+float(index%5)*.13
+	if game.get("zen")==true:person.pace*=.9
 	add_child(person);person.position=at+Vector3.UP*.2;person.last_position=person.position
 	citizens.append(person);return person
 

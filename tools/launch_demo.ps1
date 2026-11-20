@@ -1,4 +1,4 @@
-param([switch]$Outerbelt, [switch]$PresentationCheck)
+param([switch]$Zen, [switch]$Outerbelt, [switch]$PresentationCheck)
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $engine = Join-Path $PSScriptRoot 'Godot_v4.5.1-stable_win64.exe'
@@ -14,7 +14,8 @@ try {
         throw "Could not prepare game assets. See $importLog and $importErrors."
     }
     $gameArguments = @('--path', ('"' + $projectRoot + '"'))
-    if ($Outerbelt -or $PresentationCheck) { $gameArguments += '--' }
+    if ($Zen -or $Outerbelt -or $PresentationCheck) { $gameArguments += '--' }
+    if ($Zen) { $gameArguments += '--zen' }
     if ($Outerbelt) { $gameArguments += '--outerbelt' }
     if ($PresentationCheck) { $gameArguments += '--presentation-check' }
     $game = Start-Process -FilePath $engine -WorkingDirectory $projectRoot -ArgumentList $gameArguments -PassThru

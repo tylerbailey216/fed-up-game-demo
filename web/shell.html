@@ -41,6 +41,7 @@ $GODOT_HEAD_INCLUDE
 const config=$GODOT_CONFIG;
 if(new URLSearchParams(location.search).get('qa')==='controls')config.args=['--','--browser-controls-qa'];
 if(new URLSearchParams(location.search).get('qa')==='arcade')config.args=['--','--browser-controls-qa','--arcade-qa'];
+if(new URLSearchParams(location.search).get('qa')==='zen')config.args=['--','--browser-controls-qa','--zen'];
 const engine=new Engine(config);
 const missing=Engine.getMissingFeatures({threads:$GODOT_THREADS_ENABLED});
 const status=document.querySelector('#status'),track=document.querySelector('#track'),fill=document.querySelector('#fill'),percent=document.querySelector('#percent'),error=document.querySelector('#error');

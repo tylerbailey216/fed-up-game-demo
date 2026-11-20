@@ -40,8 +40,8 @@ func signal_speed_limit(car:RigidBody3D) -> float:
 	if game.get("city_life") and is_instance_valid(game.city_life):
 		var gap:Vector3=game.city_life.center+game.city_life.forward*12-car.position
 		var forward:Vector3=-car.global_basis.z
-		if ns_light=="RED" and gap.dot(forward)>6 and gap.dot(forward)<23 and absf(gap.dot(car.global_basis.x))<6:return maxf(0,gap.dot(forward)-7)*.5
+		if ns_light=="RED" and gap.dot(forward)>6 and gap.dot(forward)<23 and absf(gap.dot(car.global_basis.x))<6:return calm_speed_limit(car,maxf(0,gap.dot(forward)-7)*.5)
 	for point in [Vector3(920,0,-170),Vector3(1160,0,95)]:
 		var gap:Vector3=point-car.position;var forward:Vector3=-car.global_basis.z
-		if ns_light=="RED" and gap.dot(forward)>7 and gap.dot(forward)<22 and absf(gap.dot(car.global_basis.x))<5:return maxf(0,gap.dot(forward)-8)*.5
-	return 30.0
+		if ns_light=="RED" and gap.dot(forward)>7 and gap.dot(forward)<22 and absf(gap.dot(car.global_basis.x))<5:return calm_speed_limit(car,maxf(0,gap.dot(forward)-8)*.5)
+	return calm_speed_limit(car,30.0)

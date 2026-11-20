@@ -28,6 +28,7 @@ var popup_last_at:=-10000
 var safety:=preload("res://scripts/package_safety.gd").new()
 var pickup_previous:=Vector3.ZERO
 var arcade_run:Node3D
+var zen_drive:RefCounted
 
 func pause_packages(value:bool) -> void:
 	for item in packages:
@@ -41,11 +42,15 @@ func _ready() -> void:
 	game.van.delivery_collision_rules=true
 	seen_collision=game.van.crash_serial
 	safety.cargo=self
+	if game.get("zen")==true:
+		zen_drive=preload("res://scripts/zen_drive.gd").new();zen_drive.cargo=self
+		return
 	build_checkpoint()
 	if game.arcade:
 		arcade_run=preload("res://scripts/arcade_run.gd").new();arcade_run.cargo=self;add_child(arcade_run)
 
 func build_checkpoint() -> void:
+	if game.get("zen")==true:return
 	checkpoint=Node3D.new();add_child(checkpoint)
 	if game.arcade:
 		checkpoint_position=game.highway.delivery_position;checkpoint.rotation.y=game.highway.delivery_heading
@@ -78,6 +83,7 @@ func show_popup(message:String) -> void:
 	popup=message;popup_time=2.6;popup_last_at=now
 
 func remaining_packages() -> int:
+	if zen_drive:return 0
 	if arcade_run and not spilled:return 0 # The untouched manifest is already aboard.
 	var count:=0
 	for item in packages:
@@ -88,12 +94,14 @@ func player_position() -> Vector3:
 	return actor.global_position if on_foot else game.van.global_position
 
 func spill() -> void:
+	if zen_drive:return
 	if spilled or damage<100:return
 	spilled=true;game.van.cargo_open=true
 	for i in quota:drop_package()
 	game.van.notify_driver("TRUCK DISABLED / Recover %d packages" % quota)
 
 func drop_package() -> void:
+	if zen_drive:return
 	if not spilled or spawned>=quota:return
 	var van:Node=game.van
 	var body:=RigidBody3D.new();body.mass=4;body.continuous_cd=true;body.linear_damp=.6;body.angular_damp=.8
@@ -118,6 +126,7 @@ func impact_damage(level:float) -> float:
 	return lerpf(6.0,44.0,pow(clampf((level-.18)/.82,0,1),1.35))
 
 func damage_hit(level:float) -> void:
+	if zen_drive:zen_drive.collision(level);return
 	if spilled or complete:return
 	collision_count+=1 # Diagnostic only; never gates disable or package release.
 	var before:=damage
@@ -129,6 +138,7 @@ func damage_hit(level:float) -> void:
 	else:game.van.notify_driver("LOW TRUCK ENERGY / LOAD SECURED" if damage>=65 else "TRUCK DAMAGED / LOAD SECURED")
 
 func next_stage() -> void:
+	if zen_drive:return
 	if not complete:return
 	for item in packages:
 		if is_instance_valid(item.body):item.body.queue_free()
@@ -228,6 +238,7 @@ func restore_load() -> void:
 	show_popup("ALL %d SECURED / TRUCK READY\nENTER TRUCK, THEN STOP AT COLLECTION" % quota)
 
 func update_checkpoint(delta:float) -> void:
+	if zen_drive:return
 	var at:Vector3=checkpoint.to_local(player_position())
 	var inside:bool=absf(at.x)<5.5 and absf(at.z)<7 and absf(at.y)<3
 	if inside and not checkpoint_inside and not complete:
@@ -249,12 +260,20 @@ func update_checkpoint(delta:float) -> void:
 		show_popup("DEMO COMPLETE!\nALL %d PACKAGES DELIVERED" % quota)
 
 func delivery_ready() -> bool:
+	if zen_drive:return false
 	if arcade_run:return arcade_run.route_finished() and (not spilled or load_restored)
 	return load_restored
 
 func _physics_process(delta:float) -> void:
 	if not game.driving:return
 	popup_time=maxf(0,popup_time-delta)
+	if zen_drive:
+		armed=false
+		if seen_collision!=game.van.crash_serial:
+			seen_collision=game.van.crash_serial;zen_drive.collision(game.van.collision_level)
+		if on_foot and actor.is_on_floor():safe_foot_position=actor.position
+		zen_drive.update(delta)
+		return
 	armed=game.outerbelt or game.highway.entered
 	if seen_collision!=game.van.crash_serial:
 		seen_collision=game.van.crash_serial
@@ -277,6 +296,7 @@ func _physics_process(delta:float) -> void:
 	update_checkpoint(delta)
 
 func objective() -> String:
+	if zen_drive:return zen_drive.objective()
 	if complete:return "DEMO COMPLETE / ALL %d DELIVERED" % quota
 	if on_foot and not game.van.wrecked:return entry_instruction()
 	if arcade_run and (not spilled or load_restored):return arcade_run.guidance()

@@ -35,6 +35,8 @@ var tire_marks: Node3D
 var terrain_particles:Node3D
 var outerbelt := false
 var arcade:=false
+var zen:=false
+var zen_connections:Node3D
 var fixed_camera:Node3D
 var map_button: Button
 var arcade_button:Button
@@ -59,9 +61,10 @@ func _ready() -> void:
 	var validation_run:=false
 	for flag in args:
 		if flag.ends_with("-test") or flag.ends_with("-capture") or flag in ["--capture","--presentation-check","--browser-controls-qa"]:validation_run=true
-	var location:String=str(get_tree().get_meta("location","motorway" if outerbelt else ("city" if validation_run or legacy_test or "--city" in args else "arcade")))
+	var location:String=str(get_tree().get_meta("location","motorway" if outerbelt else ("city" if validation_run or legacy_test or "--city" in args or "--zen" in args else "arcade")))
 	if not get_tree().has_meta("location") and ("--arcade-test" in args or "--arcade-capture" in args or "--arcade-qa" in args or "--arcade-switch-test" in args):location="arcade"
 	outerbelt=location=="motorway";arcade=location=="arcade" and not legacy_test
+	zen=not arcade and not legacy_test and (str(get_tree().get_meta("game_mode",""))=="zen" or not validation_run or "--zen" in args or "--zen-test" in args or "--zen-switch-test" in args or "--location-switch-test" in args)
 	highway = preload("res://scripts/arcade_world.gd").new() if arcade else (preload("res://scripts/independence.gd").new() if outerbelt else (Highway.new() if legacy_test else preload("res://scripts/downtown.gd").new()))
 	add_child(highway)
 	if outerbelt:preload("res://scripts/terrain_surface.gd").motorway_index(highway)
@@ -107,10 +110,10 @@ func _ready() -> void:
 	van.add_child(shadow)
 	van.contact_shadow=shadow
 	van.reset_vehicle()
-	traffic = preload("res://scripts/arcade_traffic.gd").new() if arcade else (preload("res://scripts/downtown_traffic.gd").new() if not outerbelt and not legacy_test else preload("res://scripts/traffic_district.gd").new())
+	traffic = preload("res://scripts/arcade_traffic.gd").new() if arcade else (preload("res://scripts/downtown_traffic.gd").new() if not outerbelt and not legacy_test else (preload("res://scripts/zen_motorway_traffic.gd").new() if zen else preload("res://scripts/traffic_district.gd").new()))
 	traffic.game = self
 	traffic.highway = highway
-	traffic.disabled_world = outerbelt
+	traffic.disabled_world = outerbelt and not zen
 	add_child(traffic)
 	if not outerbelt and not legacy_test:
 		city_life=preload("res://scripts/arcade_life.gd").new() if arcade else preload("res://scripts/city_life.gd").new();city_life.game=self;add_child(city_life)
@@ -125,6 +128,8 @@ func _ready() -> void:
 		cargo = preload("res://scripts/cargo_gameplay.gd").new()
 		cargo.game = self
 		add_child(cargo)
+	if zen:
+		zen_connections=preload("res://scripts/zen_connections.gd").new();zen_connections.game=self;add_child(zen_connections)
 	build_ui()
 	responsive_layout()
 	if arcade:
@@ -136,7 +141,12 @@ func _ready() -> void:
 	audio_manager.process_mode = Node.PROCESS_MODE_PAUSABLE
 	add_child(audio_manager)
 	if "--browser-controls-qa" in args and OS.has_feature("web"):
-		var fixture:Node=preload("res://scripts/arcade_browser_qa.gd").new() if arcade else preload("res://scripts/browser_controls_qa.gd").new();fixture.game=self;add_child(fixture)
+		var fixture:Node=preload("res://scripts/arcade_browser_qa.gd").new() if arcade else (preload("res://scripts/zen_browser_qa.gd").new() if zen else preload("res://scripts/browser_controls_qa.gd").new());fixture.game=self;add_child(fixture)
+	if "--zen-test" in args:
+		var tests:=preload("res://scripts/zen_tests.gd").new();add_child(tests)
+		var failed:Array[String]=await tests.run(self,"--zen-capture" in args)
+		print("ZEN TEST PASS" if failed.is_empty() else "ZEN TEST FAIL: "+str(failed))
+		await quit_demo(0 if failed.is_empty() else 1);return
 	if "--presentation-check" in args:
 		var review:=preload("res://scripts/presentation_checks.gd").new()
 		add_child(review)
@@ -164,33 +174,18 @@ func _ready() -> void:
 	if bool(get_tree().get_meta("start_selected_location",false)):
 		get_tree().remove_meta("start_selected_location")
 		start_drive()
+		if zen:restore_zen_transfer()
 	if "--arcade-switch-test" in args:
 		var step:=int(get_tree().get_meta("arcade_switch_step",0))
-		var expected:String=["arcade","city","motorway","arcade"][step]
-		var actual:String="arcade" if arcade else ("motorway" if outerbelt else "city")
-		if actual!=expected or (step>0 and (not driving or menu.visible)):
-			push_error("ARCADE SWITCH TEST FAIL: "+actual+" expected "+expected);await quit_demo(1);return
-		if step<3:
-			get_tree().set_meta("arcade_switch_step",step+1)
-			if step<2:map_button.pressed.emit()
-			else:arcade_button.pressed.emit()
-			return
-		print("ARCADE SWITCH TEST PASS: arcade -> city -> motorway -> arcade through menu buttons")
+		if arcade!=(step!=1) or (step==1 and not zen) or (step>0 and (not driving or menu.visible)):
+			push_error("ARCADE SWITCH TEST FAIL: mode or auto-start");await quit_demo(1);return
+		if step<2:
+			get_tree().set_meta("arcade_switch_step",step+1);map_button.pressed.emit();return
+		print("ARCADE SWITCH TEST PASS: Delivery Mayhem -> Zen Drive -> Delivery Mayhem through menu buttons")
 		await quit_demo();return
-	if "--location-switch-test" in args:
-		var stage := int(get_tree().get_meta("switch_test_stage",0))
-		var expected := (stage%2==0) if "--outerbelt" in args else (stage%2==1)
-		assert(outerbelt==expected,"Location switching overrides launch arguments")
-		assert(map_button.text.contains("Public Square" if outerbelt else "Independence"),"Alternate map has a visible named Drive button")
-		if stage>0:
-			assert(driving and van.active and not menu.visible,"Selecting map button starts its drive")
-		if stage<2:
-			get_tree().set_meta("switch_test_stage",stage+1)
-			map_button.pressed.emit()
-			return
-		print("LOCATION SWITCH PASS: actual menu button signals in both directions, automatic driving, launch argument override")
-		await quit_demo()
-		return
+	if "--location-switch-test" in args or "--zen-switch-test" in args:
+		var tests:=preload("res://scripts/zen_connection_tests.gd").new();add_child(tests)
+		tests.call_deferred("run",self);return
 	if "--outerbelt-test" in OS.get_cmdline_user_args() or "--outerbelt-capture" in OS.get_cmdline_user_args():
 		var tests := preload("res://scripts/independence_tests.gd").new()
 		add_child(tests)
@@ -497,6 +492,7 @@ func build_ui() -> void:
 	menu_art = preload("res://scripts/menu_art.gd").new()
 	menu_art.outerbelt = outerbelt
 	menu_art.arcade=arcade
+	menu_art.zen=zen
 	layer.add_child(menu_art)
 	menu_art.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	menu = PanelContainer.new()
@@ -518,19 +514,16 @@ func build_ui() -> void:
 	var choices := VBoxContainer.new()
 	choices.add_theme_constant_override("separation",8)
 	margin.add_child(choices)
-	menu_title = text_label("LET'S DELIVER.",40)
+	menu_title = text_label("TAKE THE LONG WAY." if zen else "LET'S DELIVER.",40)
 	menu_title.add_theme_font_override("font",preload("res://assets/fonts/Bangers-Regular.ttf"))
 	choices.add_child(menu_title)
-	choices.add_child(text_label("DELIVERY MAYHEM\nONE BLOCK / EVERY PACKAGE COUNTS" if arcade else ("INDEPENDENCE / I-480 + I-77\nOHIO MOTORWAY" if outerbelt else "PUBLIC SQUARE + TOWER CITY\nCLEVELAND, OHIO"),24))
-	start_button = button("Start Delivery Mayhem" if arcade else ("Drive Independence, Ohio / I-480" if outerbelt else "Train / Public Square, Cleveland"),start_drive,choices)
+	choices.add_child(text_label("ZEN DRIVE\nCITY STREETS / OPEN ROAD" if zen else "DELIVERY MAYHEM\nONE BLOCK / EVERY PACKAGE COUNTS",24))
+	start_button = button("Start Zen Drive" if zen else "Start Delivery Mayhem",start_drive,choices)
 	var primary:=StyleBoxFlat.new();primary.bg_color=Color("ffcb47");primary.border_color=Color("130d1b");primary.set_border_width_all(3);primary.set_corner_radius_all(3);primary.shadow_color=Color("130d1b");primary.shadow_size=3
 	for state in ["normal","hover","pressed","focus"]:start_button.add_theme_stylebox_override(state,primary)
 	start_button.add_theme_color_override("font_color",Color("23152f"));start_button.add_theme_color_override("font_hover_color",Color("23152f"));start_button.add_theme_color_override("font_focus_color",Color("23152f"))
-	map_button = button("Drive Public Square, Cleveland" if outerbelt else "Drive Independence, Ohio / I-480",func(): switch_location(true),choices)
-	if arcade:
-		map_button.text="Explore Public Square / Tower City"
-		button("Explore Independence / I-480",func():switch_location(true,"motorway"),choices)
-	else:arcade_button=button("Delivery Mayhem / short arcade route",func():switch_location(true,"arcade"),choices)
+	map_button = button("Delivery Mayhem / Arcade" if zen else "Zen Drive / Explore at your pace",func(): switch_location(true),choices)
+	if zen:arcade_button=map_button
 	button("Dashboard / Audio [Tab]",toggle_options,choices)
 	button("Fullscreen / windowed",toggle_fullscreen,choices)
 	if not legacy_test and not arcade:
@@ -538,7 +531,7 @@ func build_ui() -> void:
 		credit.text = "Map data: © OpenStreetMap contributors / ODbL"
 		credit.uri = "https://www.openstreetmap.org/copyright"
 		choices.add_child(credit)
-	choices.add_child(text_label("Follow purple route markers. Stop at the gold bay.\nEmpty energy? Walk over every lost box to repair." if arcade else "Drive the city. Recover every package.\nWatch your truck energy / Save the delivery.",20))
+	choices.add_child(text_label("Follow purple route markers. Stop at the gold bay.\nEmpty energy? Walk over every lost box to repair." if arcade else "No timer. No delivery quota. Just drive.\nFollow signed connections between city and open road.",20))
 	choices.add_child(text_label("WASD / arrows or thumbstick: point to drive\nRelease to stop / X enter or exit / C or VIEW distance" if arcade else "WASD drive / X exit or re-enter truck / C camera\nTouch: landscape recommended / portrait supported",18))
 	if FileAccess.file_exists("res://data/build_version.json"):
 		var version:Dictionary=JSON.parse_string(FileAccess.get_file_as_string("res://data/build_version.json"))
@@ -755,7 +748,10 @@ func switch_location(start_on_load := false,destination:="") -> void:
 	switching_location = true
 	start_button.disabled = true
 	map_button.disabled = true
-	var selected:String=destination if not destination.is_empty() else ("city" if outerbelt or arcade else "motorway")
+	var selected:String=destination if not destination.is_empty() else (str(get_tree().get_meta("zen_location","city")) if arcade else "arcade")
+	get_tree().set_meta("game_mode","arcade" if selected=="arcade" else "zen")
+	if selected!="arcade":get_tree().set_meta("zen_location",selected)
+	if selected=="arcade" and get_tree().has_meta("zen_transfer"):get_tree().remove_meta("zen_transfer")
 	menu_title.text = "LOADING YOUR ROUTE..."
 	get_tree().paused = false
 	van.active = false
@@ -768,6 +764,33 @@ func switch_location(start_on_load := false,destination:="") -> void:
 	get_tree().set_meta("start_selected_location",start_on_load)
 	await get_tree().process_frame
 	get_tree().reload_current_scene()
+
+func travel_zen(destination:String,arrival:Dictionary) -> void:
+	if not zen or switching_location or not driving or cargo.on_foot or van.overturned:return
+	var state:Dictionary={"arrival":arrival,"speed":clampf(van.speed,0,float(arrival.get("speed_cap",7.0)))}
+	for field in ["fuel_gallons","distance","wheel_distance","engine_on","parking_brake","headlights","high_beam","hazards","indicator","temperature_f","cockpit","camera_high","camera_orbit","camera_pitch","camera_zoom"]:
+		state[field]=van.get(field)
+	get_tree().set_meta("zen_transfer",state)
+	touch_controls.release_inputs()
+	# Give the loading scene a rendered frame before replacing the current zone.
+	var layer:=CanvasLayer.new();layer.layer=100;add_child(layer)
+	var veil:=ColorRect.new();veil.color=Color("21142e");veil.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT);layer.add_child(veil)
+	var title:=text_label("ZEN DRIVE\n"+("OPEN ROAD AHEAD" if destination=="motorway" else "WELCOME TO CITY STREETS"),36)
+	title.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER;title.vertical_alignment=VERTICAL_ALIGNMENT_CENTER
+	title.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT);veil.add_child(title)
+	await switch_location(true,destination)
+
+func restore_zen_transfer() -> void:
+	if not get_tree().has_meta("zen_transfer"):return
+	var state:Dictionary=get_tree().get_meta("zen_transfer");get_tree().remove_meta("zen_transfer")
+	var arrival:Dictionary=state.arrival
+	van.position=arrival.position;van.rotation=Vector3(0,float(arrival.heading),0)
+	for field in state:
+		if field not in ["arrival","speed"]:van.set(field,state[field])
+	van.speed=float(state.speed);van.velocity=-van.basis.z*van.speed;van.planar_velocity=van.velocity
+	van.safe_position=van.position;van.safe_heading=van.rotation.y
+	van.set_view(bool(state.cockpit))
+	van.notify_driver("ZEN DRIVE / "+("OPEN ROAD" if outerbelt else "CITY STREETS"))
 
 func start_drive() -> void:
 	get_viewport().disable_3d=false
@@ -802,13 +825,13 @@ func return_to_menu() -> void:
 	menu.show()
 	menu_art.show()
 	set_menu_camera()
-	menu_title.text = "LET'S DRIVE."
+	menu_title.text = "TAKE YOUR TIME." if zen else "LET'S DRIVE."
 	start_button.text = "Resume drive"
 	start_button.grab_focus()
 
 func reset_van() -> void:
 	if cargo and (cargo.spilled or cargo.on_foot):
-		van.notify_driver("Recover your packages before resetting the route")
+		van.notify_driver("Return to the truck before resetting" if zen else "Recover your packages before resetting the route")
 		return
 	van.reset_vehicle()
 	update_hud(0,"N",0)

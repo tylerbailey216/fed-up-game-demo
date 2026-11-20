@@ -34,12 +34,14 @@ func _ready() -> void:
 		check.toggled.connect(func(value: bool): game.dashboard.set(field,value))
 		checks[field] = check
 		gps.add_child(check)
-	if not game.arcade:
+	if not game.arcade and not game.zen:
 		gps.add_child(game.text_label("Local loop destinations",18))
 		for target in 4:
 			game.button(game.navigation.DESTINATIONS[target],game.navigation.select_target.bind(target),gps)
 	if game.arcade:
 		gps.add_child(game.text_label("POINT TO DRIVE / RELEASE TO STOP\nWASD, arrow keys or the MOVE thumbstick.\nThe truck turns toward your screen direction.\nC / VIEW changes distance; the streets stay aligned.\nX / WALK exits; X / ENTER re-enters beside the truck.\nWalk over every loose box to repair an empty life bar.\nFollow purple markers, then stop at the gold bay.",14))
+	elif game.zen:
+		gps.add_child(game.text_label("ZEN DRIVE / CITY STREETS + OPEN ROAD\nFollow cyan GPS markers and roadside signs to drive between areas.\nNo timed delivery, cargo quota or permanent damage.\nWASD: gas/brake and steering. S holds brake, then reverse.\nTouch: select D/R or pull the stick down, then hold GAS.\nX exits / re-enters beside the truck; C cycles cameras.\nDrag the road to look around; G / hold VIEW recenters.",14))
 	else:
 		gps.add_child(game.text_label("M map · N next destination · G recenter · V mirror\nX exits / re-enters the truck when beside it.\nCollect all lost boxes before entering a disabled truck.\nDrag the world to orbit/tilt; wheel zooms.\nF refuels the demo van anywhere while stopped.",14))
 	var vehicle := add_tab("Vehicle")
@@ -56,6 +58,8 @@ func _ready() -> void:
 		vehicle.add_child(game.text_label("Automatic acceleration, turning and braking.\nDown means travel down the screen, not reverse gear.\nRelease movement to stop; no separate pedals needed.\nB horn / F refuel while stopped / U recover rollover.",15))
 	else:
 		vehicle.add_child(game.text_label("B holds horn · Space handbrake/drift · R resets\nC switches to the turning chase camera.\nCruise requires 12 mph; brakes cancel cruise.\nRefuel only while stopped; use I to restart if empty.",15))
+	if game.zen:
+		game.button("Zen roadside service",func(): game.cargo.zen_drive.service(),vehicle)
 	var audio := add_tab("Audio")
 	for channel in ["Master volume","Nature / ambience"]:
 		audio.add_child(game.text_label(channel,18))

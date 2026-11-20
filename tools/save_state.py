@@ -62,6 +62,8 @@ def save(message):
     initial=source_id()
     run([GODOT,'--headless','--path','.', '--fixed-fps','60','--','--arcade-test'],env)
     run([GODOT,'--headless','--path','.', '--fixed-fps','60','--','--arcade-switch-test'],env)
+    run([GODOT,'--headless','--path','.', '--fixed-fps','60','--','--zen-test'],env)
+    run([GODOT,'--headless','--path','.', '--fixed-fps','60','--','--outerbelt','--zen-test'],env)
     run([GODOT,'--headless','--path','.', '--fixed-fps','60','--','--delivery-test'],env)
     run([GODOT,'--headless','--path','.', '--fixed-fps','60','--','--stunt-test'],env)
     run([GODOT,'--headless','--path','.', '--fixed-fps','60','--','--terrain-test'],env)
@@ -73,7 +75,7 @@ def save(message):
     stamp={'state_id':initial,'saved_at':datetime.datetime.now(datetime.timezone.utc).isoformat()}
     path=ROOT/'data/build_version.json'
     if not path.exists() or json.loads(path.read_text()).get('state_id')!=initial:path.write_text(json.dumps(stamp,indent=2))
-    run(GIT+['add','.gitignore','.github','AGENTS.md','assets','data','scenes','scripts','tools','web','export_presets.cfg','project.godot','README.md','docs','Launch Demo.cmd','Launch Independence.cmd','Open Editor.cmd'])
+    run(GIT+['add','.gitignore','.github','AGENTS.md','assets','data','scenes','scripts','tools','web','export_presets.cfg','project.godot','README.md','docs','Launch Demo.cmd','Launch Zen Drive.cmd','Launch Independence.cmd','Open Editor.cmd'])
     if run(GIT+['diff','--cached','--name-only']):run(GIT+['commit','-m',message])
     commit=run(GIT+['rev-parse','HEAD'])
     write_status('exporting',state_id=initial,commit=commit)

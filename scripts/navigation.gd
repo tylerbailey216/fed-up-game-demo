@@ -36,12 +36,17 @@ func update_position(pos: Vector3, signed_speed: float) -> void:
 func next_target() -> void:
 	if location_world:
 		var vehicle: Node = location_world.get_parent().get("van")
-		vehicle.notify_driver(location_world.nearest_road(vehicle.position).name.strip_edges())
+		var game:Node=location_world.get_parent()
+		if game.get("zen")==true:
+			vehicle.notify_driver(game.zen_connections.guidance())
+		else:vehicle.notify_driver(location_world.nearest_road(vehicle.position).name.strip_edges())
 		return
 	select_target(target_index+1)
 
 func guidance() -> String:
 	if location_world:
+		var game:Node=location_world.get_parent()
+		if game.get("zen")==true:return "Zen Drive / "+("Open Road" if game.outerbelt else "City Streets")
 		if location_world.get("is_arcade"):return "Cleveland / Delivery Mayhem"
 		return "Cleveland / Public Square" if location_world.get("is_downtown") else "Independence / free exploration"
 	if not enabled:

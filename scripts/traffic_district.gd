@@ -21,6 +21,7 @@ var city_art:=preload("res://scripts/city_vehicle_art.gd").new()
 func spawn_reference_car(kind:String,route:Array[Vector3],edge:int,fraction:float,pace:float) -> RigidBody3D:
 	var car:=Car.new();car.district=self;car.definition=city_art.definitions[kind];car.model_kind=kind
 	car.route=route.duplicate();car.waypoint=(edge+1)%route.size();car.cruise_speed=pace
+	if game.get("zen")==true:car.cruise_speed=minf(pace*.85,5.5)
 	car.position=route[edge].lerp(route[car.waypoint],fraction)+Vector3.UP*.06
 	var direction:Vector3=route[car.waypoint]-car.position;car.rotation.y=atan2(-direction.x,-direction.z)
 	add_child(car);city_art.build(car,highway,kind);cars.append(car);return car
@@ -181,6 +182,7 @@ func spawn_traffic() -> void:
 		car.district = self
 		car.route = ns.duplicate() if i<8 else ew.duplicate()
 		car.cruise_speed = 8.0+float(i%3)
+		if game.get("zen")==true:car.cruise_speed=minf(car.cruise_speed*.85,5.5)
 		var edge := (i%8)/2 if i<8 else i%4
 		var start: Vector3 = car.route[edge]
 		var end: Vector3 = car.route[(edge+1)%4]
@@ -301,8 +303,36 @@ func signal_speed_limit(car: RigidBody3D) -> float:
 	var lateral := absf(gap.dot(car.global_basis.x))
 	var state := ns_light if absf(forward.z)>absf(forward.x) else ew_light
 	if state!="GREEN" and lateral<5 and along>8 and along<42:
-		return sqrt(maxf(0,2.0*3.5*(along-11)))
-	return 100.0
+		return calm_speed_limit(car,sqrt(maxf(0,2.0*3.5*(along-11))))
+	return calm_speed_limit(car,100.0)
+
+func calm_speed_limit(car:RigidBody3D,limit:float) -> float:
+	if game.get("zen")!=true:return limit
+	# Keep the same physical cars and routes, with room to follow and yield.
+	# This only lowers the existing light/obstacle limit; it never moves a car.
+	limit=minf(limit,car.cruise_speed)
+	car.horn_cooldown=maxf(car.horn_cooldown,1.0)
+	for other in cars:
+		if other==car or not is_instance_valid(other):continue
+		limit=calm_following_limit(car,other.global_position,other.body_width,other.body_length,limit)
+	limit=calm_following_limit(car,game.van.global_position,2.5,5.6,limit)
+	var life:Node=game.get("city_life")
+	if is_instance_valid(life):
+		for citizen in life.citizens:
+			if citizen.simulation_active:limit=calm_following_limit(car,citizen.global_position,.7,.7,limit)
+	var cargo:Node=game.get("cargo")
+	if is_instance_valid(cargo) and cargo.on_foot:limit=calm_following_limit(car,cargo.actor.global_position,.7,.7,limit)
+	return limit
+
+func calm_following_limit(car:RigidBody3D,at:Vector3,width:float,length:float,limit:float) -> float:
+	var gap:=at-car.global_position
+	if absf(gap.y)>2.5 or gap.length_squared()>45*45:return limit
+	var along:float=gap.dot(-car.global_basis.z)
+	var corridor:float=(car.body_width+width)*.5+.35
+	if along<=0 or absf(gap.dot(car.global_basis.x))>corridor:return limit
+	var clearance:float=along-(car.body_length+length)*.5
+	# At cruising speed, maintain about 1.4 seconds plus a 3 m clear gap.
+	return minf(limit,maxf(0,clearance-3.0)/1.4)
 
 func in_city(pos: Vector3) -> bool:
 	return not disabled_world and pos.x>270 and pos.x<456 and pos.z>-170 and pos.z<70
