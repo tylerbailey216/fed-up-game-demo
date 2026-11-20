@@ -84,7 +84,9 @@ func draw(c:Control) -> void:
 	if walking:
 		Ink.icon(c,"exit",housing.position+Vector2(36,45),1.3,CYAN)
 		text(c,housing.position+Vector2(65,37),"TRUCK READY" if c.cargo.can_enter_truck() else "ON FOOT",24,GOLD)
-		text(c,housing.position+Vector2(65,58),"TAKE A STROLL" if zen else "%02d / %02d SECURED" % [c.cargo.recovered,c.cargo.quota],17)
+		text(c,housing.position+Vector2(65,58 if zen else (66 if wide else 74)),"TAKE A STROLL" if zen else c.package_counter_text(),17 if zen else (24 if wide else 30),c.package_counter_color())
+		if not zen and c.pickup_pulse>0:
+			c.draw_line(housing.position+Vector2(65,68 if wide else 82),housing.position+Vector2(housing.size.x-15,68 if wide else 82),Color(GOLD,c.pickup_pulse/.55),2,true)
 		text(c,housing.position+Vector2(15,housing.size.y-14),(("TAP ENTER TO DRIVE" if c.touch_input() else "PRESS X TO DRIVE") if c.cargo.can_enter_truck() else ("BESIDE TRUCK / TAP ENTER" if c.touch_input() else "BESIDE TRUCK / PRESS X")) if not c.vehicle.wrecked else "WALK OVER BOXES / AUTO RETURN",12,CYAN)
 	elif not c.action_prompt_visible:
 		var speed_at:=Vector2(232,h-63) if wide else Vector2(294,y+77)

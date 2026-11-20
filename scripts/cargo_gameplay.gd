@@ -151,6 +151,7 @@ func next_stage() -> void:
 	safety.ready=false;safety.clock=0;safety.rescued=0;safety.audit_clock=0;safety.index=0
 	game.van.cargo_open=false;game.van.new_truck();seen_collision=game.van.crash_serial
 	game.van.active=true
+	if is_instance_valid(game.get("gameplay_feedback")):game.gameplay_feedback.reset()
 	if arcade_run:
 		arcade_run.reset();game.van.notify_driver("NEW DELIVERY / FOLLOW PURPLE MARKERS / STOP AT GOLD BAY")
 	else:game.van.notify_driver("STAGE %d / %s / %d PACKAGES" % [stage_index+1,stages[stage_index].name,quota])
@@ -225,6 +226,7 @@ func recover_package(item:Dictionary) -> void:
 	# Credit contact immediately. The star flight is presentation, never a
 	# second pickup or a requirement to approach the rear of the truck.
 	recovered+=1
+	if is_instance_valid(game.get("gameplay_feedback")):game.gameplay_feedback.pickup(item.body.global_position,recovered,quota)
 	item.body.freeze=true;item.body.collision_layer=0;item.body.collision_mask=0;item.body.hide()
 	var effect:=preload("res://scripts/package_return.gd").new();effect.cargo=self;effect.item=item;add_child(effect)
 
@@ -257,6 +259,7 @@ func update_checkpoint(delta:float) -> void:
 		complete=true;game.van.parking_brake=true;game.van.engine_on=false
 		game.van.delivery_complete=true
 		game.van.speed=0;game.van.planar_velocity=Vector3.ZERO;game.van.velocity=Vector3.ZERO
+		if is_instance_valid(game.get("gameplay_feedback")):game.gameplay_feedback.completed()
 		show_popup("DEMO COMPLETE!\nALL %d PACKAGES DELIVERED" % quota)
 
 func delivery_ready() -> bool:

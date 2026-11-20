@@ -4,12 +4,12 @@
     "height": 720,
     "touch": false,
     "performance": {
-      "fps": 52.98481102084074,
-      "p95_ms": 33.20000000000073
+      "fps": 43.583535108958834,
+      "p95_ms": 49.900000000001455
     },
     "actual_lap": {
-      "distance": 413.31220638909036,
-      "road_gap": 0.8821105957030966,
+      "distance": 412.7240177733624,
+      "road_gap": 1.1473045349121023,
       "corners": [
         true,
         true,
@@ -20,15 +20,15 @@
     },
     "fixed_camera": {
       "view_rotation": [
-        -1.04719734191895,
-        1.19209289550781e-7,
+        -1.04719746112823,
+        1.19209317972491e-7,
         0
       ],
       "preset": 0,
       "cutaways": 1
     },
-    "draw_calls": 191,
-    "physics_ms": 6,
+    "draw_calls": 190,
+    "physics_ms": 8.2,
     "errors": []
   }
 ]

@@ -11,7 +11,7 @@ The default demo is now one compact, fictional Cleveland-inspired delivery block
 5. Recovering the full manifest restores the truck. Walk beside it and press X on PC / tap ENTER on touchscreens. Finish the remaining markers and collection stop.
 6. Dispatch reports the manifest, elapsed active play time, energy used and recovered packages, with a short humorous assessment. No score rewards collisions with citizens. ONE MORE DELIVERY clears the run and starts fresh.
 
-There is no deadline, forced opening collision, tap-to-move system, progression beyond this round, or completed Zen mode. Those would be separate design decisions. Pause and menus stop the run timer. One recovery incident is supported per run; repairing the truck does not start an endless stream of new packages.
+There is no deadline, forced opening collision, tap-to-move system, or progression beyond this round. Further arcade mechanics would be separate design decisions. The connected Zen Drive experience is documented separately. Pause and menus stop the run timer. One recovery incident is supported per run; repairing the truck does not start an endless stream of new packages.
 
 ## Controls
 
@@ -49,3 +49,5 @@ On November 20, the native directional-driving suite and browser route checks pa
 The initial arcade release's November 19 Chrome run passed all four layouts with no browser errors; its short start-view samples measured about 48-59 FPS on the Intel UHD 620 development PC at that time. Later same-machine fixed-camera comparisons showed lower frame rates in both the published chase-view build and the fixed-view build. Those measurements do not establish a new camera-specific regression or a sustained performance guarantee. `tools/browser_camera_profile.cjs` compares the same view with camera updates enabled/disabled and with population simulation paused; optimized cutaway audits measured about 0.1-0.3 ms. Native checks also sample physical ground along all six streets, verify raised sidewalk/grass identities and drive the truck with actual acceleration input. Menu-button checks traverse Delivery Mayhem -> Zen Drive -> Delivery Mayhem. Separate real-input connection checks drive both Zen gateway approaches and verify carried truck state.
 
 During repeated browser launches, one landscape run reported GLES vertex-shader compilation errors. A fresh landscape session and desktop session completed the same build without browser errors. This observation does not establish the cause of that transient graphics failure.
+
+The November 20 [Phase 1 polish pass](DEMO_POLISH_PHASE_1.md) adds brief presentation feedback and fixes bidirectional sidewalk returns without redesigning controls, cameras, damage or package recovery.

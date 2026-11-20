@@ -21,6 +21,7 @@ docs/external-sync-status.json
 docs/external-sync.log
 tools/webqa/
 docs/*-smoke.json
+docs/polish-curb-trace-*.json
 docs/independence-performance*.json
 docs/*RENDER_SAMPLE.txt
 docs/save-state-status.json

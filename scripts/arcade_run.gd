@@ -43,7 +43,9 @@ func update(delta:float) -> void:
 	if route_finished() or cargo.on_foot or van.wrecked or van.overturned or van.stunts.active:return
 	var gap:Vector3=van.position-target()
 	if Vector2(gap.x,gap.z).length()<14 and absf(gap.y)<2 and van.is_on_floor():
+		var cleared:Vector3=target()
 		route_index+=1;refresh_marker()
+		if is_instance_valid(cargo.game.get("gameplay_feedback")):cargo.game.gameplay_feedback.checkpoint(cleared,route_index,cargo.game.highway.route_points.size())
 		cargo.show_popup("ROUTE CLEAR / STOP AT THE GOLD COLLECTION BAY" if route_finished() else "ROUTE %d / %d CLEARED" % [route_index,cargo.game.highway.route_points.size()])
 
 func guidance() -> String:

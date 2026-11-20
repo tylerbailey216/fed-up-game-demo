@@ -21,7 +21,11 @@ var radial_probes:Array[Vector3]=[]
 
 func _ready() -> void:
 	var floor_mesh:=block(self,Vector3(0,-.35,0),Vector3(600,.6,600),Color("7f9465"),true)
-	floor_mesh.get_child(0).set_meta("terrain_kind","grass")
+	var floor_body:=floor_mesh.get_child(0) as StaticBody3D
+	floor_body.set_meta("surface_kind","grass")
+	# Match the road and bevel toe without lifting the visible grass into the
+	# asphalt. The flat truck hull cannot climb an exposed 5 cm underside lip.
+	(floor_body.get_child(0) as CollisionShape3D).position.y=.05
 	streets=preload("res://scripts/street_surfaces.gd").new();streets.world=self;add_child(streets)
 	road(Vector3(-46,0,51.5),Vector3(46,0,51.5),"Parcel Avenue")
 	road(Vector3(46,0,51.5),Vector3(46,0,-51.5),"Mayhem Street")

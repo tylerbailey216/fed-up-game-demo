@@ -2,6 +2,7 @@ extends Node3D
 ## Raised, chamfered sidewalks with matching visible and physical geometry.
 const HEIGHT:=.16
 const BEVEL:=.28
+const TOE_BURY:=.02
 var world:Node
 var roads:Array[Dictionary]=[]
 var road_grid:Dictionary={}
@@ -32,20 +33,35 @@ func on_road(at:Vector3,exclude:="",margin:=0.0) -> bool:
 		if p.distance_to(Geometry2D.get_closest_point_to_segment(p,road.a,road.b))<road.width*.5+margin:return true
 	return false
 
-func triangle(a:Vector3,b:Vector3,c:Vector3,color:Color) -> void:
-	if (b-a).cross(c-a).y>0:var swap:=b;b=c;c=swap
-	var center:Vector3=(a+b+c)/3
-	# Green island tops need their own collider/material identity; their beige
-	# bevels remain curb, and adjacent concrete must never emit grass fragments.
-	var cell:=Vector3i(floori(center.x/96),floori(center.z/96),1 if color==Color("829b60") else 0)
+func triangle(a:Vector3,b:Vector3,c:Vector3,color:Color,cell:Vector3i,pa:Vector3,pb:Vector3,pc:Vector3) -> void:
+	if (b-a).cross(c-a).y>0:
+		var swap:=b;b=c;c=swap
+		swap=pb;pb=pc;pc=swap
 	var origin:=Vector3(cell.x*96,0,cell.y*96)
 	if not surfaces.has(cell):
 		var tool:=SurfaceTool.new();tool.begin(Mesh.PRIMITIVE_TRIANGLES);surfaces[cell]=tool;faces[cell]=PackedVector3Array()
 	for p in [a,b,c]:surfaces[cell].set_color(color);surfaces[cell].add_vertex(p-origin)
-	var collision:PackedVector3Array=faces[cell];collision.append_array(PackedVector3Array([a-origin,b-origin,c-origin]));faces[cell]=collision
+	var collision:PackedVector3Array=faces[cell];collision.append_array(PackedVector3Array([pa-origin,pb-origin,pc-origin]));faces[cell]=collision
 
 func quad(a:Vector3,b:Vector3,c:Vector3,d:Vector3,color:Color) -> void:
-	triangle(a,b,c,color);triangle(a,c,d,color)
+	var center:Vector3=(a+b+c+d)*.25
+	# Both halves of one planar face must share a contact body. Splitting them
+	# at a spatial bucket boundary exposes a false wall along their diagonal.
+	# Island tops retain their grass identity; their beige bevels remain curb.
+	var cell:=Vector3i(floori(center.x/96),floori(center.z/96),1 if color==Color("829b60") else 0)
+	var visible:=PackedVector3Array([a,b,c,d]);var physical:=visible.duplicate()
+	var low:=minf(minf(a.y,b.y),minf(c.y,d.y));var high:=maxf(maxf(a.y,b.y),maxf(c.y,d.y))
+	if high-low>.001:
+		# Continue the same bevel plane below grade. A downward collision sweep
+		# must meet the slope face, never the open triangle edge at ground level.
+		# The visible toe and every above-ground physical point stay unchanged.
+		for i in 4:
+			if absf(visible[i].y-low)>.001:continue
+			var previous:=visible[(i+3)%4];var next:=visible[(i+1)%4]
+			var upper:=previous if previous.y>next.y else next
+			physical[i]=visible[i]+(visible[i]-upper)*(TOE_BURY/(high-low))
+	triangle(a,b,c,color,cell,physical[0],physical[1],physical[2])
+	triangle(a,c,d,color,cell,physical[0],physical[2],physical[3])
 
 func raised(a:Vector3,b:Vector3,width:float,color:=Color("c9bfaa")) -> void:
 	if a.distance_to(b)<.08:return

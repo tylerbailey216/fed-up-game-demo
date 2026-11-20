@@ -33,6 +33,7 @@ var new_truck_button: Button
 var traffic: Node3D
 var tire_marks: Node3D
 var terrain_particles:Node3D
+var gameplay_feedback:Node3D
 var outerbelt := false
 var arcade:=false
 var zen:=false
@@ -62,9 +63,11 @@ func _ready() -> void:
 	for flag in args:
 		if flag.ends_with("-test") or flag.ends_with("-capture") or flag in ["--capture","--presentation-check","--browser-controls-qa"]:validation_run=true
 	var location:String=str(get_tree().get_meta("location","motorway" if outerbelt else ("city" if validation_run or legacy_test or "--city" in args or "--zen" in args else "arcade")))
-	if not get_tree().has_meta("location") and ("--arcade-test" in args or "--arcade-capture" in args or "--arcade-qa" in args or "--arcade-switch-test" in args):location="arcade"
+	if not get_tree().has_meta("location") and ("--arcade-test" in args or "--arcade-capture" in args or "--arcade-qa" in args or "--arcade-switch-test" in args or "--curb-return-test" in args or "--curb-return-capture" in args or "--feedback-test" in args or "--feedback-capture" in args):location="arcade"
+	if "--city-curb-return-test" in args or "--city-curb-return-capture" in args:location="city"
 	outerbelt=location=="motorway";arcade=location=="arcade" and not legacy_test
 	zen=not arcade and not legacy_test and (str(get_tree().get_meta("game_mode",""))=="zen" or not validation_run or "--zen" in args or "--zen-test" in args or "--zen-switch-test" in args or "--location-switch-test" in args)
+	if "--city-curb-return-test" in args or "--city-curb-return-capture" in args:zen=true
 	highway = preload("res://scripts/arcade_world.gd").new() if arcade else (preload("res://scripts/independence.gd").new() if outerbelt else (Highway.new() if legacy_test else preload("res://scripts/downtown.gd").new()))
 	add_child(highway)
 	if outerbelt:preload("res://scripts/terrain_surface.gd").motorway_index(highway)
@@ -140,8 +143,25 @@ func _ready() -> void:
 	audio_manager.nature_volume = nature_volume
 	audio_manager.process_mode = Node.PROCESS_MODE_PAUSABLE
 	add_child(audio_manager)
+	if arcade:
+		gameplay_feedback=preload("res://scripts/gameplay_feedback.gd").new();gameplay_feedback.game=self;add_child(gameplay_feedback)
 	if "--browser-controls-qa" in args and OS.has_feature("web"):
 		var fixture:Node=preload("res://scripts/arcade_browser_qa.gd").new() if arcade else (preload("res://scripts/zen_browser_qa.gd").new() if zen else preload("res://scripts/browser_controls_qa.gd").new());fixture.game=self;add_child(fixture)
+	if "--feedback-test" in args or "--feedback-capture" in args:
+		var tests:=preload("res://scripts/feedback_tests.gd").new();add_child(tests)
+		var failed:Array[String]=await tests.run(self,"--feedback-capture" in args)
+		print("FEEDBACK TEST PASS" if failed.is_empty() else "FEEDBACK TEST FAIL: "+str(failed))
+		await quit_demo(0 if failed.is_empty() else 1);return
+	if "--curb-return-test" in args or "--curb-return-capture" in args:
+		var tests:=preload("res://scripts/curb_return_tests.gd").new();add_child(tests)
+		var failed:Array[String]=await tests.run(self,"--curb-return-capture" in args)
+		print("CURB RETURN TEST PASS" if failed.is_empty() else "CURB RETURN TEST FAIL: "+str(failed))
+		await quit_demo(0 if failed.is_empty() else 1);return
+	if "--city-curb-return-test" in args or "--city-curb-return-capture" in args:
+		var tests:=preload("res://scripts/curb_return_tests.gd").new();add_child(tests)
+		var failed:Array[String]=await tests.run_city(self,"--city-curb-return-capture" in args)
+		print("CITY CURB RETURN TEST PASS" if failed.is_empty() else "CITY CURB RETURN TEST FAIL: "+str(failed))
+		await quit_demo(0 if failed.is_empty() else 1);return
 	if "--zen-test" in args:
 		var tests:=preload("res://scripts/zen_tests.gd").new();add_child(tests)
 		var failed:Array[String]=await tests.run(self,"--zen-capture" in args)

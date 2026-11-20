@@ -32,7 +32,7 @@ static func kind(van:Node,hit:Dictionary) -> String:
 				# being classified as the road above it.
 				return "asphalt" if motorway_road(at,index) else "grass"
 			if legacy=="grass" or shared_floor(collider):return "grass"
-		elif path.ends_with("/downtown.gd"):
+		elif path.ends_with("/downtown.gd") or path.ends_with("/arcade_world.gd"):
 			if legacy=="grass" or shared_floor(collider):
 				var streets:Node=world.get("streets")
 				if absf(at.y)<.09 and is_instance_valid(streets) and streets.on_road(at):return "asphalt"

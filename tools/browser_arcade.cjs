@@ -9,6 +9,15 @@ const fs=require('fs');
   try{
    const context=await browser.newContext({viewport:{width,height},hasTouch:touch});
    const page=await context.newPage();const errors=[];
+   if(process.env.FEDUP_SHADER_DIAGNOSTICS)await page.addInitScript(()=>{
+    for(const api of [window.WebGLRenderingContext,window.WebGL2RenderingContext]){
+     if(!api)continue;const compile=api.prototype.compileShader;
+     api.prototype.compileShader=function(shader){
+      compile.call(this,shader);
+      if(!this.getShaderParameter(shader,this.COMPILE_STATUS))console.error('FEDUP_SHADER_DIAGNOSTIC '+this.getShaderInfoLog(shader)+'\n'+this.getShaderSource(shader));
+     };
+    }
+   });
    page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
    await page.goto((process.argv[2]||'http://127.0.0.1:8766/')+'?qa=arcade');
    await page.waitForFunction(()=>window.fedupQA,null,{timeout:90000});

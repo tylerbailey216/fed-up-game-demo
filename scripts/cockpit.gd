@@ -20,6 +20,9 @@ var traffic: Node
 var cargo: Node
 var last_redraw_us := 0
 var action_prompt_visible:=false
+var pickup_pulse:=0.0
+var pickup_increment:=0
+var seen_recovered:=0
 var compact_art:=preload("res://scripts/compact_dashboard.gd").new()
 var touch_preview:=false # Native layout review only; normal play uses the device.
 const INK := Color("10121e")
@@ -38,6 +41,21 @@ func _ready() -> void:
 	title_font.font_italic = true
 	if ResourceLoader.exists("res://assets/art/cockpit_illustrated_v2.png"):
 		illustration = load("res://assets/art/cockpit_illustrated_v2.png")
+
+func _process(delta:float) -> void:
+	if not cargo:return
+	if cargo.recovered!=seen_recovered:
+		pickup_increment=maxi(0,cargo.recovered-seen_recovered)
+		pickup_pulse=.55 if pickup_increment>0 else 0.0
+		seen_recovered=cargo.recovered;queue_redraw()
+	if pickup_pulse>0 and cargo.game.driving and not cargo.game.paused and not cargo.game.options.visible:
+		pickup_pulse=maxf(0,pickup_pulse-delta);queue_redraw()
+
+func package_counter_text() -> String:
+	return "%02d / %02d SECURED" % [cargo.recovered,cargo.quota]
+
+func package_counter_color() -> Color:
+	return CREAM.lerp(GOLD,clampf(pickup_pulse/.55,0,1))
 
 func update_state(kph: float, current_gear: String, meters: float, steer: float, angle: float, cockpit: bool) -> void:
 	speed = kph/1.609344
@@ -137,6 +155,10 @@ func _draw() -> void:
 			caption(Vector2(1034,676),"FUEL %.1f GAL / %d MI EST." % [vehicle.fuel_gallons,roundi(vehicle.fuel_gallons*18)],11,GOLD)
 			draw_status()
 	if cargo and cargo.on_foot:
+		if not zen_mode():
+			panel(Rect2(1012,533,242,64),PANEL,GOLD if pickup_pulse>0 else PURPLE,2)
+			caption(Vector2(1026,557),package_counter_text(),22,package_counter_color(),true)
+			caption(Vector2(1028,580),"AUTO RETURN / +%d" % pickup_increment if pickup_pulse>0 else "WALK OVER LOOSE PACKAGES",11,CYAN)
 		caption(Vector2(278,701),"X ENTER TRUCK / WASD SCREEN MOVE / SHIFT RUN / C OVERVIEW" if cargo.arcade_run else "X ENTER TRUCK WHEN NEAR / WASD WALK / SHIFT RUN / DRAG LOOK / G RECENTER",14,CREAM,true)
 		if cargo.can_enter_truck():
 			preload("res://scripts/dashboard_ink.gd").plate(self,Rect2(1004,606,252,54),false,true)
