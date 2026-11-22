@@ -33,6 +33,11 @@ func run(game:Node) -> void:
 		game.get_window().size=Vector2i(1280,720);game.responsive_layout();game.hud.hide()
 		for i in 8:await RenderingServer.frame_post_draw
 		game.get_viewport().get_texture().get_image().save_png("res://docs/art-review-%s-cast-1280x720.png" % pass_name)
+		game.highway.restore_cutaways()
+		actor.camera.global_position=Vector3(-11,7,-3)
+		actor.camera.look_at(Vector3(-24,2.2,-16))
+		for i in 8:await RenderingServer.frame_post_draw
+		game.get_viewport().get_texture().get_image().save_png("res://docs/art-review-%s-storefront-1280x720.png" % pass_name)
 	if game.outerbelt:
 		# A separate inspection camera checks the formerly black industrial
 		# facades; gameplay cameras and controls are never changed by this tool.

@@ -96,9 +96,7 @@ func building(at:Vector3,dimensions:Vector3,tone:Color) -> void:
 		for col in range(1,int(dimensions.z/3.2)):
 			var z:float=-dimensions.z*.5+float(col)*3.2
 			block(root,Vector3(s*(dimensions.x*.5+.105),(dimensions.y+5)*.5,z),Vector3(.055,maxf(1,dimensions.y-5),.16),tone.lightened(.16))
-	for s in [-1,1]:
-		block(root,Vector3(0,1.55,s*(dimensions.z*.5+.06)),Vector3(dimensions.x-3,2.5,.12),Color("29434c"))
-		var awning:=block(root,Vector3(0,3.2,s*(dimensions.z*.5+.75)),Vector3(dimensions.x-1,.22,1.7),Color("6a39a0"));awning.rotation.x=s*.12
+	storefront(root,dimensions)
 	# One vertex-colored facade draw per building allows individual cutaways
 	# without splitting it into dozens of material draws or touching collision.
 	if not facade_material:
@@ -120,6 +118,49 @@ func building(at:Vector3,dimensions:Vector3,tone:Color) -> void:
 	var visual:=MeshInstance3D.new();visual.mesh=tool.commit();visual.material_override=facade_material;root.add_child(visual)
 	cutaway_buildings.append({"root":root,"collider":collider,"low":at-Vector3(dimensions.x*.5+1,0,dimensions.z*.5+1),"high":at+Vector3(dimensions.x*.5+1,dimensions.y+1,dimensions.z*.5+1),"hold":0.0,"kind":"building"})
 	var cover:Dictionary=cutaway_buildings.back();cover.bounds=AABB(cover.low,cover.high-cover.low)
+
+func storefront(root:Node3D,dimensions:Vector3) -> void:
+	# Authored geometry, not replacement character/texture artwork. Everything
+	# stays in the building's visual batch and disappears with its cutaway.
+	var variant:=cutaway_buildings.size()%4
+	var names:=["PARCEL & POST","ORBIT COFFEE","CORNER MARKET","QUICK FIX"]
+	var accents:=[Color("6a39a0"),Color("3d817d"),Color("ae543b"),Color("b58b35")]
+	var accent:Color=accents[variant]
+	var ink:=Color("201e2c");var cream:=Color("f3ebd8")
+	for s in [-1,1]:
+		var face:float=s*(dimensions.z*.5+.1)
+		var width:float=dimensions.x-2.2
+		# Framed glass bays and a narrow entrance remain inside the solid wall.
+		block(root,Vector3(0,1.6,face),Vector3(width,2.6,.13),ink)
+		for side in [-1,1]:
+			var center:float=side*(width*.25+.55)
+			var pane_width:float=width*.5-1.65
+			block(root,Vector3(center,1.65,face+s*.09),Vector3(pane_width,2.1,.055),Color("456d7b"))
+			block(root,Vector3(center,2.47,face+s*.125),Vector3(pane_width,.13,.025),Color("89b4b8"))
+			block(root,Vector3(center,1.63,face+s*.13),Vector3(.1,2.1,.04),cream.darkened(.25))
+			block(root,Vector3(center,.58,face+s*.13),Vector3(pane_width,.14,.05),accent)
+		block(root,Vector3(0,1.45,face+s*.12),Vector3(1.55,2.35,.07),cream.darkened(.2))
+		block(root,Vector3(0,1.5,face+s*.17),Vector3(1.27,2.03,.04),Color("29434c"))
+		block(root,Vector3(.43,1.35,face+s*.21),Vector3(.08,.35,.06),Color("ffd044"))
+		block(root,Vector3(0,.29,face+s*.15),Vector3(1.65,.12,.3),ink)
+		# Individually drawn awning stripes use the same batched material.
+		var awning_width:float=dimensions.x-1
+		var count:=maxi(4,int(awning_width/.8))
+		for stripe in count:
+			var x:float=-awning_width*.5+(stripe+.5)*awning_width/count
+			var color:Color=accent if stripe%2==0 else cream
+			var canopy:=block(root,Vector3(x,3.15,face+s*.7),Vector3(awning_width/count,.18,1.5),color)
+			canopy.rotation.x=s*.12
+			block(root,Vector3(x,2.95,face+s*1.44),Vector3(awning_width/count,.32,.08),color.darkened(.12))
+		block(root,Vector3(0,3.8,face),Vector3(width,1.0,.16),ink)
+		block(root,Vector3(0,3.8,face+s*.1),Vector3(width-.16,.84,.04),accent)
+		var label:=Label3D.new()
+		label.font=preload("res://assets/fonts/BarlowCondensed-Bold.ttf")
+		label.text=names[variant];label.font_size=64;label.pixel_size=.009
+		label.position=Vector3(0,3.8,face+s*.16)
+		label.rotation.y=0 if s==1 else PI
+		label.modulate=cream;label.outline_modulate=ink;label.outline_size=8
+		label.no_depth_test=false;root.add_child(label)
 
 func tree(at:Vector3) -> void:
 	tree_collision(at,.28,3.2);block(self,at+Vector3.UP*1.6,Vector3(.45,3.2,.45),Color("65503a"))
