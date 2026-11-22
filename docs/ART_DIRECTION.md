@@ -1,5 +1,9 @@
 # Comic highway art direction
 
+## Current consistency pass (November 22)
+
+[VISUAL_AUDIT_PHASE_2.md](VISUAL_AUDIT_PHASE_2.md) records the current scene audit, matched captures, corrections and remaining artist-authored work. Buildings now have restrained window divisions and architectural ink, sidewalks have visual-only seams, crowns share an irregular faceted treatment, and Open Road visual winding is corrected. The desktop HUD now uses the same bundled Barlow/Bangers typefaces as mobile, menus and the dispatch report; the older system-font description below is historical. Original character, vehicle and cockpit artwork is preserved.
+
 ## Locked character direction
 
 [CHARACTER_STANDARD.md](CHARACTER_STANDARD.md) governs every human and extraterrestrial pedestrian. The established FedUp delivery driver is the master reference for proportions, black outlines, cel shading, faces, hands, clothing and footwear. Characters may vary in body, age, ethnicity, species, outfit and personality while sharing that illustration quality, animation conventions and comical nonlethal recovery rules. Frame sizes may vary; world scale and ground alignment must remain consistent. This standard takes precedence over older character brainstorming or placeholder treatments.

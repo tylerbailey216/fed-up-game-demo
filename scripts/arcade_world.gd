@@ -81,10 +81,21 @@ func building(at:Vector3,dimensions:Vector3,tone:Color) -> void:
 	var collider:StaticBody3D=main.get_child(0);collider.set_meta("camera_cover",root)
 	block(root,Vector3.UP*(dimensions.y+.2),Vector3(dimensions.x+1,.6,dimensions.z+1),Color("3b3a48"))
 	block(root,Vector3.UP*3,Vector3(dimensions.x+.4,.35,dimensions.z+.4),Color("eee0c3"))
+	# Thin architectural ink and warm mullions match the illustrated cast.
+	# These visual boxes join the existing single facade batch/cutaway.
+	for x in [-1,1]:
+		for z in [-1,1]:block(root,Vector3(x*dimensions.x*.5,dimensions.y*.5,z*dimensions.z*.5),Vector3(.12,dimensions.y,.12),Color("272332"))
 	for floor_index in range(1,int(dimensions.y/3)):
 		for s in [-1,1]:
 			block(root,Vector3(0,4+floor_index*2.6,s*(dimensions.z*.5+.04)),Vector3(dimensions.x-2,1.35,.1),Color("365463"))
 			block(root,Vector3(s*(dimensions.x*.5+.04),4+floor_index*2.6,0),Vector3(.1,1.35,dimensions.z-2),Color("365463"))
+	for s in [-1,1]:
+		for col in range(1,int(dimensions.x/3.2)):
+			var x:float=-dimensions.x*.5+float(col)*3.2
+			block(root,Vector3(x,(dimensions.y+5)*.5,s*(dimensions.z*.5+.105)),Vector3(.16,maxf(1,dimensions.y-5),.055),tone.lightened(.16))
+		for col in range(1,int(dimensions.z/3.2)):
+			var z:float=-dimensions.z*.5+float(col)*3.2
+			block(root,Vector3(s*(dimensions.x*.5+.105),(dimensions.y+5)*.5,z),Vector3(.055,maxf(1,dimensions.y-5),.16),tone.lightened(.16))
 	for s in [-1,1]:
 		block(root,Vector3(0,1.55,s*(dimensions.z*.5+.06)),Vector3(dimensions.x-3,2.5,.12),Color("29434c"))
 		var awning:=block(root,Vector3(0,3.2,s*(dimensions.z*.5+.75)),Vector3(dimensions.x-1,.22,1.7),Color("6a39a0"));awning.rotation.x=s*.12
@@ -112,7 +123,7 @@ func building(at:Vector3,dimensions:Vector3,tone:Color) -> void:
 
 func tree(at:Vector3) -> void:
 	tree_collision(at,.28,3.2);block(self,at+Vector3.UP*1.6,Vector3(.45,3.2,.45),Color("65503a"))
-	var leaf:=SphereMesh.new();leaf.radial_segments=7;leaf.rings=3
+	var leaf:=preload("res://scripts/foliage_mesh.gd").crown(.5,1.0,7,3)
 	var poses:Array[Transform3D]=[]
 	for i in 5:poses.append(Transform3D(Basis().scaled(Vector3(2.7,3,2.5)),at+Vector3(cos(i*TAU/5)*1.35,4.6+float(i%2)*.8,sin(i*TAU/5)*1.35)))
 	var canopy:=batch_mesh(leaf,poses,Color("638443"),true)

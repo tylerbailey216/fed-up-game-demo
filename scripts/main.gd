@@ -65,9 +65,11 @@ func _ready() -> void:
 	var location:String=str(get_tree().get_meta("location","motorway" if outerbelt else ("city" if validation_run or legacy_test or "--city" in args or "--zen" in args else "arcade")))
 	if not get_tree().has_meta("location") and ("--arcade-test" in args or "--arcade-capture" in args or "--arcade-qa" in args or "--arcade-switch-test" in args or "--curb-return-test" in args or "--curb-return-capture" in args or "--feedback-test" in args or "--feedback-capture" in args):location="arcade"
 	if "--city-curb-return-test" in args or "--city-curb-return-capture" in args:location="city"
+	if "--scenery-test" in args:location="motorway"
 	outerbelt=location=="motorway";arcade=location=="arcade" and not legacy_test
 	zen=not arcade and not legacy_test and (str(get_tree().get_meta("game_mode",""))=="zen" or not validation_run or "--zen" in args or "--zen-test" in args or "--zen-switch-test" in args or "--location-switch-test" in args)
 	if "--city-curb-return-test" in args or "--city-curb-return-capture" in args:zen=true
+	if "--scenery-test" in args:zen=true
 	highway = preload("res://scripts/arcade_world.gd").new() if arcade else (preload("res://scripts/independence.gd").new() if outerbelt else (Highway.new() if legacy_test else preload("res://scripts/downtown.gd").new()))
 	add_child(highway)
 	if outerbelt:preload("res://scripts/terrain_surface.gd").motorway_index(highway)
@@ -167,11 +169,19 @@ func _ready() -> void:
 		var failed:Array[String]=await tests.run(self,"--zen-capture" in args)
 		print("ZEN TEST PASS" if failed.is_empty() else "ZEN TEST FAIL: "+str(failed))
 		await quit_demo(0 if failed.is_empty() else 1);return
+	if "--scenery-test" in args:
+		var checks:=preload("res://scripts/scenery_checks.gd").new();add_child(checks)
+		var failed:Array[String]=checks.run(self)
+		print("SCENERY TEST PASS" if failed.is_empty() else "SCENERY TEST FAIL: "+str(failed))
+		await quit_demo(0 if failed.is_empty() else 1);return
 	if "--presentation-check" in args:
 		var review:=preload("res://scripts/presentation_checks.gd").new()
 		add_child(review)
 		await review.run(self)
 		return
+	if "--art-review" in args:
+		var review:=preload("res://scripts/art_review.gd").new();add_child(review)
+		await review.run(self);return
 	if "--stunt-test" in args:
 		var jump_tests:=preload("res://scripts/stunt_tests.gd").new();add_child(jump_tests)
 		var failed:Array[String]=await jump_tests.run(self,"--stunt-capture" in args)

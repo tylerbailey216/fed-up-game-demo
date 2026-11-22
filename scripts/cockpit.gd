@@ -7,7 +7,7 @@ var phase := 0.0
 var distance := 0.0
 var inside := false
 var font: Font
-var title_font: SystemFont
+var title_font: Font
 var mirror_texture: Texture2D
 var illustration: Texture2D
 var vehicle: Node
@@ -31,14 +31,14 @@ const CREAM := Color("f3ebd8")
 const CYAN := Color("8de0e9")
 const GOLD := Color("ffd044")
 const PURPLE := Color("6a39a0")
+const BODY_FACE=preload("res://assets/fonts/BarlowCondensed-Medium.ttf")
+const BOLD_FACE=preload("res://assets/fonts/BarlowCondensed-Bold.ttf")
+const LOGO_FACE=preload("res://assets/fonts/Bangers-Regular.ttf")
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	font = ThemeDB.fallback_font
-	title_font = SystemFont.new()
-	title_font.font_names = PackedStringArray(["Arial","Liberation Sans"])
-	title_font.font_weight = 800
-	title_font.font_italic = true
+	# The same bundled faces as touch controls, menus and the dispatch report.
+	font=BODY_FACE;title_font=BOLD_FACE
 	if ResourceLoader.exists("res://assets/art/cockpit_illustrated_v2.png"):
 		illustration = load("res://assets/art/cockpit_illustrated_v2.png")
 
@@ -320,9 +320,11 @@ func draw_brand() -> void:
 	shape([Vector2(26,17),Vector2(340,17),Vector2(323,59),Vector2(13,59)],INK,5)
 	draw_polyline(PackedVector2Array([Vector2(27,20),Vector2(337,20),Vector2(321,56),Vector2(15,56),Vector2(27,20)]),GOLD,2,true)
 	shape([Vector2(25,63),Vector2(258,63),Vector2(250,96),Vector2(16,96)],PURPLE,3)
-	caption(Vector2(37,46),"FedUp",28,CREAM,true)
-	caption(Vector2(130,45),"ZEN DRIVE" if zen_mode() else "DRIVING SIMULATOR",17,GOLD,true)
-	caption(Vector2(36,85),location_name() if zen_mode() else "DOWNTOWN / CLEVELAND" if vehicle.location_world and vehicle.location_world.get("is_downtown") else ("I-480 / I-77 / OHIO" if vehicle.location_world else "TRAINING / CITY EXIT AHEAD"),13,GOLD,true)
+	draw_string(LOGO_FACE,Vector2(38,48),"FedUp",HORIZONTAL_ALIGNMENT_LEFT,-1,30,INK)
+	draw_string(LOGO_FACE,Vector2(37,46),"FedUp",HORIZONTAL_ALIGNMENT_LEFT,-1,30,CREAM)
+	var mayhem:bool=cargo and cargo.arcade_run!=null
+	caption(Vector2(130,45),"ZEN DRIVE" if zen_mode() else ("DELIVERY MAYHEM" if mayhem else "DRIVING SIMULATOR"),19,GOLD,true)
+	caption(Vector2(36,85),location_name() if zen_mode() else ("ONE BLOCK / EVERY BOX" if mayhem else "DOWNTOWN / CLEVELAND" if vehicle.location_world and vehicle.location_world.get("is_downtown") else ("I-480 / I-77 / OHIO" if vehicle.location_world else "TRAINING / CITY EXIT AHEAD")),15,GOLD,true)
 	panel(Rect2(1100,20,153,34),PANEL,GOLD,2)
 	var view_label:="C  SWITCH VIEW"
 	if cargo and cargo.arcade_run and is_instance_valid(cargo.game.fixed_camera):view_label="C  CLOSER VIEW" if cargo.game.fixed_camera.preset==1 else "C  OVERVIEW"

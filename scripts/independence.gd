@@ -12,6 +12,7 @@ var point_names: Dictionary = {}
 var point_widths: Dictionary = {}
 const GRID_SIZE := 32.0
 var barriers: Node3D
+var facade_finish:ShaderMaterial
 
 func _ready() -> void:
 	map_data = JSON.parse_string(FileAccess.get_file_as_string("res://assets/maps/independence.json"))
@@ -144,6 +145,7 @@ func build_road(road: Dictionary) -> void:
 		block(sign,Vector3(0,3.5,0),Vector3(0.16,7,0.16),Color("929d9b"),true)
 		block(sign,Vector3(0,6,0),Vector3(7,2.2,0.15),Color("245c48"))
 		var label := Label3D.new()
+		label.font=preload("res://assets/fonts/BarlowCondensed-Bold.ttf")
 		label.text=road.ref+"\n"+("Outerbelt South" if road.ref=="I 480" else "Willow Freeway")
 		label.font_size=42
 		label.pixel_size=0.019
@@ -184,6 +186,48 @@ func build_buildings() -> void:
 		instance.visibility_range_end=800
 		add_child(instance)
 		instance.create_trimesh_collision()
+		# Keep the original collision faces intact. The visual mesh used mixed
+		# winding, exposing the front-culled ink pass as black filled facades.
+		var signed_area:=0.0
+		for i in polygon.size():signed_area+=polygon[i].cross(polygon[(i+1)%polygon.size()])
+		var visual:=SurfaceTool.new();visual.begin(Mesh.PRIMITIVE_TRIANGLES)
+		for i in range(0,vertices.size(),3):
+			var face:Array[Vector3]=[vertices[i],vertices[i+1],vertices[i+2]]
+			var normal:=Vector3.UP
+			if i>=triangles.size():
+				var edge_index:=int((i-triangles.size())/6)
+				var edge:Vector2=polygon[(edge_index+1)%polygon.size()]-polygon[edge_index]
+				normal=Vector3(edge.y,0,-edge.x).normalized()*signf(signed_area)
+			if (face[1]-face[0]).cross(face[2]-face[0]).dot(normal)>0:face.reverse()
+			for point in face:visual.set_color(Color("c4b99f") if normal.y>.9 else Color("b8ac96"));visual.set_normal(normal);visual.add_vertex(point)
+		for i in polygon.size():
+			var a:=Vector3(polygon[i].x,0,polygon[i].y)
+			var b:=Vector3(polygon[(i+1)%polygon.size()].x,0,polygon[(i+1)%polygon.size()].y)
+			var along:Vector3=(b-a).normalized();var length:=a.distance_to(b)
+			var normal:=Vector3(along.z,0,-along.x)*signf(signed_area)
+			if h<3 or length<5:continue
+			var offset:=normal*.04
+			for y in [h*.12,h-.3]:
+				facade_quad(visual,a+offset+Vector3.UP*y,a+offset+Vector3.UP*(y+.14),b+offset+Vector3.UP*(y+.14),b+offset+Vector3.UP*y,normal,Color("554b50"))
+			var count:=mini(32,maxi(1,floori(length/7)))
+			for column in count:
+				var center:Vector3=a+along*(float(column)+.5)*length/count+offset
+				var half:Vector3=along*minf(2.5,length/count*.32)
+				var low:=h*.42;var high:=minf(h*.7,low+3.2)
+				facade_quad(visual,center-half+Vector3.UP*low,center-half+Vector3.UP*high,center+half+Vector3.UP*high,center+half+Vector3.UP*low,normal,Color("302b38"))
+				center+=normal*.01;half-=along*.12
+				facade_quad(visual,center-half+Vector3.UP*(low+.12),center-half+Vector3.UP*(high-.12),center+half+Vector3.UP*(high-.12),center+half+Vector3.UP*(low+.12),normal,Color("466773"))
+		instance.mesh=visual.commit()
+		if not facade_finish:
+			facade_finish=art.material(Color.WHITE,true).duplicate();facade_finish.set_shader_parameter("use_vertex_color",true)
+			art.cache["open_road_facades"]=facade_finish
+		instance.material_override=facade_finish
+		instance.set_meta("review_facade",true)
+
+func facade_quad(tool:SurfaceTool,a:Vector3,b:Vector3,c:Vector3,d:Vector3,normal:Vector3,color:Color) -> void:
+	for face in [[a,b,c],[a,c,d]]:
+		if (face[1]-face[0]).cross(face[2]-face[0]).dot(normal)>0:face.reverse()
+		for point in face:tool.set_color(color);tool.set_normal(normal);tool.add_vertex(point)
 
 func build_landscape() -> void:
 	var rng:=RandomNumberGenerator.new()
@@ -207,9 +251,7 @@ func build_landscape() -> void:
 	var trunk_mesh:=BoxMesh.new()
 	trunk_mesh.size=Vector3.ONE
 	batch_scenery(trunk_mesh,trunks,Color("66523b"))
-	var sphere:=SphereMesh.new()
-	sphere.radial_segments=8
-	sphere.rings=4
+	var sphere:=preload("res://scripts/foliage_mesh.gd").crown()
 	batch_scenery(sphere,crowns,Color("52773f"),true)
 
 func batch_scenery(mesh: Mesh,transforms: Array[Transform3D],color: Color,outlined := false) -> void:

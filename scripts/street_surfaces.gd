@@ -63,6 +63,16 @@ func quad(a:Vector3,b:Vector3,c:Vector3,d:Vector3,color:Color) -> void:
 	triangle(a,b,c,color,cell,physical[0],physical[1],physical[2])
 	triangle(a,c,d,color,cell,physical[0],physical[2],physical[3])
 
+func paint(a:Vector3,b:Vector3,c:Vector3,d:Vector3,color:Color) -> void:
+	# Surface ink has no collision counterpart. Reuse the sidewalk's draw batch.
+	var center:Vector3=(a+b+c+d)*.25
+	var cell:=Vector3i(floori(center.x/96),floori(center.z/96),0)
+	if not surfaces.has(cell):return
+	var origin:=Vector3(cell.x*96,0,cell.y*96)
+	for face in [[a,b,c],[a,c,d]]:
+		if (face[1]-face[0]).cross(face[2]-face[0]).y>0:face.reverse()
+		for point in face:surfaces[cell].set_color(color);surfaces[cell].add_vertex(point-origin)
+
 func raised(a:Vector3,b:Vector3,width:float,color:=Color("c9bfaa")) -> void:
 	if a.distance_to(b)<.08:return
 	var side:=Vector3(-(b-a).z,0,(b-a).x).normalized()*width*.5
@@ -76,6 +86,17 @@ func raised(a:Vector3,b:Vector3,width:float,color:=Color("c9bfaa")) -> void:
 	# End ramps avoid an invisible vertical lip at a crossing or segment end.
 	quad(a-side,a+side,a+side-inset+direction+up,a-side+inset+direction+up,Color("d9c8a7"))
 	quad(b-side+inset-direction+up,b+side-inset-direction+up,b+side,b-side,Color("d9c8a7"))
+	if color!=Color("829b60"):
+		var along:Vector3=(b-a).normalized();var half:Vector3=side-inset
+		var lift:=Vector3.UP*(HEIGHT+.004)
+		for i in range(1,ceili(a.distance_to(b)/4.0)):
+			var center:Vector3=a+along*(float(i)*4.0)
+			if center.distance_to(b)<BEVEL:continue
+			paint(center-half-along*.025+lift,center+half-along*.025+lift,center+half+along*.025+lift,center-half+along*.025+lift,Color("a69a85"))
+		for sign_value in [-1,1]:
+			var edge:Vector3=half*sign_value
+			var trim:Vector3=side.normalized()*.045
+			paint(p+edge-trim+lift,q+edge-trim+lift,q+edge+trim+lift,p+edge+trim+lift,Color("e2d1ad"))
 	if audit_edges.size()<40:audit_edges.append({"center":(a+b)*.5,"side":side.normalized(),"width":width})
 
 func walkway(a:Vector3,b:Vector3,width:float,exclude:="",color:=Color("c9bfaa")) -> void:

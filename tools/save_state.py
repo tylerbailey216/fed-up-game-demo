@@ -63,6 +63,7 @@ def save(message):
     run([GODOT,'--headless','--path','.', '--fixed-fps','60','--','--arcade-test'],env)
     run([GODOT,'--headless','--path','.', '--fixed-fps','60','--','--curb-return-test'],env)
     run([GODOT,'--headless','--path','.', '--fixed-fps','60','--','--city-curb-return-test'],env)
+    run([GODOT,'--headless','--path','.', '--fixed-fps','60','--','--scenery-test'],env)
     run([GODOT,'--headless','--path','.', '--fixed-fps','60','--','--feedback-test'],env)
     run([GODOT,'--headless','--path','.', '--fixed-fps','60','--','--arcade-switch-test'],env)
     run([GODOT,'--headless','--path','.', '--fixed-fps','60','--','--zen-test'],env)

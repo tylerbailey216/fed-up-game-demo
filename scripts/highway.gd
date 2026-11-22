@@ -174,11 +174,7 @@ func build_greenery(rng: RandomNumberGenerator) -> void:
 			else:
 				midtones.append(transform)
 	batch_boxes(trunks,Color("554232"))
-	var sphere := SphereMesh.new()
-	sphere.radius = 1.0
-	sphere.height = 2.0
-	sphere.radial_segments = 8
-	sphere.rings = 4
+	var sphere := preload("res://scripts/foliage_mesh.gd").crown(1.0,2.0)
 	batch_foliage(sphere,crowns,Color("35562c"),true,650)
 	batch_foliage(sphere,midtones,Color("739539"),true,210)
 	batch_foliage(sphere,highlights,Color("b1c453"),false,210)
@@ -244,6 +240,7 @@ func build_gantry(segment: Node3D) -> void:
 		block(segment,Vector3(x,6.14,0.17),Vector3(5.43,1.90,0.04),Color("f5f0d3"))
 		block(segment,Vector3(x,6.14,0.20),Vector3(5.28,1.76,0.04),Color("17634e"))
 		var label := Label3D.new()
+		label.font=preload("res://assets/fonts/BarlowCondensed-Bold.ttf")
 		label.text = "METRO LOOP\nFREE DRIVE  ↓" if side == -1 else "CITY CENTER\nKEEP LEFT  ↓"
 		label.font_size = 52
 		label.pixel_size = 0.008

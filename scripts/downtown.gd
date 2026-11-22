@@ -111,6 +111,16 @@ func building_mesh(building:Dictionary) -> void:
 		var normal:=Vector3((b-a).z,0,-(b-a).x).normalized()*.09
 		for y in [0.22,3.4,height-0.5]:
 			quad(a+Vector3.UP*y+normal,a+Vector3.UP*(y+.23)+normal,b+Vector3.UP*(y+.23)+normal,b+Vector3.UP*y+normal,"e0d1b4" if y>1 else "403b3c")
+		# Break long ribbon windows into readable illustrated bays. Decorative
+		# quads reuse the existing vertex-color chunks, with no extra colliders.
+		var length:=a.distance_to(b);var along:Vector3=(b-a).normalized()
+		if length>9 and height>7:
+			for column in range(1,ceili(length/4.2)):
+				var p:Vector3=a+along*minf(float(column)*4.2,length-.2)+normal*1.5
+				quad(p-along*.075+Vector3.UP*4,p-along*.075+Vector3.UP*(height-1),p+along*.075+Vector3.UP*(height-1),p+along*.075+Vector3.UP*4,"c6bba6")
+		var edge:Vector3=a+normal*1.6
+		quad(edge,edge+Vector3.UP*height,edge+along*.1+Vector3.UP*height,edge+along*.1,"302b38")
+		quad(a+normal+Vector3.UP*(height-.15),a+normal+Vector3.UP*height,b+normal+Vector3.UP*height,b+normal+Vector3.UP*(height-.15),"302b38")
 
 func finish_surfaces() -> void:
 	scenery_material=art.material(Color.WHITE).duplicate()
@@ -164,7 +174,7 @@ func build_street_details() -> void:
 		trunks.append(Transform3D(Basis().scaled(Vector3(0.5,5,0.5)),p+Vector3.UP*2.5))
 		tree_collision(p,.26,4.3)
 		crowns.append(Transform3D(Basis().scaled(Vector3(4,5,4)),p+Vector3.UP*6))
-	batch_boxes(trunks,Color("65503a"));var sphere:=SphereMesh.new();sphere.radial_segments=8;sphere.rings=4
+	batch_boxes(trunks,Color("65503a"));var sphere:=preload("res://scripts/foliage_mesh.gd").crown()
 	batch_mesh(sphere,crowns,Color("638f49"),true)
 
 func _physics_process(_delta:float) -> void:
