@@ -33,6 +33,26 @@ func run(game:Node) -> void:
 		game.get_window().size=Vector2i(1280,720);game.responsive_layout();game.hud.hide()
 		for i in 8:await RenderingServer.frame_post_draw
 		game.get_viewport().get_texture().get_image().save_png("res://docs/art-review-%s-cast-1280x720.png" % pass_name)
+		if "--commuter-review" in OS.get_cmdline_user_args():
+			var person:Node=game.city_life.citizens[0]
+			for angle in [0.0,PI/2,-PI/2,PI]:
+				person.state="walk";person.facing=actor.camera.global_rotation.y+angle
+				for frame in 12:
+					person.phase=float(frame)*TAU/12;person.show_pose()
+					await RenderingServer.frame_post_draw
+					assert(person.sprite.texture.atlas.resource_path.begins_with("res://assets/art/presentation/commuter-walk-"))
+					assert(person.sprite.pixel_size>0)
+					if frame==3:
+						game.get_viewport().get_texture().get_image().save_png("res://docs/commuter-game-%s.png" % str(angle))
+			var sheet:=preload("res://scripts/commuter_contact_sheet.gd").new()
+			sheet.definition=person.definition;sheet.size=Vector2(1536,1024)
+			game.get_window().size=Vector2i(1536,1024);game.responsive_layout()
+			sheet.scale=Vector2(game.get_window().content_scale_size)/Vector2(1536,1024)
+			game.add_child(sheet)
+			for i in 8:await RenderingServer.frame_post_draw
+			game.get_viewport().get_texture().get_image().save_png("res://docs/commuter-contact-sheet.png")
+			sheet.queue_free();game.get_window().size=Vector2i(1280,720)
+			print("COMMUTER REVIEW PASS: 48 imported walking drawings at fixed per-direction scale")
 		game.highway.restore_cutaways()
 		actor.camera.global_position=Vector3(-11,7,-3)
 		actor.camera.look_at(Vector3(-24,2.2,-16))

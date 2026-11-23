@@ -5,7 +5,13 @@
       "texture": "assets/art/presentation/citizen-lineup-business.png",
       "world_height": 1.83,
       "stride": 1.08,
-      "identity": "the BUSINESS COMMUTER, upper row far left: adult Black woman, dark brown skin, dark hair in a large high bun with side swept fringe, round gold earrings, purple tailored jacket and matching purple trousers, white collared shirt, dark belt with gold buckle, brown leather briefcase at her side, broad black shoes. Preserve her exact face and compact proportions from the lineup"
+      "identity": "the BUSINESS COMMUTER, upper row far left: adult Black woman, dark brown skin, dark hair in a large high bun with side swept fringe, round gold earrings, purple tailored jacket and matching purple trousers, white collared shirt, dark belt with gold buckle, brown leather briefcase at her side, broad black shoes. Preserve her exact face and compact proportions from the lineup",
+      "walk_textures": {
+        "front": "assets/art/presentation/commuter-walk-front.png",
+        "back": "assets/art/presentation/commuter-walk-back.png",
+        "left": "assets/art/presentation/commuter-walk-left.png",
+        "right": "assets/art/presentation/commuter-walk-right.png"
+      }
     },
     {
       "id": "tourist",

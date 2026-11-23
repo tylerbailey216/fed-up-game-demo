@@ -1,5 +1,7 @@
 # Business commuter artwork review
 
+Historical rejected whole-atlas trial. The later [direction-by-direction walking pass](COMMUTER_WALK_POLISH.md) supersedes its walking-art next step; the rejected candidate below remains unused.
+
 November 23, 2026. **Cleanup candidate rejected for runtime use.**
 
 Three built-in ImageGen edits attempted cleaner contours, flatter suit shading

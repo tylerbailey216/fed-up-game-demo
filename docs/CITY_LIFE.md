@@ -4,6 +4,13 @@ The downtown entrance now connects to a clear West Lakeside Avenue entry instead
 
 ## Character artwork
 
+The business commuter's normal walking now uses four higher-resolution
+`commuter-walk-{front,back,left,right}.png` sheets, with twelve drawings per
+direction. Her original reaction atlas remains unchanged. See
+[COMMUTER_WALK_POLISH.md](COMMUTER_WALK_POLISH.md) for exact provenance, native
+comparisons, registration and memory cost. Other citizens retain their
+existing single atlases; this is not a cast-wide replacement.
+
 The built-in ImageGen tool extended the user-supplied pedestrian lineup and established delivery driver into eight finished production atlases. These are AI-assisted adaptations of the supplied designs, not artwork claimed to have been drawn by the user. The purple business commuter, floral-shirt tourist, safety-vest construction worker, elderly woman and aliens A-D retain their lineup identities, clothes and palettes. Their individual heights and textures are registered in `data/citizen_lineup_catalog.json`.
 
 Each current design uses 48 drawn walk poses and 12 directional reaction drawings. The fixed character reference height applies across every direction, preserving body proportions. Exact production prompts are in [LINEUP_ART_PROMPTS.json](LINEUP_ART_PROMPTS.json), with the final alien-A canvas correction in [LINEUP_ALIEN_A_V3_CORRECTION.txt](LINEUP_ALIEN_A_V3_CORRECTION.txt). No Python image editing was used; registration reads alpha bounds and writes metadata only.

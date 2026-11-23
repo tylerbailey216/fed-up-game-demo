@@ -51,9 +51,9 @@ func _ready() -> void:
 	var collision:=CollisionShape3D.new();var capsule:=CapsuleShape3D.new()
 	capsule.radius=.3;capsule.height=float(definition.world_height)*.85
 	collision.shape=capsule;collision.position.y=capsule.height*.5;add_child(collision)
-	var texture:Texture2D=load(definition.texture)
 	if atlas_cache.has(definition.texture):clips=atlas_cache[definition.texture]
 	for key in definition.clips if clips.is_empty() else []:
+		var texture:Texture2D=load(definition.clips[key].get("texture",definition.texture))
 		clips[key]=[]
 		for drawing in definition.clips[key].frames:
 			var atlas:=AtlasTexture.new();atlas.atlas=texture;atlas.filter_clip=true

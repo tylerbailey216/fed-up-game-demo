@@ -2,6 +2,8 @@
 
 ## Current consistency pass (November 22)
 
+[COMMUTER_WALK_POLISH.md](COMMUTER_WALK_POLISH.md) records the subsequent accepted directional-sheet walking pass for the business commuter: 48 higher-resolution drawings, fixed per-sheet scale and unchanged reaction artwork. It replaces walking art for that citizen only.
+
 [COMMUTER_ART_REVIEW.md](COMMUTER_ART_REVIEW.md) records the November 23 cleanup trial. The candidate failed directional-scale/finish review and is not used at runtime; shipping character artwork remains intact. The report specifies the source-drawing correction needed before cast-wide cleanup.
 
 [STOREFRONT_POLISH.md](STOREFRONT_POLISH.md) records the follow-up Mayhem storefront pass: four shop identities, striped awnings, framed glazing and entrance details, using batched geometry and bundled lettering. Original character artwork remains unchanged.

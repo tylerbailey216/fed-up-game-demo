@@ -65,6 +65,12 @@ The player's delivery truck uses the current life-bar rule: distinct impacts dra
 
 ## Implementation status and next gameplay slice
 
+The November 23 [commuter walking polish](COMMUTER_WALK_POLISH.md) integrates
+four larger directional sheets for the business commuter only, keeping her
+world height, stride, reactions and collision behavior. This is the first
+per-character visual finish pass; other citizens and future animation states
+remain as described below.
+
 This document locks the character design and behavior requirements. The current slice ships eight illustrated lineup identities with four-direction twelve-frame walking, surprise, safe physical tumbling/bouncing, recovery and route resumption. Forty-eight citizens occupy approach and mapped downtown walking routes, with a nearby simulation budget. See [CITY_LIFE.md](CITY_LIFE.md) for assets, prompts, testing and limits. The complete future framework, including dedicated running/turning, signal-controlled crossings and item interaction/carrying animations for citizens, remains unfinished; neither citizen nor driver runtime implements every future state listed above.
 
 The entrance now has the initial busy local block, civilian cars, citizens, crossing signals and movable construction barrels. Continue reviewing the full recovery loop and measured performance before spreading dense crowds across the full mapped downtown. Population budgets are tuning choices, not guaranteed device limits. Incident reports and additional chain reactions remain optional later features.
