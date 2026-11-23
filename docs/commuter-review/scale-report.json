@@ -1,0 +1,50 @@
+{
+  "shipping": {
+    "size": [
+      971,
+      1619
+    ],
+    "row_counts": [
+      6,
+      6,
+      6,
+      6,
+      6,
+      6,
+      6,
+      6,
+      6,
+      6
+    ],
+    "walk_mean_height": {
+      "front": 165.0,
+      "back": 151.25,
+      "left": 138.0,
+      "right": 134.42
+    }
+  },
+  "candidate": {
+    "size": [
+      971,
+      1619
+    ],
+    "row_counts": [
+      6,
+      6,
+      6,
+      6,
+      6,
+      6,
+      6,
+      6,
+      6,
+      6
+    ],
+    "walk_mean_height": {
+      "front": 169.33,
+      "back": 164.17,
+      "left": 144.42,
+      "right": 141.33
+    }
+  }
+}

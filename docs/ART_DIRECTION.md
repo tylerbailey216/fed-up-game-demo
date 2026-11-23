@@ -2,6 +2,8 @@
 
 ## Current consistency pass (November 22)
 
+[COMMUTER_ART_REVIEW.md](COMMUTER_ART_REVIEW.md) records the November 23 cleanup trial. The candidate failed directional-scale/finish review and is not used at runtime; shipping character artwork remains intact. The report specifies the source-drawing correction needed before cast-wide cleanup.
+
 [STOREFRONT_POLISH.md](STOREFRONT_POLISH.md) records the follow-up Mayhem storefront pass: four shop identities, striped awnings, framed glazing and entrance details, using batched geometry and bundled lettering. Original character artwork remains unchanged.
 
 [VISUAL_AUDIT_PHASE_2.md](VISUAL_AUDIT_PHASE_2.md) records the current scene audit, matched captures, corrections and remaining artist-authored work. Buildings now have restrained window divisions and architectural ink, sidewalks have visual-only seams, crowns share an irregular faceted treatment, and Open Road visual winding is corrected. The desktop HUD now uses the same bundled Barlow/Bangers typefaces as mobile, menus and the dispatch report; the older system-font description below is historical. Original character, vehicle and cockpit artwork is preserved.
