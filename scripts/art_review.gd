@@ -51,8 +51,37 @@ func run(game:Node) -> void:
 			game.add_child(sheet)
 			for i in 8:await RenderingServer.frame_post_draw
 			game.get_viewport().get_texture().get_image().save_png("res://docs/commuter-contact-sheet.png")
-			sheet.queue_free();game.get_window().size=Vector2i(1280,720)
+			sheet.queue_free()
 			print("COMMUTER REVIEW PASS: 48 imported walking drawings at fixed per-direction scale")
+			if person.definition.clips.surprise_front.has("texture"):
+				var reactions:=preload("res://scripts/commuter_contact_sheet.gd").new()
+				reactions.definition=person.definition;reactions.reactions=true;reactions.size=Vector2(1536,1024)
+				reactions.scale=Vector2(game.get_window().content_scale_size)/Vector2(1536,1024);game.add_child(reactions)
+				for i in 8:await RenderingServer.frame_post_draw
+				game.get_viewport().get_texture().get_image().save_png("res://docs/commuter-reaction-sheet.png")
+				reactions.queue_free()
+				game.get_window().size=Vector2i(1280,720);game.responsive_layout()
+				for state in ["surprise","tumble","recover"]:
+					for view in [["front",PI],["back",0.0],["left",PI/2],["right",-PI/2]]:
+						person.state=state;person.timer=0;person.facing=actor.camera.global_rotation.y+float(view[1]);person.show_pose()
+						assert(person.sprite.texture.atlas.resource_path=="res://assets/art/presentation/commuter-reactions.png")
+						await RenderingServer.frame_post_draw
+						game.get_viewport().get_texture().get_image().save_png("res://docs/commuter-%s-%s.png" % [state,view[0]])
+				# Exercise the real reaction/landing/recovery controller on flat
+				# inspection ground, rather than only posing its state pictures.
+				person.route.clear();person.route.append(Vector3(109.2,0,110));person.route.append(Vector3(111,0,110));person.waypoint=0
+				person.position=Vector3(109.2,.05,110);person.last_position=person.position
+				person.state="walk";person.cooldown=0;person.simulation_active=true
+				var recovered:int=person.recoveries;var saw_recover:=false
+				person.react(Vector3.RIGHT,4);person.set_physics_process(true)
+				for i in 600:
+					await get_tree().physics_frame
+					if person.state=="recover":saw_recover=true
+					if person.recoveries>recovered and person.state=="walk":break
+				assert(saw_recover and person.recoveries>recovered and person.state=="walk")
+				person.set_physics_process(false)
+				print("COMMUTER REACTION PASS: 12 imported poses; physical tumble -> recover -> walk")
+			game.get_window().size=Vector2i(1280,720);game.responsive_layout()
 		game.highway.restore_cutaways()
 		actor.camera.global_position=Vector3(-11,7,-3)
 		actor.camera.look_at(Vector3(-24,2.2,-16))

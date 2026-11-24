@@ -1,5 +1,9 @@
 # Commuter directional walking polish
 
+Follow-up: [COMMUTER_REACTION_POLISH.md](COMMUTER_REACTION_POLISH.md) replaces the
+previous reaction drawings too. The historical walking-only scope below
+describes this earlier milestone.
+
 November 23, 2026. Follow-up to the rejected whole-atlas cleanup in
 [COMMUTER_ART_REVIEW.md](COMMUTER_ART_REVIEW.md). This pass changes the business
 commuter's walking artwork only. The other seven citizens and driver are intact.

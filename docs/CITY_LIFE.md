@@ -6,7 +6,9 @@ The downtown entrance now connects to a clear West Lakeside Avenue entry instead
 
 The business commuter's normal walking now uses four higher-resolution
 `commuter-walk-{front,back,left,right}.png` sheets, with twelve drawings per
-direction. Her original reaction atlas remains unchanged. See
+direction. Her surprise/tumble/recovery clips now use `commuter-reactions.png`;
+see [COMMUTER_REACTION_POLISH.md](COMMUTER_REACTION_POLISH.md). Original source
+atlases remain preserved. See
 [COMMUTER_WALK_POLISH.md](COMMUTER_WALK_POLISH.md) for exact provenance, native
 comparisons, registration and memory cost. Other citizens retain their
 existing single atlases; this is not a cast-wide replacement.

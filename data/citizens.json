@@ -157,52 +157,55 @@
           ]
         },
         "surprise_front": {
-          "height": 169,
+          "texture": "res://assets/art/presentation/commuter-reactions.png",
+          "height": 441,
           "frames": [
             {
               "region": [
-                42,
-                1280,
-                92,
-                161
+                23,
+                36,
+                230,
+                447
               ],
               "pivot": [
-                88.0,
-                1440
+                151.5,
+                480
               ]
             }
           ]
         },
         "tumble_front": {
-          "height": 169,
+          "texture": "res://assets/art/presentation/commuter-reactions.png",
+          "height": 441,
           "frames": [
             {
               "region": [
-                660,
-                1291,
-                106,
-                143
+                1007,
+                99,
+                226,
+                380
               ],
               "pivot": [
-                713.0,
-                1440
+                1137.0,
+                480
               ]
             }
           ]
         },
         "recover_front": {
-          "height": 169,
+          "texture": "res://assets/art/presentation/commuter-reactions.png",
+          "height": 441,
           "frames": [
             {
               "region": [
-                356,
-                1458,
-                103,
-                143
+                509,
+                614,
+                246,
+                354
               ],
               "pivot": [
-                407.5,
-                1598
+                641.0,
+                967
               ]
             }
           ]
@@ -358,52 +361,55 @@
           ]
         },
         "surprise_back": {
-          "height": 169,
+          "texture": "res://assets/art/presentation/commuter-reactions.png",
+          "height": 441,
           "frames": [
             {
               "region": [
-                215,
-                1282,
-                90,
-                159
+                296,
+                40,
+                231,
+                443
               ],
               "pivot": [
-                260.0,
-                1440
+                399.5,
+                480
               ]
             }
           ]
         },
         "tumble_back": {
-          "height": 169,
+          "texture": "res://assets/art/presentation/commuter-reactions.png",
+          "height": 441,
           "frames": [
             {
               "region": [
-                832,
-                1291,
-                104,
-                143
+                1290,
+                101,
+                224,
+                372
               ],
               "pivot": [
-                884.0,
-                1440
+                1385.5,
+                480
               ]
             }
           ]
         },
         "recover_back": {
-          "height": 169,
+          "texture": "res://assets/art/presentation/commuter-reactions.png",
+          "height": 441,
           "frames": [
             {
               "region": [
-                513,
-                1460,
-                96,
-                140
+                770,
+                614,
+                245,
+                356
               ],
               "pivot": [
-                561.0,
-                1598
+                888.0,
+                967
               ]
             }
           ]
@@ -559,52 +565,55 @@
           ]
         },
         "surprise_left": {
-          "height": 169,
+          "texture": "res://assets/art/presentation/commuter-reactions.png",
+          "height": 441,
           "frames": [
             {
               "region": [
-                362,
-                1282,
-                98,
-                161
+                562,
+                38,
+                181,
+                445
               ],
               "pivot": [
-                411.0,
-                1440
+                652.0,
+                480
               ]
             }
           ]
         },
         "tumble_left": {
-          "height": 169,
+          "texture": "res://assets/art/presentation/commuter-reactions.png",
+          "height": 441,
           "frames": [
             {
               "region": [
-                32,
-                1454,
-                108,
-                146
+                33,
+                609,
+                216,
+                358
               ],
               "pivot": [
-                86.0,
-                1598
+                157.5,
+                967
               ]
             }
           ]
         },
         "recover_left": {
-          "height": 169,
+          "texture": "res://assets/art/presentation/commuter-reactions.png",
+          "height": 441,
           "frames": [
             {
               "region": [
-                663,
-                1456,
-                117,
-                144
+                1025,
+                611,
+                228,
+                358
               ],
               "pivot": [
-                721.5,
-                1598
+                1143.5,
+                967
               ]
             }
           ]
@@ -760,52 +769,55 @@
           ]
         },
         "surprise_right": {
-          "height": 169,
+          "texture": "res://assets/art/presentation/commuter-reactions.png",
+          "height": 441,
           "frames": [
             {
               "region": [
-                509,
-                1282,
-                93,
-                160
+                799,
+                37,
+                185,
+                446
               ],
               "pivot": [
-                555.5,
-                1440
+                883.5,
+                480
               ]
             }
           ]
         },
         "tumble_right": {
-          "height": 169,
+          "texture": "res://assets/art/presentation/commuter-reactions.png",
+          "height": 441,
           "frames": [
             {
               "region": [
-                195,
-                1455,
-                112,
-                144
+                294,
+                609,
+                194,
+                357
               ],
               "pivot": [
-                251.0,
-                1598
+                399.5,
+                967
               ]
             }
           ]
         },
         "recover_right": {
-          "height": 169,
+          "texture": "res://assets/art/presentation/commuter-reactions.png",
+          "height": 441,
           "frames": [
             {
               "region": [
-                811,
-                1457,
-                115,
-                143
+                1282,
+                613,
+                232,
+                357
               ],
               "pivot": [
-                868.5,
-                1598
+                1376.0,
+                967
               ]
             }
           ]

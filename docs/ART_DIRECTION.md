@@ -2,6 +2,10 @@
 
 ## Current consistency pass (November 22)
 
+[COMMUTER_REACTION_POLISH.md](COMMUTER_REACTION_POLISH.md) completes the matching
+surprise/tucked-tumble/recovery pose cleanup for the business commuter. The
+existing physical behavior and other citizens remain unchanged.
+
 [COMMUTER_WALK_POLISH.md](COMMUTER_WALK_POLISH.md) records the subsequent accepted directional-sheet walking pass for the business commuter: 48 higher-resolution drawings, fixed per-sheet scale and unchanged reaction artwork. It replaces walking art for that citizen only.
 
 [COMMUTER_ART_REVIEW.md](COMMUTER_ART_REVIEW.md) records the November 23 cleanup trial. The candidate failed directional-scale/finish review and is not used at runtime; shipping character artwork remains intact. The report specifies the source-drawing correction needed before cast-wide cleanup.

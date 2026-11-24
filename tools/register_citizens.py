@@ -58,6 +58,12 @@ for design in json.loads((ROOT/'data/citizen_lineup_catalog.json').read_text())[
         clips["recover_"+direction]={"height":reference,"frames":[frame(recover,i+2)]}
     for direction,texture in design.get('walk_textures',{}).items():
         clips['walk_'+direction]=directional_walk(texture)
+    if design.get('reaction_texture'):
+        reactions=directional_walk(design['reaction_texture'])
+        for i,direction in enumerate(['front','back','left','right']):
+            for state,offset in [('surprise',0),('tumble',4),('recover',8)]:
+                clips[state+'_'+direction]={'texture':reactions['texture'],'height':reactions['height'],
+                                            'frames':[reactions['frames'][offset+i]]}
     result["citizens"][name]={"texture":"res://"+relative,"world_height":height,"stride":design['stride'],"identity":design['identity'],"clips":clips}
 (ROOT/"data/citizens.json").write_text(json.dumps(result,indent=2)+"\n")
 print('Registered',len(result['citizens']),'citizens with 48 walk and 12 reaction drawings each')

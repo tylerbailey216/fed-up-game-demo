@@ -11,7 +11,8 @@
         "back": "assets/art/presentation/commuter-walk-back.png",
         "left": "assets/art/presentation/commuter-walk-left.png",
         "right": "assets/art/presentation/commuter-walk-right.png"
-      }
+      },
+      "reaction_texture": "assets/art/presentation/commuter-reactions.png"
     },
     {
       "id": "tourist",

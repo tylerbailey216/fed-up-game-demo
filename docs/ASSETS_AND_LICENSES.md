@@ -1,5 +1,12 @@
 # Assets and source separation
 
+November 23 commuter reactions: `assets/art/presentation/commuter-reactions.png`
+is a built-in ImageGen adaptation of the existing commuter walking design and
+original reaction poses. It is AI-assisted project artwork, not hand-drawn
+user production art. Exact prompts, correction and evidence are in
+`docs/COMMUTER_REACTION_POLISH.md` and `docs/COMMUTER_REACTION_PROMPTS.json`.
+Registration reads alpha only; original files remain preserved.
+
 November 23 commuter walking polish: four `commuter-walk-{front,back,left,right}.png` sheets are built-in ImageGen adaptations of the existing business commuter and master driver references. These are AI-assisted project artwork, not hand-drawn user production files. Original drawings remain preserved. Exact prompts, registration, cost and review evidence are in `docs/COMMUTER_WALK_POLISH.md` and `docs/COMMUTER_WALK_PROMPTS.json`. Registration reads alpha only; it does not modify pixels. Both native and web builds use the same sheets. The earlier rejected whole-atlas candidate remains review-only and excluded from runtime.
 
 The user supplied the November 17 pedestrian character lineup and vehicle look sheet. Unmodified copies are preserved under `assets/source/style/` for matching designs across versions. These are user-supplied project references, not AI-generated runtime animation/model assets, and have no general reuse license. `assets/source/` remains excluded from game exports.

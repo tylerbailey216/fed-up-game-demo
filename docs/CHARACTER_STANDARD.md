@@ -65,6 +65,10 @@ The player's delivery truck uses the current life-bar rule: distinct impacts dra
 
 ## Implementation status and next gameplay slice
 
+The matching [commuter reaction artwork](COMMUTER_REACTION_POLISH.md) now
+replaces her twelve surprise/tumble/recovery poses. Reaction physics,
+cooldowns and all other citizens retain the same shared behavior.
+
 The November 23 [commuter walking polish](COMMUTER_WALK_POLISH.md) integrates
 four larger directional sheets for the business commuter only, keeping her
 world height, stride, reactions and collision behavior. This is the first
