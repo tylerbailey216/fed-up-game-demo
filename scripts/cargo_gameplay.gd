@@ -29,6 +29,8 @@ var safety:=preload("res://scripts/package_safety.gd").new()
 var pickup_previous:=Vector3.ZERO
 var arcade_run:Node3D
 var zen_drive:RefCounted
+var ledger:=preload("res://scripts/delivery_ledger.gd").new()
+var unlocked_names:Array[String]=[]
 
 func pause_packages(value:bool) -> void:
 	for item in packages:
@@ -38,6 +40,7 @@ func _ready() -> void:
 	process_mode=Node.PROCESS_MODE_PAUSABLE
 	stages=JSON.parse_string(FileAccess.get_file_as_string("res://data/stages.json")).stages
 	quota=int(stages[stage_index].packages)
+	ledger.begin(quota)
 	actor=preload("res://scripts/delivery_worker.gd").new();actor.game=game;add_child(actor);actor.set_enabled(false)
 	game.van.delivery_collision_rules=true
 	seen_collision=game.van.crash_serial
@@ -97,6 +100,7 @@ func spill() -> void:
 	if zen_drive:return
 	if spilled or damage<100:return
 	spilled=true;game.van.cargo_open=true
+	ledger.lose_load()
 	for i in quota:drop_package()
 	game.van.notify_driver("TRUCK DISABLED / Recover %d packages" % quota)
 
@@ -146,7 +150,9 @@ func next_stage() -> void:
 	on_foot=false;game.van.driver_on_foot=false
 	stage_index=0 # This demo ends at the first collection point; replay starts fresh.
 	quota=int(stages[stage_index].packages)
+	ledger.begin(quota)
 	spilled=false;complete=false;recovered=0;spawned=0;damage=0;collision_count=0;load_restored=false
+	unlocked_names.clear()
 	checkpoint_hold=0;checkpoint_inside=false;popup_time=0
 	safety.ready=false;safety.clock=0;safety.rescued=0;safety.audit_clock=0;safety.index=0
 	game.van.cargo_open=false;game.van.new_truck();seen_collision=game.van.crash_serial
@@ -167,6 +173,8 @@ func entry_instruction(touch:=false) -> String:
 	return "TRUCK %d m / TAP ENTER WHEN BESIDE IT" % meters if touch else "TRUCK %d m / PRESS X WHEN BESIDE IT" % meters
 
 func toggle_foot() -> void:
+	if not on_foot and (game.flight.enabled or game.flight.landing) and not game.van.wrecked:
+		game.van.notify_driver("LAND THE SLEIGH BEFORE STEPPING OUT");return
 	if game.van.stunts.active:
 		game.van.notify_driver("WAIT UNTIL THE TRUCK LANDS");return
 	if on_foot:
@@ -223,6 +231,7 @@ func secure_package(item:Dictionary,target:String) -> void:
 func recover_package(item:Dictionary) -> void:
 	if item.state!="loose":return
 	item.state="returning"
+	ledger.recover(int(item.id))
 	# Credit contact immediately. The star flight is presentation, never a
 	# second pickup or a requirement to approach the rear of the truck.
 	recovered+=1
@@ -252,12 +261,15 @@ func update_checkpoint(delta:float) -> void:
 	if not inside and checkpoint_inside and popup.begins_with("COLLECTION"):popup_time=0
 	checkpoint_inside=inside
 	if complete:return
-	if not inside or on_foot or not delivery_ready() or absf(game.van.speed)>.35 or game.van.overturned or game.van.stunts.active:
+	if not inside or on_foot or not delivery_ready() or absf(game.van.speed)>.35 or game.van.overturned or game.van.stunts.active or game.flight.enabled or game.flight.landing:
 		checkpoint_hold=0;return
 	checkpoint_hold+=delta
 	if checkpoint_hold>=1.2:
 		complete=true;game.van.parking_brake=true;game.van.engine_on=false
 		game.van.delivery_complete=true
+		if game.fleet.award(ledger.receipt(true,true)):
+			for vehicle in game.fleet.catalog:
+				if int(vehicle.deliveries)==game.fleet.deliveries:unlocked_names.append(str(vehicle.name))
 		game.van.speed=0;game.van.planar_velocity=Vector3.ZERO;game.van.velocity=Vector3.ZERO
 		if is_instance_valid(game.get("gameplay_feedback")):game.gameplay_feedback.completed()
 		show_popup("DEMO COMPLETE!\nALL %d PACKAGES DELIVERED" % quota)

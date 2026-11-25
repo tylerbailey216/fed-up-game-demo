@@ -1,0 +1,21 @@
+# FedUp fleet and delivery foundation
+
+The vehicle garage opens after loading, before entering gameplay. The original truck is available immediately. A completed Delivery Mayhem route unlocks the semi at 1 career delivery, tank at 3, and Santa sleigh at 5. Locked cards display the corresponding vehicle silhouette and a drawn padlock. Both modes use the same catalog, assets and progression. Zen Drive remains optional and has no required deliveries, cargo spills or permanent damage.
+
+Choose a card, then DRIVE. Escape or MAIN MENU closes the garage. In a paused unfinished Mayhem run, resume the current delivery; changing vehicles is available after finishing. Zen can start a fresh drive with a different unlocked vehicle from Vehicle garage. Progress and selection save on this device/browser origin, not to a cross-device account. Clearing browser data removes that browser's career. The screen reports save failures instead of promising persistence.
+
+The semi is a compact rigid tractor/trailer model with six live wheels and opening cargo doors; an articulated hitch is future work. The tank has tracked bodywork, twelve rolling road wheels and branded parcel storage. Both currently share the established handling/energy foundation, without separate performance tiers. All Mayhem vehicles retain screen-relative direction controls and the 10 m/s cap. Zen retains simulator steering and reverse. The truck and semi support the existing shared cockpit; tank and sleigh use exterior views.
+
+The Santa sleigh includes two harnessed reindeer, parcels, retracting road wheels and gold runners. V or the visible FLY / LAND button toggles low-altitude flight while retaining each mode's horizontal controls. It rises about four meters from takeoff, collides with the world and descends physically on landing. Land before exiting or completing a delivery. Flight is an initial bounded hover implementation, not a full aviation simulation. Reindeer have articulated 3D hip/knee gait and tucked flight poses; Santa remains seated. These are 3D figures, not directional animation sheets. Damage and resets cancel flight safely.
+
+`delivery_ledger.gd` assigns stable IDs to a fixed package manifest and a unique job. Energy depletion marks that same manifest lost once. Walk-over recovery immediately credits each package once; the existing shimmer-to-vehicle presentation remains. A completed route and full stop produce one receipt. `fleet_progress.gd` persists credited job IDs and rejects duplicate receipts. Each replay creates a new job and fixed manifest. Future multiple destinations, ordered delivery jobs, payouts and vehicle-specific capacity can build on this ledger; they are not implemented in this milestone.
+
+## Artwork provenance
+
+The original supplied driver and vehicle look sheet remain the master style references and are preserved. `assets/art/presentation/fleet-select.png` is new AI-assisted selection artwork created with the built-in ImageGen tool, using `assets/source/style/vehicle-look-sheet.png` and `worker-walk-front.png` as references. Transparent RGBA atlas: 1536 x 1024, four 768 x 512 cells. The exact prompt is in [FLEET_ART_PROMPT.txt](FLEET_ART_PROMPT.txt). Generated original remains at `C:/Users/Admin/.codex/generated_images/01a1ddc4-bd7b-7543-916c-ae92ad2a4860/exec-1ed767f9-4997-4f5c-b9b3-7bbb92fc0296.png`. The image was copied unchanged. This artwork is not represented as wholly hand-drawn by the user.
+
+`fleet_models.gd` contains editable procedural 3D geometry using standard Godot meshes and the established toon/outline materials. Static surfaces are batched; wheel and door pivots remain live. These meshes were authored for the new vehicles, not extracted from the illustrations or the user's hand-drawn pixels.
+
+## Verification
+
+`--fleet-test` checks fixed manifest identity, missing and duplicate pickups, route/stop requirements, receipt deduplication, unlock thresholds, save/reload persistence, and real direction-input route laps with all four vehicles, plus sleigh ascent/landing. It uses isolated progress and removes its test save. The save workflow and Pages CI both run it. `tools/browser_fleet.cjs` exercises real card/DRIVE clicks and locked states at phone portrait/landscape, tablet and desktop sizes. Its explicit `?qa=fleet` fixture is ephemeral and never loaded in normal play.

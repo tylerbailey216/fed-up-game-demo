@@ -47,6 +47,13 @@ var touch_controls: Node
 var legacy_test := false
 var city_life:Node3D
 var camera_drag_button:=0
+var fleet:=preload("res://scripts/fleet_progress.gd").new()
+var vehicle_id:="truck"
+var garage:Control
+var flight:=preload("res://scripts/sleigh_flight.gd").new()
+var flight_button:Button
+var automated_run:=false
+var has_started:=false
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -62,10 +69,18 @@ func _ready() -> void:
 	var validation_run:=false
 	for flag in args:
 		if flag.ends_with("-test") or flag.ends_with("-capture") or flag in ["--capture","--presentation-check","--browser-controls-qa"]:validation_run=true
+	automated_run=validation_run or "--art-review" in args
+	fleet.persistent=not automated_run and not "--fleet-qa" in args
+	if get_tree().has_meta("fleet_fixture"):
+		var fixture:Dictionary=get_tree().get_meta("fleet_fixture")
+		fleet.deliveries=fixture.deliveries;fleet.selected=fixture.selected
+	else:fleet.load_progress()
+	vehicle_id=fleet.selected;flight.game=self
 	var location:String=str(get_tree().get_meta("location","motorway" if outerbelt else ("city" if validation_run or legacy_test or "--city" in args or "--zen" in args else "arcade")))
 	if not get_tree().has_meta("location") and ("--arcade-test" in args or "--arcade-capture" in args or "--arcade-qa" in args or "--arcade-switch-test" in args or "--curb-return-test" in args or "--curb-return-capture" in args or "--feedback-test" in args or "--feedback-capture" in args):location="arcade"
 	if "--city-curb-return-test" in args or "--city-curb-return-capture" in args:location="city"
 	if "--scenery-test" in args:location="motorway"
+	if "--fleet-test" in args:location="arcade"
 	outerbelt=location=="motorway";arcade=location=="arcade" and not legacy_test
 	zen=not arcade and not legacy_test and (str(get_tree().get_meta("game_mode",""))=="zen" or not validation_run or "--zen" in args or "--zen-test" in args or "--zen-switch-test" in args or "--location-switch-test" in args)
 	if "--city-curb-return-test" in args or "--city-curb-return-capture" in args:zen=true
@@ -91,6 +106,8 @@ func _ready() -> void:
 	sun.light_energy = 0.8
 	add_child(sun)
 	van = Van.new()
+	van.fleet_flight=flight
+	van.allow_cockpit=vehicle_id in ["truck","semi"]
 	van.location_world = null if legacy_test else highway
 	van.process_mode = Node.PROCESS_MODE_PAUSABLE
 	add_child(van)
@@ -136,6 +153,11 @@ func _ready() -> void:
 	if zen:
 		zen_connections=preload("res://scripts/zen_connections.gd").new();zen_connections.game=self;add_child(zen_connections)
 	build_ui()
+	garage=preload("res://scripts/fleet_garage.gd").new();garage.game=self;garage.theme=menu.theme
+	menu.get_parent().add_child(garage);garage.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	garage.visible=not automated_run and not bool(get_tree().get_meta("start_selected_location",false))
+	if "--fleet-qa" in args and OS.has_feature("web"):
+		var fixture:=preload("res://scripts/fleet_browser_qa.gd").new();fixture.game=self;add_child(fixture)
 	responsive_layout()
 	if arcade:
 		fixed_camera=preload("res://scripts/fixed_arcade_camera.gd").new();fixed_camera.game=self;add_child(fixed_camera)
@@ -205,6 +227,9 @@ func _ready() -> void:
 		get_tree().remove_meta("start_selected_location")
 		start_drive()
 		if zen:restore_zen_transfer()
+	if "--fleet-test" in args:
+		var tests:=preload("res://scripts/fleet_tests.gd").new();add_child(tests)
+		await tests.run(self);return
 	if "--arcade-switch-test" in args:
 		var step:=int(get_tree().get_meta("arcade_switch_step",0))
 		if arcade!=(step!=1) or (step==1 and not zen) or (step>0 and (not driving or menu.visible)):
@@ -410,6 +435,16 @@ func build_van() -> void:
 	var pedestrian_shape:=CollisionShape3D.new();var pedestrian_box:=BoxShape3D.new()
 	pedestrian_box.size=Vector3(2.5,3.15,5.5);pedestrian_shape.shape=pedestrian_box;pedestrian_shape.position.y=1.575
 	pedestrian_hull.add_child(pedestrian_shape);body.add_child(pedestrian_hull)
+	if vehicle_id!="truck":
+		if vehicle_id=="semi":
+			pedestrian_box.size.z=6.4;pedestrian_shape.position.z=.2
+			for hull in van.get_children():
+				if hull is CollisionShape3D:
+					if hull.shape is BoxShape3D:hull.shape.size.z=3.8;hull.position.z=.2
+					elif hull.shape is CylinderShape3D:hull.position.z=-1.7 if hull.position.z<0 else 2.1
+		elif vehicle_id=="tank":pedestrian_box.size.x=2.7
+		preload("res://scripts/fleet_models.gd").new().build(body,vehicle_id,highway.art)
+		return
 	if ResourceLoader.exists("res://assets/models/fedup_van.glb"):
 		var model: PackedScene = load("res://assets/models/fedup_van.glb")
 		var visual := model.instantiate()
@@ -548,7 +583,8 @@ func build_ui() -> void:
 	menu_title.add_theme_font_override("font",preload("res://assets/fonts/Bangers-Regular.ttf"))
 	choices.add_child(menu_title)
 	choices.add_child(text_label("ZEN DRIVE\nCITY STREETS / OPEN ROAD" if zen else "DELIVERY MAYHEM\nONE BLOCK / EVERY PACKAGE COUNTS",24))
-	start_button = button("Start Zen Drive" if zen else "Start Delivery Mayhem",start_drive,choices)
+	start_button = button("Start Zen Drive" if zen else "Start Delivery Mayhem",request_start,choices)
+	button("Vehicle garage",open_garage,choices)
 	var primary:=StyleBoxFlat.new();primary.bg_color=Color("ffcb47");primary.border_color=Color("130d1b");primary.set_border_width_all(3);primary.set_corner_radius_all(3);primary.shadow_color=Color("130d1b");primary.shadow_size=3
 	for state in ["normal","hover","pressed","focus"]:start_button.add_theme_stylebox_override(state,primary)
 	start_button.add_theme_color_override("font_color",Color("23152f"));start_button.add_theme_color_override("font_hover_color",Color("23152f"));start_button.add_theme_color_override("font_focus_color",Color("23152f"))
@@ -823,6 +859,8 @@ func restore_zen_transfer() -> void:
 	van.notify_driver("ZEN DRIVE / "+("OPEN ROAD" if outerbelt else "CITY STREETS"))
 
 func start_drive() -> void:
+	has_started=true
+	if garage:garage.hide()
 	get_viewport().disable_3d=false
 	var entering := not driving
 	driving = true
@@ -841,6 +879,29 @@ func start_drive() -> void:
 		cargo.pause_packages(false)
 		if cargo.on_foot: cargo.actor.camera.make_current()
 	hud.show()
+
+func request_start() -> void:
+	if has_started or automated_run:start_drive()
+	else:open_garage()
+
+func open_garage() -> void:
+	if has_started and cargo and not cargo.complete and not zen:
+		start_drive();van.notify_driver("FINISH THIS DELIVERY BEFORE CHANGING VEHICLES" if arcade else "CHOOSE YOUR NEXT VEHICLE BEFORE STARTING A NEW DRIVE")
+		return
+	if garage:garage.inspect(fleet.selected);garage.show();garage.confirm.grab_focus()
+
+func _process(_delta:float) -> void:
+	if not flight_button and hud:
+		flight_button=Button.new();flight_button.theme=menu.theme;flight_button.custom_minimum_size=Vector2(150,52)
+		flight_button.pressed.connect(flight.toggle);hud.add_child(flight_button)
+	if flight_button:
+		var ratio:=hud.size.y/maxf(1,get_window().size.y)
+		flight_button.custom_minimum_size.y=maxf(52,44*ratio)
+		flight_button.add_theme_font_size_override("font_size",maxi(21,roundi(16*ratio)))
+		flight_button.visible=vehicle_id=="sleigh" and driving and not paused and not options.visible and not van.driver_on_foot and not van.wrecked and not van.delivery_complete
+		flight_button.disabled=flight.landing
+		flight_button.text="LANDING" if flight.landing else (("LAND" if flight.enabled else "FLY")+("" if dashboard.touch_input() else " [V]"))
+		flight_button.position=Vector2(hud.size.x-flight_button.size.x-16,hud.size.y*.42)
 
 func return_to_menu() -> void:
 	get_viewport().disable_3d=true
@@ -867,6 +928,9 @@ func reset_van() -> void:
 	update_hud(0,"N",0)
 
 func _unhandled_key_input(event: InputEvent) -> void:
+	if garage and garage.visible:
+		if event is InputEventKey and event.pressed and event.keycode==KEY_ESCAPE:garage.hide()
+		return
 	if not event.is_pressed() or event.is_echo():
 		return
 	if event.keycode == KEY_TAB or (event.keycode == KEY_ESCAPE and options.visible):
@@ -888,6 +952,7 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		return
 	if event.keycode==KEY_F and cargo and cargo.on_foot:
 		return
+	if event.keycode==KEY_V and vehicle_id=="sleigh":flight.toggle();return
 	if event.keycode!=KEY_G and not (cargo and cargo.on_foot and event.keycode in [KEY_Q,KEY_E]):dashboard_key(event.keycode)
 	if event.keycode == KEY_C:
 		toggle_camera()
@@ -902,6 +967,7 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		van.recover_upright()
 
 func _input(event: InputEvent) -> void:
+	if garage and garage.visible:return
 	if event is InputEventMouseButton and not event.pressed and camera_drag_button==event.button_index:camera_drag_button=0
 	if not driving or paused or (options and options.visible):camera_drag_button=0
 	if driving and not paused and not options.visible and not arcade:

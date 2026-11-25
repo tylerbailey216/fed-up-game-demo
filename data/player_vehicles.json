@@ -1,0 +1,8 @@
+{
+  "vehicles": [
+    {"id":"truck","name":"THE ORIGINAL","role":"Delivery truck","deliveries":0,"description":"The familiar FedUp box truck. Every package counts."},
+    {"id":"semi","name":"LONG HAUL","role":"Semi truck","deliveries":1,"description":"A compact tractor and cargo trailer in FedUp livery."},
+    {"id":"tank","name":"SPECIAL HANDLING","role":"Delivery tank","deliveries":3,"description":"Tracked parcel transport. Deliveries, not combat."},
+    {"id":"sleigh","name":"NORTH POLE EXPRESS","role":"Santa's ground / flying sleigh","deliveries":5,"description":"Santa, two reindeer and a festive FedUp load. LAND / FLY changes travel mode."}
+  ]
+}

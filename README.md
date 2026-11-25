@@ -1,5 +1,9 @@
 # FedUp Driver — Cleveland browser demo
 
+After loading, choose a vehicle in the illustrated garage. The original truck starts unlocked; completed Delivery Mayhem deliveries unlock the semi at **1**, tank at **3**, and Santa sleigh at **5**. Locked rides show silhouettes and padlocks. The completion report includes **Vehicle Garage** alongside replay. Career progress saves on this device/browser; it does not sync between devices.
+
+The sleigh drives on the ground or flies at low altitude: **V** on desktop or **FLY / LAND** on touchscreens. Land before exiting or delivering. Both modes use the same fleet. See [fleet and delivery foundations](docs/FLEET_AND_DELIVERIES.md) for current behavior, artwork provenance and planned extensions.
+
 One Godot 4.5.1 project for desktop, phone and tablet browsers. The world renders at the screen's aspect ratio and the HUD reflows; portrait play does not stretch the original cockpit artwork.
 
 **Play:** https://tylerbailey216.github.io/fed-up-game-demo/

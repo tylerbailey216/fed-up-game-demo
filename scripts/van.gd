@@ -90,6 +90,8 @@ var surface_bump_serial:=0
 var surface_bump_strength:=0.0
 var contact_shadow:Node3D
 var stunts:=preload("res://scripts/vehicle_stunts.gd").new()
+var fleet_flight:RefCounted
+var allow_cockpit:=true
 var arcade_drive:=preload("res://scripts/arcade_drive.gd").new()
 var surface_sampler:=preload("res://scripts/vehicle_surface.gd").new()
 
@@ -467,7 +469,7 @@ func set_view(inside: bool) -> void:
 		var rig:Node=get_parent().get("fixed_camera")
 		if is_instance_valid(rig):rig.update_camera(0)
 		return
-	inside = inside and not overturned
+	inside = inside and not overturned and allow_cockpit
 	cockpit = inside
 	camera.position = Vector3(-0.55, 2.3, -1.65) if inside else Vector3(0, 5.3, 10)
 	camera.rotation = Vector3(0, 0, 0) if inside else Vector3(-0.22, 0, 0)
@@ -503,6 +505,8 @@ func recenter_camera() -> void:
 	notify_driver("CAMERA CENTERED / DRAG TO LOOK AROUND")
 
 func reset_vehicle() -> void:
+	if fleet_flight:fleet_flight.cancel()
+	floor_snap_length=.24
 	if stunts.active:dispose_roll_body()
 	stunts.cancel()
 	surface_sampler.previous.clear()
@@ -636,6 +640,7 @@ func fixed_arcade_view() -> bool:
 func _physics_process(delta: float) -> void:
 	if not active:
 		return
+	if fleet_flight and (wrecked or overturned or driver_on_foot):fleet_flight.cancel()
 	notice_time=maxf(0,notice_time-delta)
 	surface_sampler.update(delta)
 	if delivery_complete:
@@ -697,12 +702,13 @@ func _physics_process(delta: float) -> void:
 		horizontal += wall_normal*0.65
 		velocity.x = horizontal.x
 		velocity.z = horizontal.z
-	velocity.y -= (9.81 if location_world else 22.0) * delta
+	if not fleet_flight or not fleet_flight.vertical(delta):velocity.y -= (9.81 if location_world else 22.0) * delta
 	# A short physical climb stays below the crest of the highway barrier.
 	if wall_ride_time>0 and velocity.y>0:
 		velocity.y = minf(velocity.y,maxf(0,(0.75-position.y)/delta))
 	var before := position
 	move_and_slide()
+	if fleet_flight and (fleet_flight.enabled or fleet_flight.landing):stunts.update_shadow(delta)
 	for index in get_slide_collision_count():
 		if absf(get_slide_collision(index).get_normal().y) < 0.4:
 			var contact := get_slide_collision(index)

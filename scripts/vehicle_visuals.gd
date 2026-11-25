@@ -16,9 +16,11 @@ var exhaust_bursts := 0
 var headlight_was_on:=false
 var headlight_update:=0.0
 var seen_surface_bump:=0
+var reindeer_legs:Array[Node]=[]
 
 func _ready() -> void:
 	find_wheels(van.body)
+	reindeer_legs=van.body.find_children("ReindeerLeg_*","Node3D",true,false)
 	smoke = CPUParticles3D.new()
 	smoke.emitting = false
 	smoke.amount = 56
@@ -79,11 +81,14 @@ func _ready() -> void:
 	metal.albedo_color = Color("333b42")
 	pipe.material_override = metal
 	van.body.add_child(pipe)
+	var id:String=str(van.get_parent().get("vehicle_id"))
+	var front_z:float=-2.9 if id=="semi" else (-2.07 if id=="tank" else (-.43 if id=="sleigh" else -2.475))
+	var rear_z:float=3.37 if id=="semi" else (2.16 if id=="tank" else (2.56 if id=="sleigh" else 2.48))
 	for side in [-1,1]:
-		make_lamp("head"+str(side),Vector3(side*0.87,1.19,-2.475),Vector3(0.27,0.24,0.025))
-		make_lamp("front"+str(side),Vector3(side*0.87,1.49,-2.435),Vector3(0.30,0.10,0.025))
-		make_lamp("rear"+str(side),Vector3(side*0.89,0.85,2.48),Vector3(0.15,0.20,0.025))
-		make_lamp("signal"+str(side),Vector3(side*0.89,1.11,2.48),Vector3(0.17,0.11,0.025))
+		make_lamp("head"+str(side),Vector3(side*0.87,1.19,front_z),Vector3(0.27,0.24,0.025))
+		make_lamp("front"+str(side),Vector3(side*0.87,1.49,front_z+.04),Vector3(0.30,0.10,0.025))
+		make_lamp("rear"+str(side),Vector3(side*0.89,0.85,rear_z),Vector3(0.15,0.20,0.025))
+		make_lamp("signal"+str(side),Vector3(side*0.89,1.11,rear_z),Vector3(0.17,0.11,0.025))
 
 func find_wheels(node: Node) -> void:
 	if node is Node3D and str(node.name).begins_with("RearDoorPivot_"):
@@ -106,6 +111,15 @@ func make_lamp(id: String, pos: Vector3, size: Vector3) -> void:
 	lamps[id] = material
 
 func _physics_process(delta: float) -> void:
+	var flying:bool=van.fleet_flight and (van.fleet_flight.enabled or van.fleet_flight.landing)
+	for leg in reindeer_legs:
+		var gait:=sin(van.wheel_distance*2.5+float(leg.get_meta("gait_phase")))
+		leg.rotation.x=lerpf(leg.rotation.x,(-.45+gait*.08) if flying else gait*.45*minf(1,absf(van.speed)),minf(1,delta*12))
+		leg.get_node("Knee").rotation.x=.85 if flying else maxf(0,-gait)*.65*minf(1,absf(van.speed))
+	for wheel in wheels:
+		if wheel.has_meta("fleet_base"):
+			var base:Vector3=wheel.get_meta("fleet_base")
+			wheel.position.y=move_toward(wheel.position.y,base.y+(.48 if flying else 0),delta*1.5)
 	for door in doors:
 		var side := -1.0 if str(door.name).ends_with("L") else 1.0
 		door.rotation.y = move_toward(door.rotation.y,side*2.05 if van.cargo_open else 0.0,delta*4)

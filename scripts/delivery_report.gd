@@ -5,6 +5,7 @@ const LOGO=preload("res://assets/fonts/Bangers-Regular.ttf")
 const Ink=preload("res://scripts/dashboard_ink.gd")
 var game:Node
 var replay:Button
+var garage:Button
 var was_open:=false
 const REVEAL_SECONDS:=.62
 var design:=Vector2(620,454)
@@ -23,6 +24,9 @@ func _ready() -> void:
 	replay.add_theme_font_override("font",LOGO);replay.add_theme_font_size_override("font_size",28)
 	replay.pressed.connect(func():game.touch_controls.release_inputs();game.cargo.next_stage())
 	add_child(replay);hide()
+	garage=Button.new();garage.text="VEHICLE GARAGE";garage.theme=game.menu.theme
+	garage.add_theme_font_override("font",LOGO);garage.add_theme_font_size_override("font_size",20)
+	garage.pressed.connect(func():game.return_to_menu();game.open_garage());add_child(garage)
 
 func _process(delta:float) -> void:
 	if not game.cargo.complete:
@@ -48,10 +52,13 @@ func _process(delta:float) -> void:
 	position=(viewport_size-design*factor)*.5+Vector2(0,(1-settle)*14*factor)
 	modulate=Color(1,1,1,.82+.18*settle)
 	replay.position=Vector2(24,426) if compact else Vector2(36,368)
-	replay.size=Vector2(316,54) if compact else Vector2(548,62)
+	replay.size=Vector2(152,54) if compact else Vector2(350,62)
+	replay.text="DRIVE AGAIN" if compact else "ONE MORE DELIVERY"
+	garage.position=Vector2(188,426) if compact else Vector2(398,368)
+	garage.size=Vector2(152,54) if compact else Vector2(186,62)
 	# The completion button is live from the first frame. Results never impose
 	# an extra confirmation, wait or reward gate on a finished delivery.
-	var button_px:=24 if compact else 28
+	var button_px:=21 if compact else 28
 	if replay.get_theme_font_size("font_size")!=button_px:replay.add_theme_font_size_override("font_size",button_px)
 	update_displayed_stats()
 	if not was_open or previous_progress!=animation_progress or last_viewport!=viewport_size:queue_redraw()
@@ -89,8 +96,9 @@ func completion_seal(at:Vector2) -> void:
 	draw_line(at,at+Vector2(width,0),Color("66516c"),1,true)
 	var tick:=PackedVector2Array([at+Vector2(2,16),at+Vector2(7,21),at+Vector2(17,9)])
 	draw_polyline(tick,Color("10121e"),6,true);draw_polyline(tick,tone,3,true)
-	words(at+Vector2(26,22),"MANIFEST COMPLETE",20,tone,LOGO)
-	if not compact:words(at+Vector2(237,22),"DISPATCH CAN EXHALE.",17,Color("b9a8c6"))
+	var unlocked:bool=not game.cargo.unlocked_names.is_empty()
+	words(at+Vector2(26,22),"NEW RIDE UNLOCKED!" if unlocked else "MANIFEST COMPLETE",20,tone,LOGO)
+	if not compact:words(at+Vector2(237,22),str(game.cargo.unlocked_names[0]) if unlocked else "DISPATCH CAN EXHALE.",17,Color("b9a8c6"))
 
 func _draw() -> void:
 	if not game.cargo or not game.cargo.arcade_run:return
