@@ -42,6 +42,7 @@ func run(game:Node,capture:=false) -> Array[String]:
 	check(game.arcade and not game.zen and is_instance_valid(feedback),"Feedback fixture uses the compact arcade mode")
 	await park(game,Vector3(110,0,110));feedback.reset()
 	await check_bounds_and_audio(game)
+	await check_city_ambience(game)
 	check_zone_geometry()
 	await check_actual_impact(game,capture)
 	# Start another delivery through the existing replay reset. This isolates
@@ -107,6 +108,23 @@ func check_zone_geometry() -> void:
 	check(not zone.update(Vector3(0,3,-.2),5.45,2.5,2),"Passing over the zone on another level cannot count")
 	zone.reset();zone.update(Vector3(0,0,-.6),5.45,2.5,2)
 	check(zone.update(Vector3(0,0,.6),5.45,2.5,2),"The opposite approach uses the same halfway rule")
+
+func check_city_ambience(game:Node) -> void:
+	var audio:Node=game.audio_manager
+	var master:float=audio.master_volume;var ambience:float=audio.nature_volume
+	var player:AudioStreamPlayer=audio.players.city_ambience
+	check(not audio.players.has("nature") and not audio.players.has("wind"),"Old bird and ambient-wind loops are not loaded or layered underneath")
+	var source:AudioStreamWAV=load("res://assets/audio/city_ambience.wav")
+	check(player.stream is AudioStreamWAV and player.stream.data==source.data,"City player uses the supplied recording's imported audio data")
+	check(player.stream.get_length()>67 and player.stream.get_length()<68 and player.stream.loop_mode==AudioStreamWAV.LOOP_FORWARD,"Full supplied city recording loops")
+	audio.master_volume=.7;audio.nature_volume=.5;await frames(3)
+	check(player.playing and player.pitch_scale==1,"City ambience plays at its original pitch during gameplay")
+	audio.master_volume=0;await frames(3)
+	check(player.volume_db<=-79,"Master mute silences the replacement ambience")
+	audio.master_volume=.7;audio.nature_volume=0;await frames(3)
+	check(not player.playing and audio.players.engine_idle.stream!=null,"Ambience slider can stop the background without removing vehicle audio")
+	audio.master_volume=master;audio.nature_volume=ambience;await frames(3)
+	check(audio.process_mode==Node.PROCESS_MODE_PAUSABLE,"Replacement ambience follows gameplay pause")
 
 func check_actual_impact(game:Node,capture:bool) -> void:
 	var feedback:Node=game.gameplay_feedback

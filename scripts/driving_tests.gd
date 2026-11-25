@@ -184,7 +184,7 @@ func run(game: Node) -> void:
 		check(player.stream != null,"All original audio assets must load")
 	await frames(5)
 	check(game.audio_manager.players["engine_idle"].playing,"Engine audio must run with ignition")
-	check(game.audio_manager.players["nature"].playing,"Nature ambience must play")
+	check(game.audio_manager.players["city_ambience"].playing,"Supplied city ambience must play")
 	game.dashboard_key(KEY_B)
 	await frames(3)
 	check(game.audio_manager.players["horn"].playing,"Horn button triggers audio")

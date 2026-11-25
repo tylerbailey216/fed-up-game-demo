@@ -1,5 +1,5 @@
 extends Node
-## Original offline synthesized sounds. Levels follow live vehicle state.
+## User-supplied city ambience plus vehicle effects driven by live vehicle state.
 var van: Node
 var master_volume := 0.7
 var nature_volume := 0.5
@@ -23,12 +23,12 @@ func shutdown() -> void:
 	players.clear()
 
 func _ready() -> void:
-	for sound in ["engine_idle","engine_load","road","wind","nature","horn","indicator","impact","brake_air","starter","tire_squeal","bump","scrape","crash"]:
+	for sound in ["engine_idle","engine_load","road","city_ambience","horn","indicator","impact","brake_air","starter","tire_squeal","bump","scrape","crash"]:
 		var player := AudioStreamPlayer.new()
 		var path: String = "res://assets/audio/"+sound+".wav"
 		if ResourceLoader.exists(path):
 			var stream: AudioStreamWAV = load(path).duplicate()
-			if sound in ["engine_idle","engine_load","road","wind","nature","horn","tire_squeal"]:
+			if sound in ["engine_idle","engine_load","road","city_ambience","horn","tire_squeal"]:
 				stream.loop_mode = AudioStreamWAV.LOOP_FORWARD
 				stream.loop_begin = 0
 				stream.loop_end = int(stream.get_length()*stream.mix_rate)
@@ -65,8 +65,7 @@ func _process(delta: float) -> void:
 	var rough:bool=van.ground_kind=="grass"
 	level("road",float(not van.stunts.active or (is_instance_valid(van.roll_body) and van.roll_body.supported))*clampf(speed/35,0,1)*(.56 if rough else .42),(.68 if rough else .8)+speed/65)
 	level("tire_squeal",van.tire_squeal*0.52,0.9+speed/120)
-	level("wind",(0.10+speed/35*0.25)*nature_volume)
-	level("nature",0.32*nature_volume*(1-speed/50))
+	level("city_ambience",.55*nature_volume)
 	level("horn",0.55 if Input.is_physical_key_pressed(KEY_B) or horn_time > 0 else 0.0)
 	horn_time = maxf(0,horn_time-delta)
 	var flash: bool = fmod(van.blink_time,1.0) < 0.5 and (van.hazards or van.indicator != 0)

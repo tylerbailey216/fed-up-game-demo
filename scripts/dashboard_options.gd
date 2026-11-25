@@ -61,7 +61,7 @@ func _ready() -> void:
 	if game.zen:
 		game.button("Zen roadside service",func(): game.cargo.zen_drive.service(),vehicle)
 	var audio := add_tab("Audio")
-	for channel in ["Master volume","Nature / ambience"]:
+	for channel in ["Master volume","City ambience"]:
 		audio.add_child(game.text_label(channel,18))
 		var slider := HSlider.new()
 		slider.name = "Master" if channel == "Master volume" else "Nature"
@@ -84,7 +84,7 @@ func _ready() -> void:
 		master_slider.value = 0.0 if value else last_volume
 	)
 	audio.add_child(mute)
-	audio.add_child(game.text_label("Engine / throttle / rolling tires / wind / birds\nSignals / horn / starter / brake air / impact\nOriginal synthesized sounds - no external downloads.",15))
+	audio.add_child(game.text_label("City traffic ambience\nEngine / tires / signals / horn / collisions\nDelivery-zone and package-pickup sounds",15))
 	game.button("Return to main menu",func(): hide();game.return_to_menu(),column)
 	game.button("Close / Resume [Tab or Esc]",game.toggle_options,column)
 	hide()
