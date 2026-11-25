@@ -1,5 +1,14 @@
 # Zen loops and delivery sounds — November 25
 
+Follow-up trigger correction: route markers now use their painted 11 m by 5 m
+footprint, replacing the old 14 m proximity radius. The truck centre must cross
+the marker's halfway plane before sound and route credit fire. The final bay
+uses the same midpoint rule before sound and its full-stop timer can start;
+the existing package/route requirements remain. Swept physics-step checks handle
+fast crossings from either end; side passes, approaches and first-half stops do
+not count. Each bay visit latches once until exit. On-foot missing-package notices
+remain available, without granting delivery credit or sounding the driving cue.
+
 The user's two recordings are copied byte-for-byte into the shared game assets:
 
 | Event | Source | Runtime asset | SHA256 |

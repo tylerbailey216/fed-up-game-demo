@@ -21,6 +21,7 @@ var checkpoint:Node3D
 var checkpoint_position:=Vector3.ZERO
 var checkpoint_hold:=0.0
 var checkpoint_inside:=false
+var checkpoint_trigger:=preload("res://scripts/delivery_zone_trigger.gd").new()
 var remaining_notice:=0
 var popup:=""
 var popup_time:=0.0
@@ -154,6 +155,7 @@ func next_stage() -> void:
 	spilled=false;complete=false;recovered=0;spawned=0;damage=0;collision_count=0;load_restored=false
 	unlocked_names.clear()
 	checkpoint_hold=0;checkpoint_inside=false;popup_time=0
+	checkpoint_trigger.reset()
 	safety.ready=false;safety.clock=0;safety.rescued=0;safety.audit_clock=0;safety.index=0
 	game.van.cargo_open=false;game.van.new_truck();seen_collision=game.van.crash_serial
 	game.van.active=true
@@ -252,7 +254,9 @@ func update_checkpoint(delta:float) -> void:
 	if zen_drive:return
 	var at:Vector3=checkpoint.to_local(player_position())
 	var inside:bool=absf(at.x)<5.5 and absf(at.z)<7 and absf(at.y)<3
-	if inside and not checkpoint_inside and not complete:
+	var eligible:bool=not on_foot and game.van.is_on_floor() and not game.van.overturned and not game.van.stunts.active and not game.flight.enabled and not game.flight.landing
+	var midpoint:bool=checkpoint_trigger.update(at,5.5,7,3,eligible)
+	if (midpoint or (on_foot and inside and not checkpoint_inside)) and not complete:
 		if not on_foot and (not arcade_run or arcade_run.route_finished()) and is_instance_valid(game.get("gameplay_feedback")):game.gameplay_feedback.delivery_zone()
 		remaining_notice=remaining_packages()
 		if remaining_notice>0:show_popup("COLLECTION INCOMPLETE\n%d MORE PACKAGES TO COLLECT" % remaining_notice)
@@ -262,7 +266,7 @@ func update_checkpoint(delta:float) -> void:
 	if not inside and checkpoint_inside and popup.begins_with("COLLECTION"):popup_time=0
 	checkpoint_inside=inside
 	if complete:return
-	if not inside or on_foot or not delivery_ready() or absf(game.van.speed)>.35 or game.van.overturned or game.van.stunts.active or game.flight.enabled or game.flight.landing:
+	if not inside or not checkpoint_trigger.reached or not eligible or not delivery_ready() or absf(game.van.speed)>.35:
 		checkpoint_hold=0;return
 	checkpoint_hold+=delta
 	if checkpoint_hold>=1.2:

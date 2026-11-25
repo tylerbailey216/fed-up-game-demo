@@ -6,6 +6,7 @@ var elapsed:=0.0
 var energy_used:=0.0
 var marker:Node3D
 var route_label:Label3D
+var zone_trigger:=preload("res://scripts/delivery_zone_trigger.gd").new()
 
 func _ready() -> void:
 	marker=Node3D.new();add_child(marker)
@@ -30,19 +31,29 @@ func route_finished() -> bool:
 	return route_index>=cargo.game.highway.route_points.size()
 
 func refresh_marker() -> void:
+	zone_trigger.reset()
 	marker.visible=not route_finished()
 	if not marker.visible:return
 	marker.position=target();route_label.text="ROUTE %d / %d\nDRIVE THROUGH" % [route_index+1,cargo.game.highway.route_points.size()]
 	var previous:Vector3=cargo.game.highway.spawn_position if route_index==0 else cargo.game.highway.route_points[route_index-1]
-	var direction:Vector3=target()-previous;marker.rotation.y=atan2(-direction.x,-direction.z)
+	var direction:Vector3=target()-previous
+	# Use the actual street containing this marker, not the diagonal chord from
+	# a previous marker around the corner. Its halfway plane spans the roadway.
+	var closest:=INF
+	for path in cargo.game.highway.street_paths:
+		var a:Vector3=path[0];var b:Vector3=path[1]
+		var distance:float=target().distance_squared_to(Geometry3D.get_closest_point_to_segment(target(),a,b))
+		if distance<closest:
+			closest=distance;direction=b-a
+	marker.rotation.y=atan2(-direction.x,-direction.z)
 
 func update(delta:float) -> void:
 	if cargo.complete:return
 	elapsed+=delta
 	var van:Node=cargo.game.van
-	if route_finished() or cargo.on_foot or van.wrecked or van.overturned or van.stunts.active:return
-	var gap:Vector3=van.position-target()
-	if Vector2(gap.x,gap.z).length()<14 and absf(gap.y)<2 and van.is_on_floor():
+	if route_finished():return
+	var eligible:bool=not cargo.on_foot and not van.wrecked and not van.overturned and not van.stunts.active and van.is_on_floor()
+	if zone_trigger.update(marker.to_local(van.global_position),5.45,2.5,2,eligible):
 		var cleared:Vector3=target()
 		route_index+=1;refresh_marker()
 		if is_instance_valid(cargo.game.get("gameplay_feedback")):cargo.game.gameplay_feedback.checkpoint(cleared,route_index,cargo.game.highway.route_points.size())

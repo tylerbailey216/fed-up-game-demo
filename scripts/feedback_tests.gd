@@ -42,6 +42,7 @@ func run(game:Node,capture:=false) -> Array[String]:
 	check(game.arcade and not game.zen and is_instance_valid(feedback),"Feedback fixture uses the compact arcade mode")
 	await park(game,Vector3(110,0,110));feedback.reset()
 	await check_bounds_and_audio(game)
+	check_zone_geometry()
 	await check_actual_impact(game,capture)
 	# Start another delivery through the existing replay reset. This isolates
 	# cargo feedback from the physical-wall fixture without changing its rules.
@@ -94,6 +95,19 @@ func check_bounds_and_audio(game:Node) -> void:
 	feedback.reset()
 	check(feedback.live_count()==0 and feedback.emitted==0 and feedback.pickup_pulse==0 and feedback.impact_count==0 and not feedback.finished,"Reset clears live effects, pulses, counters and completion latch")
 
+func check_zone_geometry() -> void:
+	var zone:=preload("res://scripts/delivery_zone_trigger.gd").new()
+	for z in [14.0,3.0,2.4,1.2,.1]:
+		check(not zone.update(Vector3(0,0,z),5.45,2.5,2),"Approach/first half cannot trigger a delivery zone: "+str(z))
+	check(zone.update(Vector3(0,0,-.2),5.45,2.5,2),"Swept crossing triggers once after the truck centre passes halfway")
+	check(not zone.update(Vector3(0,0,-1),5.45,2.5,2),"Remaining in the zone does not repeat its event")
+	zone.reset();zone.update(Vector3(6,0,.2),5.45,2.5,2)
+	check(not zone.update(Vector3(6,0,-.2),5.45,2.5,2),"Passing beside the painted zone cannot count")
+	zone.reset();zone.update(Vector3(0,3,.2),5.45,2.5,2)
+	check(not zone.update(Vector3(0,3,-.2),5.45,2.5,2),"Passing over the zone on another level cannot count")
+	zone.reset();zone.update(Vector3(0,0,-.6),5.45,2.5,2)
+	check(zone.update(Vector3(0,0,.6),5.45,2.5,2),"The opposite approach uses the same halfway rule")
+
 func check_actual_impact(game:Node,capture:bool) -> void:
 	var feedback:Node=game.gameplay_feedback
 	var wall:=StaticBody3D.new();wall.position=Vector3(110,1.6,96);game.add_child(wall)
@@ -142,12 +156,18 @@ func check_actual_route_and_finish(game:Node,capture:bool) -> void:
 	# Gate-placement fixtures isolate hook wiring. The existing continuous-lap
 	# test remains responsible for proving the route can actually be driven.
 	for i in game.highway.route_points.size():
+		var cues:int=feedback.audio_counts.route_clear
+		await park(game,route.marker.to_global(Vector3(0,0,1.25)))
+		check(route.route_index==i and int(feedback.audio_counts.route_clear)==cues,"Painted first half gives neither route credit nor sound")
 		await park(game,game.highway.route_points[i])
 		check(route.route_index==i+1 and feedback.checkpoint_count==i+1,"Normal route update confirms ordered gate "+str(i+1)+" once")
 		var previous:int=feedback.checkpoint_count;await frames(5)
 		check(feedback.checkpoint_count==previous,"Remaining on a cleared marker never repeats its confirmation")
 	await shot(game,"route",capture)
 	var zone_cues:int=feedback.audio_counts.route_clear
+	await park(game,cargo.checkpoint.to_global(Vector3(0,0,6)))
+	cargo.update_checkpoint(2)
+	check(not cargo.complete and cargo.checkpoint_hold==0 and int(feedback.audio_counts.route_clear)==zone_cues,"First half of the final bay cannot sound or complete a delivery")
 	await park(game,cargo.checkpoint_position)
 	check(int(feedback.audio_counts.route_clear)==zone_cues+1,"Driving into the active final bay plays its supplied zone cue")
 	await frames(5)

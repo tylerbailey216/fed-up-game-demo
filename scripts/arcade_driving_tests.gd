@@ -139,7 +139,7 @@ func drive_lap(game:Node,captures:bool) -> void:
 			var radius:float=2.0 if index==waypoints.size()-1 else 7.0
 			if Vector2(van.position.x-target.x,van.position.z-target.z).length()<radius:arrived=true;break
 		check(arrived,"Actual input reaches perimeter junction %d / at=%s target=%s speed=%.2f" % [index+1,van.position,target,van.speed])
-		print("ARCADE LAP junction ",index+1," arrived=",arrived," at=",van.position," heading=",van.rotation.y," road_gap=",longest_gap)
+		print("ARCADE LAP junction ",index+1," arrived=",arrived," at=",van.position," heading=",van.rotation.y," road_gap=",longest_gap," route=",route.route_index)
 		if not arrived:break
 	release()
 	check(visited.all(func(value):return value),"One uninterrupted lap passes all four perimeter intersections")
