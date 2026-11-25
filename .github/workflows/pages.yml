@@ -33,6 +33,7 @@ jobs:
           Godot_v4.5.1-stable_linux.x86_64 --headless --fixed-fps 60 -- --feedback-test
           Godot_v4.5.1-stable_linux.x86_64 --headless --fixed-fps 60 -- --zen-test
           Godot_v4.5.1-stable_linux.x86_64 --headless --fixed-fps 60 -- --outerbelt --zen-test
+          Godot_v4.5.1-stable_linux.x86_64 --headless --fixed-fps 60 -- --outerbelt --zen --zen-roads-test
           Godot_v4.5.1-stable_linux.x86_64 --headless --fixed-fps 60 -- --zen-switch-test
           Godot_v4.5.1-stable_linux.x86_64 --headless --fixed-fps 60 -- --delivery-test
           Godot_v4.5.1-stable_linux.x86_64 --headless --fixed-fps 60 -- --stunt-test

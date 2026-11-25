@@ -1,5 +1,5 @@
 extends Node3D
-## Brief, pooled comic feedback for Delivery Mayhem. No physics or mission rules.
+## Brief, pooled delivery feedback. Zen remains quiet; no physics/mission rules.
 ## Package stars remain owned by package_return.gd; pickups add sound/HUD pulse only.
 const CAPACITY:=128
 const MAX_LIFE:=.44
@@ -47,8 +47,10 @@ func _ready() -> void:
 	for i in CAPACITY:slots.append({"born":-1000.0});hide_slot(i)
 	for sound in audio_counts:
 		var player:=AudioStreamPlayer.new()
-		var path:String="res://assets/audio/"+sound+".wav"
+		var paths:Dictionary={"package_pickup":"loose_package.wav","route_clear":"delivery_zone.mp3"}
+		var path:String="res://assets/audio/"+str(paths.get(sound,sound+".wav"))
 		if ResourceLoader.exists(path):player.stream=load(path)
+		player.max_polyphony=8
 		player.process_mode=Node.PROCESS_MODE_PAUSABLE
 		add_child(player);players[sound]=player
 	reset()
@@ -84,7 +86,7 @@ func reset() -> void:
 		seen_collision=game.van.collision_serial;seen_reset=game.van.reset_count
 
 func enabled() -> bool:
-	return is_instance_valid(game) and game.get("arcade")==true and game.driving and is_instance_valid(game.van) and game.van.active and not get_tree().paused
+	return is_instance_valid(game) and not game.zen and game.driving and is_instance_valid(game.van) and game.van.active and not get_tree().paused
 
 func master_volume() -> float:
 	return clampf(float(game.master_volume),0,1) if is_instance_valid(game) else 0.0
@@ -121,16 +123,17 @@ func impact(at:Vector3,normal:Vector3,severity:float) -> void:
 func pickup(_at:Vector3,count:int,total:int) -> void:
 	if not enabled() or count<=last_pickup_count:return
 	last_pickup_count=count;last_pickup_total=total;pickup_count+=1;pickup_pulse=.22
-	# Clustered boxes retain each credit and pulse without stacking many chimes.
-	if pickup_cooldown>0:return
-	pickup_cooldown=.08
-	cue("package_pickup",.55,1.0+float(count%4)*.035)
+	# Every credited box requests the supplied cue; max_polyphony bounds voices.
+	cue("package_pickup",.55)
+
+func delivery_zone() -> void:
+	cue("route_clear",.58)
 
 func checkpoint(at:Vector3,index:int,total:int) -> void:
 	if not enabled() or index<=last_checkpoint:return
 	last_checkpoint=index;checkpoint_count+=1
 	burst(at+Vector3.UP*.45,Vector3.UP,14,2.0,PURPLE)
-	cue("route_clear",.58,1.04 if index==total else 1.0)
+	delivery_zone()
 
 func completed() -> void:
 	if not enabled() or finished:return

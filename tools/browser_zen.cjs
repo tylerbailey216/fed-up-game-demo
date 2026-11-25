@@ -75,6 +75,11 @@ const fs=require('fs');
     transitions.push({from:before.zone,to:arrived.zone,distance:arrived.distance,fuel:arrived.fuel,cars:arrived.cars,citizens:arrived.citizens});
     await page.screenshot({path:`docs/zen-${target}-arrival-${width}x${height}.png`});
     await pedal('hand',true);await wait(()=>Math.abs(window.fedupQA.speed)<.15,'Stop after scenery transfer');await pedal('hand',false);
+    if(target==='motorway'){
+     await command('scenic');await page.waitForTimeout(400);
+     const scenic=await state();check(scenic.truck[0]>940&&scenic.zone==='motorway'&&scenic.mission_empty,'Expanded scenic road was missing or outside the drivable world');
+     await page.screenshot({path:`docs/zen-scenic-${width}x${height}.png`});
+    }
    }
    const final=await state();check(final.mode==='zen'&&final.zone==='city'&&final.mission_empty&&!final.complete&&final.spawned===0,'Return drive became a delivery stage');
    if(errors.length)throw Error(errors.join('\n'));

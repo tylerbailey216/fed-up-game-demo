@@ -14,6 +14,8 @@ var breaks := 0
 func _ready() -> void:
 	var data:Dictionary=JSON.parse_string(FileAccess.get_file_as_string("res://assets/maps/independence_safety.json"))
 	for section in data.barriers:build_section(section)
+
+func finish_visuals() -> void:
 	for key in groups:
 		var group:Dictionary=groups[key]
 		var instance:=MultiMeshInstance3D.new()

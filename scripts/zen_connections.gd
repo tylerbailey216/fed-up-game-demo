@@ -89,6 +89,10 @@ func _ready() -> void:
 	sign_title="OPEN ROAD" if zone=="city" else "CITY STREETS"
 	exit_position=road.point;exit_forward=road.forward
 	exit_half_width=float(road.width)*.5-.65
+	if zone=="motorway":
+		# Keep a through lane for the new north return. The signed right lane
+		# connects to City Streets; left-lane drivers remain on Open Road.
+		exit_position+=road.right*1.8;exit_half_width=1.6
 	approach_position=geometry.approach
 	arrival=geometry.destination_arrival
 	var start:Dictionary=initial_city_spawn() if zone=="city" else {"position":game.highway.spawn_position,"heading":game.highway.spawn_heading}
@@ -107,7 +111,7 @@ func guidance() -> String:
 	if destination.is_empty():return "ZEN DRIVE / EXPLORE AT YOUR OWN PACE"
 	var distance:float=game.van.global_position.distance_to(exit_position)
 	var route:="ONTARIO ST" if destination=="motorway" else "I-77 NORTH"
-	return "%s / FOLLOW %s / %.2f MI" % [sign_title,route,distance/1609.344]
+	return "%s / FOLLOW %s / %.2f MI" % [sign_title,route,distance/1609.344] if destination=="motorway" else "RIGHT LANE: CITY / LEFT: SCENIC LOOP / %.2f MI" % (distance/1609.344)
 
 func _physics_process(delta:float) -> void:
 	if destination.is_empty() or traveling or not is_instance_valid(game):return
@@ -152,7 +156,7 @@ func sign_text(parent:Node3D,text:String,at:Vector3,size:int,color:String) -> vo
 	parent.add_child(label)
 
 func build_gateway(road:Dictionary) -> void:
-	var frame:=Node3D.new();frame.position=exit_position;frame.rotation.y=float(road.heading);add_child(frame)
+	var frame:=Node3D.new();frame.position=road.point;frame.rotation.y=float(road.heading);add_child(frame)
 	var width:float=float(road.width)
 	# All structure clears the complete existing deck. No barrier is removed,
 	# and neither a trigger nor a guide adds a collider across a traffic lane.
@@ -165,12 +169,12 @@ func build_gateway(road:Dictionary) -> void:
 	box(frame,Vector3(0,5.72,.225),Vector3(width+2.45,.36,.025),"6a39a0")
 	sign_text(frame,sign_title,Vector3(0,7.08,.25),52,"ffd044")
 	sign_text(frame,destination_label,Vector3(0,6.34,.25),34,"f3ebd8")
-	sign_text(frame,"ZEN DRIVE / CONTINUE AHEAD",Vector3(0,5.74,.255),23,"f3ebd8")
+	sign_text(frame,"RIGHT: CITY / LEFT: SCENIC LOOP" if destination=="city" else "ZEN DRIVE / CONTINUE AHEAD",Vector3(0,5.74,.255),23,"f3ebd8")
 	# Two low arrow rows follow the lane directions, painted above the actual
 	# road deck. Local +Z is behind this forward-facing gateway.
 	var tool:=SurfaceTool.new();tool.begin(Mesh.PRIMITIVE_TRIANGLES)
 	for distance in [12.0,24.0,36.0]:
-		for lane in [-1.8,1.8]:
+		for lane in ([1.8] if destination=="city" else [-1.8,1.8]):
 			var points:Array[Vector3]=[Vector3(lane-1.1,.045,distance+.8),Vector3(lane,.045,distance-.6),Vector3(lane+1.1,.045,distance+.8),Vector3(lane-1.1,.045,distance+1.35),Vector3(lane,.045,distance-.05),Vector3(lane+1.1,.045,distance+1.35)]
 			for index in [0,1,3,1,4,3,1,2,4,2,5,4]:tool.set_normal(Vector3.UP);tool.add_vertex(points[index])
 	var guide:=MeshInstance3D.new();guide.mesh=tool.commit();guide.material_override=game.highway.art.material(Color("ffd044"));guide.visibility_range_end=160;frame.add_child(guide)

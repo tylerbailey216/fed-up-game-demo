@@ -13,9 +13,19 @@ var point_widths: Dictionary = {}
 const GRID_SIZE := 32.0
 var barriers: Node3D
 var facade_finish:ShaderMaterial
+var zen_expanded:=false
+var return_roads:Array[Dictionary]=[]
+var map_min:=Vector2(-1250,-1150)
+var map_extent:=Vector2(2200,2250)
+
+func outside_bounds(at:Vector3) -> bool:
+	return at.y< -4 or at.y>80 or at.x<map_min.x+10 or at.z<map_min.y+10 or at.x>map_min.x+map_extent.x-10 or at.z>map_min.y+map_extent.y-10
 
 func _ready() -> void:
 	map_data = JSON.parse_string(FileAccess.get_file_as_string("res://assets/maps/independence.json"))
+	if zen_expanded:
+		return_roads=preload("res://scripts/zen_road_expansion.gd").expand(map_data)
+		map_min=Vector2(-2250,-2200);map_extent=Vector2(4200,4300)
 	for p in map_data.points:
 		road_points.append(Vector3(p[0],p[1],p[2]))
 	for road in map_data.roads:
@@ -28,7 +38,7 @@ func _ready() -> void:
 			var cell:=Vector2i(floori(p.x/GRID_SIZE),floori(p.z/GRID_SIZE))
 			if not road_grid.has(cell):road_grid[cell]=[]
 			road_grid[cell].append(int(idx))
-	block(self,Vector3(-150,-0.6,-25),Vector3(2500,1,2550),Color("79935d"),true)
+	block(self,Vector3(map_min.x+map_extent.x/2,-0.6,map_min.y+map_extent.y/2) if zen_expanded else Vector3(-150,-.6,-25),Vector3(map_extent.x+100,1,map_extent.y+100) if zen_expanded else Vector3(2500,1,2550),Color("79935d"),true)
 	for road in map_data.roads:
 		build_road(road)
 	for key in surfaces:
@@ -52,6 +62,17 @@ func _ready() -> void:
 	barriers=preload("res://scripts/road_barriers.gd").new()
 	barriers.world=self
 	add_child(barriers)
+	for road in return_roads:
+		for i in range(1,road.nodes.size()):
+			var a:Vector3=road_points[road.nodes[i-1]];var b:Vector3=road_points[road.nodes[i]]
+			var da:Vector3=road_points[road.nodes[mini(i,road.nodes.size()-1)]]-road_points[road.nodes[maxi(0,i-2)]]
+			var db:Vector3=road_points[road.nodes[mini(i+1,road.nodes.size()-1)]]-road_points[road.nodes[i-1]]
+			var sa:=Vector3(-da.z,0,da.x).normalized()*8.1
+			var sb:=Vector3(-db.z,0,db.x).normalized()*8.1
+			for side in [-1,1]:
+				var p:Vector3=a+sa*side;var q:Vector3=b+sb*side
+				barriers.build_section({"a":[p.x,p.y,p.z],"b":[q.x,q.y,q.z],"kind":"steel"})
+	barriers.finish_visuals()
 	build_buildings()
 	build_landscape()
 	var rng := RandomNumberGenerator.new()
@@ -146,7 +167,7 @@ func build_road(road: Dictionary) -> void:
 		block(sign,Vector3(0,6,0),Vector3(7,2.2,0.15),Color("245c48"))
 		var label := Label3D.new()
 		label.font=preload("res://assets/fonts/BarlowCondensed-Bold.ttf")
-		label.text=road.ref+"\n"+("Outerbelt South" if road.ref=="I 480" else "Willow Freeway")
+		label.text="SCENIC LOOP\nSLOW / RETURN AHEAD" if road.get("zen_return",false) else road.ref+"\n"+("Outerbelt South" if road.ref=="I 480" else "Willow Freeway")
 		label.font_size=42
 		label.pixel_size=0.019
 		label.position=Vector3(0,6,0.09)
@@ -234,8 +255,9 @@ func build_landscape() -> void:
 	rng.seed=48077
 	var crowns: Array[Transform3D] = []
 	var trunks: Array[Transform3D] = []
-	for i in 1700:
-		var p:=Vector3(rng.randf_range(-1300,1000),0,rng.randf_range(-1200,1150))
+	for i in (2300 if zen_expanded else 1700):
+		var p:=Vector3(rng.randf_range(-1300,1000),0,rng.randf_range(-1200,1150)) if i<1700 else Vector3(rng.randf_range(map_min.x,map_min.x+map_extent.x),0,rng.randf_range(map_min.y,map_min.y+map_extent.y))
+		if i>=1700 and p.x> -1300 and p.x<1000 and p.z> -1200 and p.z<1150:continue
 		var clear:=true
 		for road in map_data.roads:
 			for idx in road.nodes:
@@ -300,7 +322,7 @@ func nearest_road(at: Vector3) -> Dictionary:
 	return result
 
 func prepare_map(rect: Rect2) -> void:
-	var scale_xy := (rect.size-Vector2(24,60))/Vector2(2200,2250)
+	var scale_xy := (rect.size-Vector2(24,60))/map_extent
 	var key:=str(rect)
 	if not map_cache.has(key):
 		var svg:="<svg xmlns='http://www.w3.org/2000/svg' width='%d' height='%d'>" % [int(rect.size.x),int(rect.size.y)]
@@ -308,7 +330,7 @@ func prepare_map(rect: Rect2) -> void:
 			var coordinates:=PackedStringArray()
 			for idx in road.nodes:
 				var p:=road_points[idx]
-				var point:=Vector2(12,32)+Vector2(p.x+1250,p.z+1150)*scale_xy
+				var point:=Vector2(12,32)+(Vector2(p.x,p.z)-map_min)*scale_xy
 				coordinates.append("%.2f,%.2f" % [point.x,point.y])
 			svg+="<polyline points='%s' fill='none' stroke='%s' stroke-width='%d'/>" % [" ".join(coordinates),"#d8bd75" if road.kind=="motorway" else "#82908b",2 if road.kind=="motorway" else 1]
 		svg+="</svg>"
@@ -316,12 +338,12 @@ func prepare_map(rect: Rect2) -> void:
 		if raster.load_svg_from_string(svg)==OK:map_cache[key]=ImageTexture.create_from_image(raster)
 
 func draw_map(canvas: Control,rect: Rect2,at: Vector3) -> void:
-	var scale_xy := (rect.size-Vector2(24,60))/Vector2(2200,2250)
+	var scale_xy := (rect.size-Vector2(24,60))/map_extent
 	var origin := rect.position+Vector2(12,32)
 	var key:=str(rect)
 	prepare_map(rect)
 	if map_cache.has(key):canvas.draw_texture_rect(map_cache[key],rect,false)
-	canvas.draw_circle(origin+Vector2(at.x+1250,at.z+1150)*scale_xy,4,Color("70e5e0"))
+	canvas.draw_circle(origin+(Vector2(at.x,at.z)-map_min)*scale_xy,4,Color("70e5e0"))
 
 func map_point(at:Vector3,rect:Rect2) -> Vector2:
-	return rect.position+Vector2(12,32)+Vector2(at.x+1250,at.z+1150)*(rect.size-Vector2(24,60))/Vector2(2200,2250)
+	return rect.position+Vector2(12,32)+(Vector2(at.x,at.z)-map_min)*(rect.size-Vector2(24,60))/map_extent

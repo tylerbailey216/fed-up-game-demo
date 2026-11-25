@@ -86,6 +86,7 @@ func _ready() -> void:
 	if "--city-curb-return-test" in args or "--city-curb-return-capture" in args:zen=true
 	if "--scenery-test" in args:zen=true
 	highway = preload("res://scripts/arcade_world.gd").new() if arcade else (preload("res://scripts/independence.gd").new() if outerbelt else (Highway.new() if legacy_test else preload("res://scripts/downtown.gd").new()))
+	if outerbelt:highway.zen_expanded=zen
 	add_child(highway)
 	if outerbelt:preload("res://scripts/terrain_surface.gd").motorway_index(highway)
 	var environment := WorldEnvironment.new()
@@ -185,6 +186,10 @@ func _ready() -> void:
 		var tests:=preload("res://scripts/curb_return_tests.gd").new();add_child(tests)
 		var failed:Array[String]=await tests.run_city(self,"--city-curb-return-capture" in args)
 		print("CITY CURB RETURN TEST PASS" if failed.is_empty() else "CITY CURB RETURN TEST FAIL: "+str(failed))
+		await quit_demo(0 if failed.is_empty() else 1);return
+	if "--zen-roads-test" in args:
+		var tests:=preload("res://scripts/zen_road_tests.gd").new();add_child(tests)
+		var failed:Array[String]=await tests.run(self)
 		await quit_demo(0 if failed.is_empty() else 1);return
 	if "--zen-test" in args:
 		var tests:=preload("res://scripts/zen_tests.gd").new();add_child(tests)

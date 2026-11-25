@@ -42,12 +42,12 @@ const fs=require('fs');
    // continuous route-driving acceptance; these positions do not replace it.
    for(let gate=1;gate<=4;gate++){await command('gate');await wait(n=>window.fedupQA.route===n,'Route marker did not clear',6000,gate);}
    await command('bay');await wait(()=>window.fedupQA.complete,'Collection finish');await page.waitForTimeout(700);await shot('report');
-   if(!baseline){const s=await state();check(s.feedback.checkpoints===4&&s.feedback.completions===1,'Duplicate/missing checkpoint or finish feedback');check(s.report.progress===1&&s.report.manifest===12,'Animated report did not settle at exact results');}
+   if(!baseline){const s=await state();check(s.feedback.checkpoints===4&&s.feedback.completions===1,'Duplicate/missing checkpoint or finish feedback');check(s.feedback.audio.route_clear===5,'Each active route zone and final bay must play one supplied zone cue');check(s.report.progress===1&&s.report.manifest===12,'Animated report did not settle at exact results');}
    await replay();await command('quiet');await command('spill');await wait(()=>window.fedupQA.on_foot,'Disabled exit');await command('line');await direction(0,-.8);
    await wait(()=>window.fedupQA.collected>=1,'First walk-over pickup');await shot('pickup');
    await wait(()=>window.fedupQA.collected===12&&window.fedupQA.restored,'All automatic pickups',30000);await release();await page.waitForTimeout(300);await shot('collected');
    const end=await state();
-   if(!baseline){check(end.feedback.pickups===12&&end.spawned===12,'Pickup effects changed fixed manifest credit');check(end.feedback.peak_live<=end.feedback.capacity,'Feedback pool exceeded its budget');check(end.feedback.audio.package_pickup>0,'Pickup cue missing');}
+   if(!baseline){check(end.feedback.pickups===12&&end.spawned===12,'Pickup effects changed fixed manifest credit');check(end.feedback.peak_live<=end.feedback.capacity,'Feedback pool exceeded its budget');check(end.feedback.audio.package_pickup===12,'Every recovered package must request the supplied pickup cue');}
    if(errors.length)throw Error(errors.join('\n'));
    results.push({width,height,touch,baseline,performance,feedback:end.feedback||null,errors});console.log(`PASS POLISH ${baseline?'BEFORE':'AFTER'} ${width}x${height}`,performance);
   }finally{await browser.close();}

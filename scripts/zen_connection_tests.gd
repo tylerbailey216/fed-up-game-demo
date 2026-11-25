@@ -33,6 +33,8 @@ func run(game:Node) -> void:
 	check(not gate.crossed_gate(center+forward*2,center-forward*2),"Wrong-way travel cannot switch zones")
 	check(not gate.crossed_gate(center-forward*2+Vector3.UP*5,center+forward*2+Vector3.UP*5),"A different road level cannot switch zones")
 	check(not gate.crossed_gate(center-forward*2+road.right*30,center+forward*2+road.right*30),"Adjacent terrain cannot switch zones")
+	if game.outerbelt:
+		check(not gate.crossed_gate(center-forward*2-road.right*3.6,center+forward*2-road.right*3.6),"Left through lane stays on Open Road for the north scenic loop")
 	# Set up once on the approach lane. Every meter to the gate uses normal gas,
 	# collision, suspension and barrier code. Never place the truck at the gate.
 	game.van.position=gate.approach_position;game.van.rotation=Vector3(0,float(road.heading),0)

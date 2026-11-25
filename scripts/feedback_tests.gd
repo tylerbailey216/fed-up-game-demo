@@ -59,6 +59,8 @@ func run(game:Node,capture:=false) -> Array[String]:
 func check_bounds_and_audio(game:Node) -> void:
 	var feedback:Node=game.gameplay_feedback
 	var energy:float=game.cargo.damage
+	check(feedback.players.package_pickup.stream.resource_path=="res://assets/audio/loose_package.wav","Loose-package credit uses the user-supplied pickup recording")
+	check(feedback.players.route_clear.stream.resource_path=="res://assets/audio/delivery_zone.mp3","Active delivery zones use the user-supplied zone recording")
 	for i in 40:feedback.impact(game.van.position,Vector3.UP,1)
 	check(feedback.live_count()<=feedback.CAPACITY and feedback.slots.size()==feedback.CAPACITY,"Repeated presentation bursts reuse a fixed particle pool")
 	check(game.cargo.damage==energy and game.cargo.recovered==0,"Presentation APIs cannot award progress or apply truck damage")
@@ -131,7 +133,7 @@ func check_actual_recovery(game:Node,capture:bool) -> void:
 	await frames(120)
 	check(cargo.recovered==cargo.quota and cargo.load_restored and not game.van.wrecked,"All real pickup contacts retain repair and auto-return behavior")
 	check(feedback.pickup_count==cargo.quota and feedback.last_pickup_count==cargo.quota and feedback.last_pickup_total==cargo.quota,"Every fixed manifest credit reaches the visible progress pulse exactly once")
-	check(int(feedback.audio_counts.package_pickup)>0 and int(feedback.audio_counts.package_pickup)<=cargo.quota,"Clustered pickups are audible without stacking a voice for every simultaneous box")
+	check(int(feedback.audio_counts.package_pickup)==cargo.recovered,"Every recovered package requests its cue; playback voices remain bounded")
 	cargo.actor.position=game.van.position+game.van.global_basis.x*3.5;cargo.toggle_foot();await frames(2)
 	check(not cargo.on_foot,"Presentation feedback preserves repaired truck re-entry")
 
@@ -145,7 +147,11 @@ func check_actual_route_and_finish(game:Node,capture:bool) -> void:
 		var previous:int=feedback.checkpoint_count;await frames(5)
 		check(feedback.checkpoint_count==previous,"Remaining on a cleared marker never repeats its confirmation")
 	await shot(game,"route",capture)
+	var zone_cues:int=feedback.audio_counts.route_clear
 	await park(game,cargo.checkpoint_position)
+	check(int(feedback.audio_counts.route_clear)==zone_cues+1,"Driving into the active final bay plays its supplied zone cue")
+	await frames(5)
+	check(int(feedback.audio_counts.route_clear)==zone_cues+1,"Remaining inside the final bay does not repeat its sound")
 	for i in 90:
 		await frames(1)
 		if cargo.complete:break

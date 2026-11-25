@@ -31,6 +31,7 @@ func build_routes() -> void:
 	# continuous I-480 / I-77 carriageways belong here; ramps remain player roads.
 	var roads:Array=[];var incoming:Dictionary={};var from_node:Dictionary={}
 	for road in highway.map_data.roads:
+		if road.get("zen_return",false):continue
 		if road.kind!="motorway" or not road.oneway or road.ref not in ["I 480","I 77"]:continue
 		var index:=roads.size();roads.append(road)
 		from_node[int(road.nodes[0])]=index

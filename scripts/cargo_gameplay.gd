@@ -253,6 +253,7 @@ func update_checkpoint(delta:float) -> void:
 	var at:Vector3=checkpoint.to_local(player_position())
 	var inside:bool=absf(at.x)<5.5 and absf(at.z)<7 and absf(at.y)<3
 	if inside and not checkpoint_inside and not complete:
+		if not on_foot and (not arcade_run or arcade_run.route_finished()) and is_instance_valid(game.get("gameplay_feedback")):game.gameplay_feedback.delivery_zone()
 		remaining_notice=remaining_packages()
 		if remaining_notice>0:show_popup("COLLECTION INCOMPLETE\n%d MORE PACKAGES TO COLLECT" % remaining_notice)
 		elif arcade_run and not arcade_run.route_finished():show_popup("FOLLOW THE PURPLE ROUTE / %d MARKERS LEFT" % (game.highway.route_points.size()-arcade_run.route_index))

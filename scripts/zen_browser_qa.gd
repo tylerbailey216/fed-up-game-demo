@@ -28,6 +28,15 @@ func _physics_process(delta:float) -> void:
 	if not command.is_empty():
 		JavaScriptBridge.eval("window.fedupQACommand=''")
 		match command:
+			"scenic":
+				if game.outerbelt and not game.highway.return_roads.is_empty():
+					quiet_population();game.touch_controls.release_inputs()
+					var road:Dictionary=game.highway.return_roads[2]
+					var p:Vector3=game.highway.road_points[road.nodes[60]]
+					var next:Vector3=game.highway.road_points[road.nodes[61]]
+					game.van.position=p+Vector3.UP*.16;game.van.rotation=Vector3(0,atan2(-(next-p).x,-(next-p).z),0)
+					game.van.speed=0;game.van.velocity=Vector3.ZERO;game.van.planar_velocity=Vector3.ZERO
+					game.van.parking_brake=true;game.van.camera_orbit=0;game.van.set_view(false)
 			"quiet":quiet_population()
 			"prepare":
 				game.touch_controls.release_inputs();game.van.new_truck();game.van.parking_brake=false
