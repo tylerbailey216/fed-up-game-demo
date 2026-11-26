@@ -13,7 +13,7 @@ var truck_outline:MeshInstance3D
 func _ready() -> void:
 	process_mode=Node.PROCESS_MODE_PAUSABLE
 	# A low illustrated footprint keeps the parked truck legible during cutaway.
-	truck_outline=MeshInstance3D.new();var shape:=BoxMesh.new();shape.size=Vector3(2.65,.18,6.2);truck_outline.mesh=shape
+	truck_outline=MeshInstance3D.new();var shape:=BoxMesh.new();shape.size=Vector3(game.van.vehicle_bounds.x+.15,.18,game.van.vehicle_bounds.z+.7);truck_outline.mesh=shape
 	truck_outline.material_override=game.highway.art.material(Color("9470af"),true)
 	game.van.add_child(truck_outline);truck_outline.position.y=.22;truck_outline.hide()
 

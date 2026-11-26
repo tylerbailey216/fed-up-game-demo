@@ -1,5 +1,6 @@
 extends Node
 var failures:Array[String]=[]
+const IDS=["truck","semi","tank","sleigh","turkey"]
 func check(value:bool,message:String) -> void:
 	if not value:failures.append(message);push_error("FLEET TEST FAIL: "+message)
 func frames(count:int) -> void:
@@ -25,8 +26,14 @@ func run(game:Node) -> void:
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(progress.path))
 	game.start_drive()
 	await frames(3)
-	check(game.vehicle_id==["truck","semi","tank","sleigh"][step],"Selected vehicle survives scene reload")
-	check(game.vehicle_visuals.wheels.size()>=4,"Playable model has live rolling wheels")
+	check(game.vehicle_id==IDS[step],"Selected vehicle survives scene reload")
+	if game.vehicle_id=="turkey":
+		check(game.fleet.unlocked("turkey") and game.vehicle_visuals.turkey_legs.size()==2 and game.vehicle_visuals.wheels.is_empty(),"Thanksgiving mount is available with two articulated legs and no fake wheels")
+		check(game.vehicle_visuals.turkey_rider and game.vehicle_visuals.turkey_rider.visible,"Mounted turkey has its FedUp rider")
+	else:
+		var expected_wheels:int={"truck":4,"semi":6,"tank":12,"sleigh":4}[game.vehicle_id]
+		check(game.vehicle_visuals.wheels.size()==expected_wheels,"Every visible wheel is registered for live rolling animation")
+	if game.vehicle_id=="tank":check(game.van.vehicle_bounds.x>=4 and game.van.vehicle_bounds.z>=7 and game.van.vehicle_bounds.y>4,"Tank has a larger solid footprint than the semi, truck and sleigh")
 	var driving:=preload("res://scripts/arcade_driving_tests.gd").new();add_child(driving)
 	var before:int=game.fleet.deliveries
 	failures.append_array(await driving.run(game,false))
@@ -46,14 +53,15 @@ func run(game:Node) -> void:
 	check(not game.cargo.spilled and not game.van.wrecked,"Surviving energy secures cargo for every vehicle")
 	game.cargo.damage_hit(1);await frames(20)
 	check(game.cargo.spilled and game.cargo.spawned==12 and game.cargo.on_foot and not game.flight.enabled,"Energy depletion spills one manifest, exits and cancels flight")
+	if game.vehicle_id=="turkey":check(not game.vehicle_visuals.turkey_rider.visible,"Dismount hides the seated rider without removing the turkey")
 	for item in game.cargo.packages:
 		game.cargo.recover_package(item);game.cargo.recover_package(item)
 	await frames(120)
 	check(game.cargo.recovered==12 and game.cargo.ledger.ready() and game.cargo.load_restored and not game.van.wrecked,"All fleet vehicles retain immediate one-time pickup and repair")
 	if not failures.is_empty():await game.quit_demo(1);return
-	if step<3:
+	if step<IDS.size()-1:
 		get_tree().set_meta("fleet_step",step+1)
-		get_tree().set_meta("fleet_fixture",{"deliveries":5,"selected":["truck","semi","tank","sleigh"][step+1]})
+		get_tree().set_meta("fleet_fixture",{"deliveries":5,"selected":IDS[step+1]})
 		get_tree().reload_current_scene();return
-	print("FLEET TEST PASS: receipts, unlock/save round trip, all four real-input route laps, sleigh lift and landing")
+	print("FLEET TEST PASS: receipts, unlock/save round trip, all five real-input route laps, sleigh flight and Thanksgiving mount")
 	await game.quit_demo()

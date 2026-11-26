@@ -124,7 +124,7 @@ func _ready() -> void:
 	terrain_particles.van=van;add_child(terrain_particles)
 	var shadow := MeshInstance3D.new()
 	var shadow_mesh := PlaneMesh.new()
-	shadow_mesh.size = Vector2(3.1,6.0)
+	shadow_mesh.size = Vector2(4.7,7.6) if vehicle_id=="tank" else (Vector2(4.6,6.5) if vehicle_id=="turkey" else Vector2(3.1,6.0))
 	shadow.mesh = shadow_mesh
 	shadow.position.y = 0.025
 	var shadow_material := ShaderMaterial.new()
@@ -431,6 +431,7 @@ func configure_input() -> void:
 			InputMap.action_add_event(action,event)
 
 func build_van() -> void:
+	var fleet_style:=preload("res://scripts/fleet_art_style.gd").new()
 	var body := Node3D.new()
 	van.add_child(body)
 	van.body = body
@@ -447,14 +448,24 @@ func build_van() -> void:
 				if hull is CollisionShape3D:
 					if hull.shape is BoxShape3D:hull.shape.size.z=3.8;hull.position.z=.2
 					elif hull.shape is CylinderShape3D:hull.position.z=-1.7 if hull.position.z<0 else 2.1
-		elif vehicle_id=="tank":pedestrian_box.size.x=2.7
-		preload("res://scripts/fleet_models.gd").new().build(body,vehicle_id,highway.art)
+		elif vehicle_id in ["tank","turkey"]:
+			van.vehicle_bounds=Vector3(4.5,4.2,7.0) if vehicle_id=="tank" else Vector3(4.0,4.65,6.0)
+			pedestrian_box.size=van.vehicle_bounds;pedestrian_shape.position.y=van.vehicle_bounds.y*.5
+			for hull in van.get_children():
+				if hull is CollisionShape3D:
+					hull.position.y=van.vehicle_bounds.y*.5
+					if hull.shape is BoxShape3D:hull.shape.size=Vector3(van.vehicle_bounds.x,van.vehicle_bounds.y,van.vehicle_bounds.z-van.vehicle_bounds.x)
+					elif hull.shape is CylinderShape3D:
+						hull.shape.radius=van.vehicle_bounds.x*.5;hull.shape.height=van.vehicle_bounds.y
+						hull.position.z=signf(hull.position.z)*(van.vehicle_bounds.z-van.vehicle_bounds.x)*.5
+		preload("res://scripts/fleet_models.gd").new().build(body,vehicle_id,fleet_style)
 		return
 	if ResourceLoader.exists("res://assets/models/fedup_van.glb"):
 		var model: PackedScene = load("res://assets/models/fedup_van.glb")
 		var visual := model.instantiate()
 		body.add_child(visual)
-		highway.art.apply_to_model(visual)
+		fleet_style.apply_to_model(visual)
+		preload("res://scripts/fleet_models.gd").new().build(body,"truck",fleet_style)
 		for side in [-1,1]:
 			add_brand(body,Vector3(side*1.18,2.12,0.63),side*PI/2,100,0.009)
 		for pivot in visual.find_children("RearDoorPivot_*","Node3D",true,false):

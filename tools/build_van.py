@@ -29,6 +29,7 @@ def material(name, color):
 white = material("Paint_WarmWhite", (0.89, 0.88, 0.82))
 ink = material("Outline_Charcoal", (0.035, 0.049, 0.073))
 glass = material("Glass_GraphicBlue", (0.06, 0.22, 0.31))
+glint = material("Glass_Highlight", (0.75, 0.9, 1.0))
 purple = material("Brand_Purple", (0.22, 0.065, 0.36))
 orange = material("Brand_Orange", (0.94, 0.31, 0.06))
 metal = material("Metal_Silver", (0.45, 0.52, 0.57))
@@ -50,7 +51,7 @@ def box(name, pos, size, mat, bevel=0):
     if bevel:
         mod = obj.modifiers.new("Small manufactured edges", "BEVEL")
         mod.width = bevel
-        mod.segments = 1
+        mod.segments = 3
         bpy.context.view_layer.objects.active = obj
         bpy.ops.object.modifier_apply(modifier=mod.name)
     return obj
@@ -60,7 +61,7 @@ box("Cargo_Roof", (0,3.08,.63),(2.30,.12,3.42),white,.04)
 box("Cargo_Floor", (0,.69,.63),(2.30,.12,3.42),ink)
 box("Cargo_Bulkhead", (0,1.88,-1.02),(2.30,2.5,.12),white)
 for side in [-1,1]:box("Cargo_Side",(side*1.10,1.88,.63),(.10,2.5,3.42),white,.025)
-box("Cab_Lower", (0, 1.13, -1.70), (2.26, 1.0, 1.38), white, 0.08)
+box("Cab_Lower", (0, 1.13, -1.70), (2.26, 1.0, 1.38), white, 0.16)
 box("Cab_Roof", (0, 2.96, -1.45), (2.31, 0.16, 1.48), white, 0.07)
 for name, pos, size, mat, bevel in [
     ("Windscreen_Seal", (0, 2.23, -2.34), (2.10, 1.20, .08), ink, .06),
@@ -72,10 +73,15 @@ for name, pos, size, mat, bevel in [
 for x in [-1.065, 1.065]:
     obj = box("A_Pillar", (x, 2.23, -2.32), (0.16, 1.38, 0.18), white)
     obj.rotation_euler[0] = .22
+for x in [-.55, .55]:
+    obj = box("Windscreen_Glint", (x, 2.36, -2.43), (.12, .68, .018), glint, .008)
+    obj.rotation_euler[0] = .22
 for side in [-1, 1]:
     x = side * 1.14
     box("Side_Window_Seal", (x, 2.27, -1.57), (0.05, 1.08, 1.12), ink, 0.03)
     box("Side_Window", (x + side * .03, 2.27, -1.57), (.025, .94, .98), glass)
+    obj = box("Side_Window_Glint", (x + side * .05, 2.32, -1.67), (.018, .65, .12), glint, .008)
+    obj.rotation_euler[0] = -.32
     box("Side_Door_Seam", (x, 1.28, -1.18), (.035, 1.0, .025), ink)
     box("Door_Handle", (x + side * .035, 1.61, -1.12), (.07, .07, .22), ink)
     box("Mirror_Arm", (side * 1.33, 2.02, -2.05), (.42, .055, .055), ink)

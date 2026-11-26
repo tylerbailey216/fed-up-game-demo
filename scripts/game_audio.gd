@@ -60,11 +60,12 @@ func _process(delta: float) -> void:
 		return
 	var speed: float = absf(van.speed)
 	var engine: float = float(van.engine_on)
-	level("engine_idle",engine*(0.28 if van.cockpit else 0.42),clampf(van.rpm/1000,0.65,3.5))
-	level("engine_load",engine*van.throttle_load*0.30,clampf(van.rpm/1100,0.65,3))
+	var motor:=0.0 if str(van.get_parent().get("vehicle_id"))=="turkey" else 1.0
+	level("engine_idle",motor*engine*(0.28 if van.cockpit else 0.42),clampf(van.rpm/1000,0.65,3.5))
+	level("engine_load",motor*engine*van.throttle_load*0.30,clampf(van.rpm/1100,0.65,3))
 	var rough:bool=van.ground_kind=="grass"
-	level("road",float(not van.stunts.active or (is_instance_valid(van.roll_body) and van.roll_body.supported))*clampf(speed/35,0,1)*(.56 if rough else .42),(.68 if rough else .8)+speed/65)
-	level("tire_squeal",van.tire_squeal*0.52,0.9+speed/120)
+	level("road",motor*float(not van.stunts.active or (is_instance_valid(van.roll_body) and van.roll_body.supported))*clampf(speed/35,0,1)*(.56 if rough else .42),(.68 if rough else .8)+speed/65)
+	level("tire_squeal",motor*van.tire_squeal*0.52,0.9+speed/120)
 	level("city_ambience",.55*nature_volume)
 	level("horn",0.55 if Input.is_physical_key_pressed(KEY_B) or horn_time > 0 else 0.0)
 	horn_time = maxf(0,horn_time-delta)

@@ -20,13 +20,15 @@ func _ready() -> void:
 	title=Label.new();title.text="FedUp / CHOOSE YOUR RIDE";title.add_theme_font_override("font",preload("res://assets/fonts/Bangers-Regular.ttf"));title.add_theme_font_size_override("font_size",44);title.modulate=Color("ffd044");container.add_child(title)
 	var mode:=Button.new();mode.text="DELIVERY MAYHEM / SWITCH TO ZEN DRIVE" if game.arcade else "ZEN DRIVE / SWITCH TO DELIVERY MAYHEM";mode.custom_minimum_size.y=42
 	mode.pressed.connect(func():game.switch_location(false));container.add_child(mode);actions.append(mode)
-	grid=GridContainer.new();grid.columns=2;grid.add_theme_constant_override("h_separation",12);grid.add_theme_constant_override("v_separation",12);container.add_child(grid)
+	var scroll:=ScrollContainer.new();scroll.size_flags_vertical=Control.SIZE_EXPAND_FILL;scroll.horizontal_scroll_mode=ScrollContainer.SCROLL_MODE_DISABLED;container.add_child(scroll)
+	grid=GridContainer.new();grid.size_flags_horizontal=Control.SIZE_EXPAND_FILL;grid.columns=2;grid.add_theme_constant_override("h_separation",12);grid.add_theme_constant_override("v_separation",12);scroll.add_child(grid)
 	var atlas:Texture2D=load("res://assets/art/presentation/fleet-select.png")
 	for i in game.fleet.catalog.size():
 		var card:=preload("res://scripts/fleet_card.gd").new();card.vehicle=game.fleet.catalog[i]
 		var region:=AtlasTexture.new();region.atlas=atlas;region.region=Rect2((i%2)*768,floori(i/2.0)*512,768,512);card.picture=region
 		if i==2:region.region=Rect2(0,512,720,512)
 		if i==3:region.region=Rect2(730,512,806,512)
+		if str(card.vehicle.id)=="turkey":card.picture=load("res://assets/art/presentation/turkey-select-v2.png")
 		card.flat=true;card.size_flags_horizontal=Control.SIZE_EXPAND_FILL;card.pressed.connect(inspect.bind(str(card.vehicle.id)))
 		grid.add_child(card);cards.append(card)
 	detail=Label.new();detail.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART;detail.add_theme_font_size_override("font_size",22);container.add_child(detail)
@@ -41,7 +43,7 @@ func _ready() -> void:
 
 func fit() -> void:
 	if not is_inside_tree() or not grid or size.x<=56 or size.y<=0:return
-	grid.columns=2 if size.x/size.y<1.2 else 4
+	grid.columns=2 if size.x/size.y<1.2 else game.fleet.catalog.size()
 	departure_actions.vertical=grid.columns==2
 	# Web Window.size is backing pixels, whereas touch targets use CSS pixels.
 	var screen_height:=float(get_window().size.y)
@@ -64,7 +66,7 @@ func fit() -> void:
 	fixed+=progress.get_theme_font("font").get_height(progress.get_theme_font_size("font_size"))+4
 	for card in cards:
 		card.ui_ratio=ratio
-		card.custom_minimum_size=Vector2(0,clampf((size.y-fixed)/(2 if grid.columns==2 else 1),120,290))
+		card.custom_minimum_size=Vector2(0,clampf((size.y-fixed-12*(ceili(float(cards.size())/grid.columns)-1))/ceili(float(cards.size())/grid.columns),120,290))
 		card.queue_redraw()
 
 func inspect(id:String) -> void:

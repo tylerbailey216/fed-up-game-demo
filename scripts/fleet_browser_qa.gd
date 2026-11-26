@@ -2,6 +2,7 @@ extends Node
 ## Explicit qa=fleet fixture. Career remains ephemeral; never loaded in normal play.
 var game:Node
 var clock:=0.0
+var review_camera:Camera3D
 func _process(delta:float) -> void:
 	clock+=delta
 	if clock<.1:return
@@ -9,7 +10,14 @@ func _process(delta:float) -> void:
 	var command:String=str(JavaScriptBridge.eval("window.fedupFleetCommand || ''"))
 	if not command.is_empty():
 		JavaScriptBridge.eval("window.fedupFleetCommand=''")
-		if command=="unlock":
+		if command=="review":
+			game.fixed_camera.set_process(false);game.van.set_physics_process(false);game.vehicle_visuals.set_physics_process(false)
+			review_camera=Camera3D.new();review_camera.fov=36;game.add_child(review_camera)
+			review_camera.position=game.van.position+Vector3(9,6.5,-12);review_camera.look_at(game.van.position+Vector3.UP*2);review_camera.make_current()
+		elif command=="review_end":
+			if is_instance_valid(review_camera):review_camera.queue_free()
+			game.van.camera.make_current();game.fixed_camera.set_process(true);game.van.set_physics_process(true);game.vehicle_visuals.set_physics_process(true)
+		elif command=="unlock":
 			for i in 5:game.fleet.award({"job_id":"fixture-%d" % i,"packages":12})
 			game.garage.inspect(game.fleet.selected)
 		elif command=="garage":
@@ -27,6 +35,7 @@ func _process(delta:float) -> void:
 		cards.append({"id":card.vehicle.id,"locked":card.locked,"x":rect.get_center().x,"y":rect.get_center().y,"rect":[rect.position.x,rect.position.y,rect.size.x,rect.size.y]})
 	var confirm:Rect2=game.garage.confirm.get_global_rect()
 	var state:Dictionary={"garage":game.garage.visible,"vehicle":game.vehicle_id,"driving":game.driving,"deliveries":game.fleet.deliveries,"cards":cards,"confirm":[confirm.get_center().x,confirm.get_center().y],"disabled":game.garage.confirm.disabled,"viewport":[game.garage.size.x,game.garage.size.y],"y":game.van.position.y,"flight":game.flight.enabled,"wheels":game.vehicle_visuals.wheels.size()}
+	state.legs=game.vehicle_visuals.turkey_legs.size()
 	state.actions=[]
 	state.complete=game.cargo.complete
 	state.card_min=game.garage.cards[0].custom_minimum_size.y

@@ -1,6 +1,6 @@
 # FedUp Driver — Cleveland browser demo
 
-After loading, choose a vehicle in the illustrated garage. The original truck starts unlocked; completed Delivery Mayhem deliveries unlock the semi at **1**, tank at **3**, and Santa sleigh at **5**. Locked rides show silhouettes and padlocks. The completion report includes **Vehicle Garage** alongside replay. Career progress saves on this device/browser; it does not sync between devices.
+After loading, choose a vehicle in the illustrated garage. The original truck and Thanksgiving **Gobble Express** turkey mount start unlocked; completed Delivery Mayhem deliveries unlock the semi at **1**, tank at **3**, and Santa sleigh at **5**. Locked rides show silhouettes and padlocks. The completion report includes **Vehicle Garage** alongside replay. Career progress saves on this device/browser; it does not sync between devices.
 
 The sleigh drives on the ground or flies at low altitude: **V** on desktop or **FLY / LAND** on touchscreens. Land before exiting or delivering. Both modes use the same fleet. See [fleet and delivery foundations](docs/FLEET_AND_DELIVERIES.md) for current behavior, artwork provenance and planned extensions.
 

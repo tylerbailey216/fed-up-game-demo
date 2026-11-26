@@ -1,0 +1,20 @@
+FedUp Thanksgiving garage asset - November 26, 2026
+Tool: built-in ImageGen. AI-assisted new illustration and edit.
+References: assets/art/presentation/fleet-select.png and worker-walk-front.png.
+Original supplied references are unchanged. No bitmap generation is performed at runtime.
+
+Initial generated original:
+C:/Users/Admin/.codex/generated_images/01a1ddc4-bd7b-7543-916c-ae92ad2a4860/exec-186f8c06-f0df-4589-aa24-67ecedba82e4.png
+Copied unchanged to assets/art/presentation/turkey-select.png.
+
+Initial prompt:
+Production game vehicle illustration for FedUp, fully finished asset, not a concept sheet. Reference 1 is the exact fleet/garage illustration style and purple #6a39a0, orange #f78c2f, warm white #f3ebd8, gold, heavy clean black outline rendering standard. Reference 2 is the established delivery driver whose identity, purple and white FedUp cap, round amber face, black dot eyes, purple uniform with white shoulders, orange seam piping and brown work boots MUST be retained faithfully. Draw ONE gigantic lively friendly Thanksgiving delivery turkey with this exact FedUp delivery driver seated astride on a purple saddle, holding gold reins. Turkey has a huge rounded chestnut body, layered wing feathers, enormous upright fan tail alternating warm chestnut and cream feather tips, expressive friendly eyes, red wattle, golden beak, stout golden running legs, three-toed feet. Purple and orange FedUp parcel saddlebags strapped to its sides, warm-white FedUp logo panel, visible strapped parcels behind rider. The turkey is a rideable living animal, not a cooked turkey, no food platter, no vehicle wheels. Entire subject in one polished front-left three-quarter view facing left, full feet, full tail and rider/cap contained comfortably inside frame. Bold organic cartoon shapes, clean thick ink contour and internal feather/clothing linework, flat saturated cel shading and crisp cream highlights exactly matching reference garage artwork; no photorealism, no pseudo-3D plastic render, no gradients or background glow. Truly transparent background, no shadow on backdrop, no floor, no title, no panel, no collage, no extra characters or variants. Landscape asset with generous transparent margins. Logos spelled FedUp with Fed purple and Up orange. Preserve the driver's established proportions and expression.
+
+Edited original:
+C:/Users/Admin/.codex/generated_images/01a1ddc4-bd7b-7543-916c-ae92ad2a4860/exec-f34dfd93-637f-4522-add2-e45a34e87b28.png
+Copied unchanged to assets/art/presentation/turkey-select-v2.png; shipping garage uses v2.
+
+Edit prompt:
+Final production cleanup of this exact FedUp Thanksgiving turkey-and-rider asset. Preserve the turkey, rider identity, face, uniform, all logos, parcels, exact colors, linework and pose. Add ample genuinely transparent padding around the ENTIRE silhouette on all four sides (at least 8% on each side). The very top of the purple driver's cap currently touches/is slightly clipped by the upper canvas edge: restore that small missing cap contour faithfully and keep the complete cap inside the padded image. Complete feet and feather tips must remain inside. Remove the soft dark/golden/purple background glow: alpha must be zero everywhere outside the crisp illustrated subject, no shadow or backdrop. Do not redesign or change the illustration, do not introduce objects or text. One single cutout of the same exact finished cartoon vehicle, landscape canvas, truly transparent background. Keep bold clean ink, flat cel shading and warm highlights. No conceptual variants or sheet.
+
+Review note: v2 restores the cap contour, but the requested clear outer padding/background cleanup was incomplete. A soft halo remains. Use only as the fitted garage illustration; do not call this a perfectly isolated transparent world sprite. World model is separately authored Godot geometry in scripts/fleet_turkey.gd, with actual leg joints.

@@ -17,10 +17,16 @@ var headlight_was_on:=false
 var headlight_update:=0.0
 var seen_surface_bump:=0
 var reindeer_legs:Array[Node]=[]
+var turkey_legs:Array[Node]=[]
+var organic_mount:=false
+var turkey_rider:Node3D
 
 func _ready() -> void:
 	find_wheels(van.body)
 	reindeer_legs=van.body.find_children("ReindeerLeg_*","Node3D",true,false)
+	turkey_legs=van.body.find_children("TurkeyLeg_*","Node3D",true,false)
+	organic_mount=not turkey_legs.is_empty()
+	turkey_rider=van.body.find_child("TurkeyRider",true,false) as Node3D
 	smoke = CPUParticles3D.new()
 	smoke.emitting = false
 	smoke.amount = 56
@@ -81,6 +87,7 @@ func _ready() -> void:
 	metal.albedo_color = Color("333b42")
 	pipe.material_override = metal
 	van.body.add_child(pipe)
+	pipe.visible=not organic_mount
 	var id:String=str(van.get_parent().get("vehicle_id"))
 	var front_z:float=-2.9 if id=="semi" else (-2.07 if id=="tank" else (-.43 if id=="sleigh" else -2.475))
 	var rear_z:float=3.37 if id=="semi" else (2.16 if id=="tank" else (2.56 if id=="sleigh" else 2.48))
@@ -107,10 +114,17 @@ func make_lamp(id: String, pos: Vector3, size: Vector3) -> void:
 	var material := StandardMaterial3D.new()
 	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	node.material_override = material
+	node.visible=not organic_mount
 	van.body.add_child(node)
 	lamps[id] = material
 
 func _physics_process(delta: float) -> void:
+	if turkey_rider:turkey_rider.visible=not van.driver_on_foot
+	for leg in turkey_legs:
+		var moving:float=clampf(absf(van.speed)/2,0,1) if not van.wrecked and not van.overturned else 0.0
+		var gait:float=sin(van.wheel_distance*2.4+float(leg.get_meta("gait_phase")))
+		leg.rotation.x=lerpf(leg.rotation.x,gait*.55*moving,minf(1,delta*12))
+		leg.get_node("Knee").rotation.x=lerpf(leg.get_node("Knee").rotation.x,maxf(0,-gait)*.85*moving,minf(1,delta*12))
 	var flying:bool=van.fleet_flight and (van.fleet_flight.enabled or van.fleet_flight.landing)
 	for leg in reindeer_legs:
 		var gait:=sin(van.wheel_distance*2.5+float(leg.get_meta("gait_phase")))
@@ -160,7 +174,7 @@ func _physics_process(delta: float) -> void:
 			var center := Vector3(0,1.6,0)
 			van.body.position = center-van.body.basis*center
 	smoke.global_position = van.body.to_global(Vector3(0,1.25,-2.0))
-	smoke.emitting = van.wrecked and van.active
+	smoke.emitting = van.wrecked and van.active and not organic_mount
 	exhaust_cooldown = maxf(0,exhaust_cooldown-delta)
 	exhaust_puff_time = maxf(0,exhaust_puff_time-delta)
 	var accelerating: bool = van.active and van.engine_on and not van.overturned and not van.wrecked and van.throttle_load>0.2 and van.acceleration>0.5
@@ -170,9 +184,9 @@ func _physics_process(delta: float) -> void:
 		exhaust_bursts += 1
 	previous_throttle = van.throttle_load
 	exhaust.global_position = van.body.to_global(Vector3(-0.92,0.38,2.73))
-	exhaust.emitting = accelerating and exhaust_puff_time>0
+	exhaust.emitting = accelerating and exhaust_puff_time>0 and not organic_mount
 	for wheel in wheels:
-		wheel.rotation.x = -van.wheel_distance/0.46
+		wheel.rotation.x = -van.wheel_distance/float(wheel.get_meta("fleet_radius",.46))
 		wheel.rotation.y = van.steering*0.38 if "Front" in str(wheel.name) else 0.0
 	var flash: bool = fmod(van.blink_time,1.0) < 0.5
 	for side in [-1,1]:

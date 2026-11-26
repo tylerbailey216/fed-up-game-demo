@@ -3,7 +3,8 @@ const {chromium}=require('./webqa/node_modules/playwright');
 const fs=require('fs');
 (async()=>{
  const url=process.argv[2]||'http://127.0.0.1:8766/';const results=[];
- for(const [width,height,touch] of [[360,640,true],[844,390,true],[768,1024,true],[1280,720,false]]){
+ const requested=process.argv.find(a=>a.startsWith('--layout='))?.slice(9);
+ for(const [width,height,touch] of [[360,640,true],[844,390,true],[768,1024,true],[1280,720,false]].filter(([w,h])=>!requested||requested===`${w}x${h}`)){
   const browser=await chromium.launch({executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true,args:['--enable-webgl']});
   try{
    const page=await browser.newPage({viewport:{width,height},hasTouch:touch,deviceScaleFactor:1});const errors=[];
@@ -20,11 +21,12 @@ const fs=require('fs');
    await click([s.cards[1].x,s.cards[1].y]);if(!(await state()).disabled)throw Error('Locked vehicle can depart');
    await command('unlock');await command('unlock');s=await state();if(s.deliveries!==5||s.cards.some(c=>c.locked))throw Error('Receipt/unlock mismatch');
    await page.screenshot({path:`docs/fleet-unlocked-${width}x${height}.png`});
-   for(const id of ['semi','tank','sleigh']){
+   for(const id of ['truck','semi','tank','sleigh','turkey']){
     s=await state();const c=s.cards.find(c=>c.id===id);await click([c.x,c.y]);await click((await state()).confirm);
     await page.waitForFunction(id=>window.fedupFleet?.vehicle===id&&window.fedupFleet.driving&&!window.fedupFleet.garage,id,{timeout:30000});
     await page.waitForTimeout(700);await page.screenshot({path:`docs/fleet-${id}-${width}x${height}.png`});
-    s=await state();if(s.wheels<4)throw Error('Missing rolling wheels');
+    s=await state();if(id==='turkey'?(s.legs!==2||s.wheels!==0):s.wheels!==({truck:4,semi:6,tank:12,sleigh:4}[id]))throw Error('Missing live wheels or turkey legs');
+    await command('review');await page.screenshot({path:`docs/fleet-illustrated-${id}-${width}x${height}.png`});await command('review_end');
     if(id==='sleigh'){
      const y=s.y;if(touch)await click(s.flight_button);else await page.keyboard.press('v');await page.waitForFunction(y=>window.fedupFleet.y>y+2,y,{timeout:10000});
      await page.screenshot({path:`docs/fleet-flight-${width}x${height}.png`});
