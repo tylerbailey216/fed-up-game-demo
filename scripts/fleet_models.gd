@@ -202,17 +202,20 @@ func sleigh() -> void:
 		ball(Vector3(side*.48,1.6,-.18),Vector3(.25,.25,.25),CREAM)
 	var hat:=CylinderMesh.new();hat.top_radius=.05;hat.bottom_radius=.46;hat.height=.6;hat.radial_segments=12
 	shape(hat,Vector3(0,2.93,.23),PURPLE);ball(Vector3(0,3.25,.23),Vector3(.2,.2,.2),CREAM)
-	for side in [-1,1]:
-		var at:=Vector3(side*.62,0,-1.8)
+	for animal in 6:
+		var side:float=-1 if animal%2==0 else 1
+		var row:int=animal/2
+		var at:=Vector3(side*.62,0,-1.8-row*1.3)
 		ball(at+Vector3(0,.91,0),Vector3(.55,.65,1.0),Color("9b6b42"))
 		ball(at+Vector3(0,1.35,-.43),Vector3(.48,.63,.46),Color("b47b49"))
 		ball(at+Vector3(0,1.2,-.7),Vector3(.43,.3,.34),Color("c99b66"))
 		for x in [-.14,.14]:
 			for z in [-.3,.3]:
-				leg(at+Vector3(x,.75,z),0.0 if x*z>0 else PI)
+				leg(at+Vector3(x,.75,z),(0.0 if x*z>0 else PI)+row*.65)
 			rod(at+Vector3(x,1.58,-.4),at+Vector3(x*1.5,2.05,-.25),.035,CREAM)
 			rod(at+Vector3(x*1.3,1.85,-.3),at+Vector3(x*2.3,1.93,-.3),.025,CREAM)
 			ball(at+Vector3(x*1.55,1.4,-.57),Vector3(.07,.1,.07),INK)
 		rod(at+Vector3(-.3,1.0,-.1),at+Vector3(.3,1.0,-.1),.05,PURPLE)
 		ball(at+Vector3(0,.85,-.15),Vector3(.15,.15,.15),GOLD)
-		rod(Vector3(side*.48,1.6,-.18),at+Vector3(0,1.0,.1),.018,GOLD)
+		var tether:=Vector3(side*.48,1.6,-.18) if row==0 else Vector3(side*.62,1,-1.8-(row-1)*1.3-.4)
+		rod(tether,at+Vector3(0,1.0,.1),.018,GOLD)

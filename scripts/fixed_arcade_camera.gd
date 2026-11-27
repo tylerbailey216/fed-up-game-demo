@@ -15,7 +15,7 @@ func _ready() -> void:
 	# A low illustrated footprint keeps the parked truck legible during cutaway.
 	truck_outline=MeshInstance3D.new();var shape:=BoxMesh.new();shape.size=Vector3(game.van.vehicle_bounds.x+.15,.18,game.van.vehicle_bounds.z+.7);truck_outline.mesh=shape
 	truck_outline.material_override=game.highway.art.material(Color("9470af"),true)
-	game.van.add_child(truck_outline);truck_outline.position.y=.22;truck_outline.hide()
+	game.van.add_child(truck_outline);truck_outline.position=game.van.vehicle_center+Vector3.UP*.22;truck_outline.hide()
 
 func cycle_view() -> void:
 	preset=(preset+1)%2;update_camera(0)
@@ -37,6 +37,7 @@ func update_camera(delta:=0.0) -> void:
 	game.van.camera_orbit=0;game.van.camera_pitch=0;game.van.camera_zoom=1
 	game.cargo.actor.camera_angle=BEARING;game.cargo.actor.camera_pitch=0;game.cargo.actor.camera_zoom=1
 	var focus:Vector3=subject.global_position+Vector3.UP*(1.0 if walking else 1.6)
+	if not walking:focus+=game.van.global_basis*game.van.vehicle_center
 	# Smooth translation only. Transfers, teleports and preset changes snap once.
 	if not initialized or followed!=subject or delta<=0 or focus.distance_squared_to(focus_position)>400:
 		focus_position=focus;initialized=true;followed=subject
@@ -66,7 +67,8 @@ func update_camera(delta:=0.0) -> void:
 		# Oriented truck bounds: transform the sight line into its local space.
 		from=game.van.to_local(from)
 		var to:Vector3=game.van.to_local(subject.global_position+Vector3.UP)
-		if game.highway.segment_covers(from,to,Vector3(-1.5,-.1,-3.3),Vector3(1.5,4.1,3.3)):
+		var half:Vector3=game.van.vehicle_bounds*.5+Vector3(.25,0,.5)
+		if game.highway.segment_covers(from,to,game.van.vehicle_center+Vector3(-half.x,-.1,-half.z),game.van.vehicle_center+Vector3(half.x,game.van.vehicle_bounds.y+.8,half.z)):
 			truck_covers_worker=true
 	game.van.body.visible=not truck_covers_worker
 	truck_outline.visible=truck_covers_worker

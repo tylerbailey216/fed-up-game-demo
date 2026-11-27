@@ -39,20 +39,33 @@ func run(game:Node) -> void:
 	failures.append_array(await driving.run(game,false))
 	check(game.fleet.deliveries==before+1,"Actual route completion awards exactly one career delivery")
 	if step==3:
+		check(game.vehicle_visuals.reindeer_legs.size()==24,"Six reindeer each have four articulated legs")
+		check(game.van.vehicle_bounds.z>=8.5 and game.van.vehicle_center.z<0,"Reindeer train has an extended forward solid footprint")
+		check(not game.flight.effects_active() and not game.sleigh_snow.visible,"Grounded sleigh has no flight snow or bells")
+		check(game.audio_manager.players.sleigh_bells.stream.get_length()>4 and game.audio_manager.players.sleigh_bells.stream.loop_mode==AudioStreamWAV.LOOP_FORWARD,"Supplied bells are a loaded looping audio stream")
 		game.van.new_truck();game.van.parking_brake=false
 		await frames(15)
 		var ground:float=game.van.position.y
 		game.flight.toggle();await frames(150)
 		check(game.flight.enabled and game.van.position.y>ground+2.5 and game.van.position.y<ground+5,"Sleigh lifts into bounded collision-aware flight")
+		check(game.flight.effects_active() and game.sleigh_snow.visible and game.sleigh_snow.multimesh.instance_count==72,"Airborne sleigh emits a bounded instanced 3D snow cloud")
+		game.audio_manager._process(0)
+		check(game.audio_manager.players.sleigh_bells.playing,"Bells start in flight")
 		game.flight.toggle();var target:float=game.flight.target_y;game.flight.toggle()
 		check(not game.flight.enabled and game.flight.target_y==target,"Repeated flight input cannot stack altitude during landing")
+		check(game.flight.effects_active(),"Flight effects continue during descent")
 		await frames(210)
 		check(not game.flight.enabled and not game.flight.landing and game.van.is_on_floor(),"Sleigh physically lands and restores ground driving")
+		game.audio_manager._process(0)
+		check(not game.audio_manager.players.sleigh_bells.playing and not game.sleigh_snow.visible,"Landing stops bells and clears the snow cloud")
 		game.flight.toggle();await frames(90)
 	game.cargo.damage_hit(1);game.cargo.damage_hit(1)
 	check(not game.cargo.spilled and not game.van.wrecked,"Surviving energy secures cargo for every vehicle")
 	game.cargo.damage_hit(1);await frames(20)
 	check(game.cargo.spilled and game.cargo.spawned==12 and game.cargo.on_foot and not game.flight.enabled,"Energy depletion spills one manifest, exits and cancels flight")
+	if step==3:
+		game.audio_manager._process(0)
+		check(not game.sleigh_snow.visible and not game.audio_manager.players.sleigh_bells.playing,"Emergency flight cancellation clears snow and bells")
 	if game.vehicle_id=="turkey":check(not game.vehicle_visuals.turkey_rider.visible,"Dismount hides the seated rider without removing the turkey")
 	for item in game.cargo.packages:
 		game.cargo.recover_package(item);game.cargo.recover_package(item)

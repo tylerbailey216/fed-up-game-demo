@@ -28,9 +28,13 @@ const fs=require('fs');
     s=await state();if(id==='turkey'?(s.legs!==2||s.wheels!==0):s.wheels!==({truck:4,semi:6,tank:12,sleigh:4}[id]))throw Error('Missing live wheels or turkey legs');
     await command('review');await page.screenshot({path:`docs/fleet-illustrated-${id}-${width}x${height}.png`});await command('review_end');
     if(id==='sleigh'){
+     if(s.reindeer!==6||s.snow||s.bells)throw Error('Ground sleigh team/effects mismatch');
      const y=s.y;if(touch)await click(s.flight_button);else await page.keyboard.press('v');await page.waitForFunction(y=>window.fedupFleet.y>y+2,y,{timeout:10000});
      await page.screenshot({path:`docs/fleet-flight-${width}x${height}.png`});
+     s=await state();if(!s.snow||!s.bells)throw Error('Airborne sleigh missing snow or bells');
+     await command('review');await page.screenshot({path:`docs/sleigh-airborne-${width}x${height}.png`});await command('review_end');
      if(touch)await click((await state()).flight_button);else await page.keyboard.press('v');await page.waitForFunction(y=>window.fedupFleet.y<y+.3,y,{timeout:15000});
+     await page.waitForFunction(()=>!window.fedupFleet.snow&&!window.fedupFleet.bells,null,{timeout:5000});
     }
     await command('garage');await page.waitForFunction(()=>window.fedupFleet.garage);
    }

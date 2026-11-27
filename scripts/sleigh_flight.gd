@@ -5,6 +5,9 @@ var enabled:=false
 var landing:=false
 var target_y:=0.0
 
+func effects_active() -> bool:
+	return game!=null and game.vehicle_id=="sleigh" and game.driving and not game.van.wrecked and not game.van.overturned and not game.van.driver_on_foot and (enabled or landing)
+
 func cancel() -> void:
 	enabled=false;landing=false
 	if game and game.van:game.van.floor_snap_length=.24

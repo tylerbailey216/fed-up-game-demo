@@ -13,7 +13,9 @@ func _process(delta:float) -> void:
 		if command=="review":
 			game.fixed_camera.set_process(false);game.van.set_physics_process(false);game.vehicle_visuals.set_physics_process(false)
 			review_camera=Camera3D.new();review_camera.fov=36;game.add_child(review_camera)
-			review_camera.position=game.van.position+Vector3(9,6.5,-12);review_camera.look_at(game.van.position+Vector3.UP*2);review_camera.make_current()
+			var target:Vector3=game.van.position+game.van.global_basis*game.van.vehicle_center+Vector3.UP*2
+			review_camera.position=target+Vector3(10,7,-14);review_camera.look_at(target);review_camera.make_current()
+			game.highway.update_cutaways(review_camera,target,false,0)
 		elif command=="review_end":
 			if is_instance_valid(review_camera):review_camera.queue_free()
 			game.van.camera.make_current();game.fixed_camera.set_process(true);game.van.set_physics_process(true);game.vehicle_visuals.set_physics_process(true)
@@ -36,6 +38,9 @@ func _process(delta:float) -> void:
 	var confirm:Rect2=game.garage.confirm.get_global_rect()
 	var state:Dictionary={"garage":game.garage.visible,"vehicle":game.vehicle_id,"driving":game.driving,"deliveries":game.fleet.deliveries,"cards":cards,"confirm":[confirm.get_center().x,confirm.get_center().y],"disabled":game.garage.confirm.disabled,"viewport":[game.garage.size.x,game.garage.size.y],"y":game.van.position.y,"flight":game.flight.enabled,"wheels":game.vehicle_visuals.wheels.size()}
 	state.legs=game.vehicle_visuals.turkey_legs.size()
+	state.reindeer=game.vehicle_visuals.reindeer_legs.size()/4
+	state.snow=is_instance_valid(game.sleigh_snow) and game.sleigh_snow.visible
+	state.bells=game.audio_manager.players.sleigh_bells.playing
 	state.actions=[]
 	state.complete=game.cargo.complete
 	state.card_min=game.garage.cards[0].custom_minimum_size.y

@@ -52,6 +52,7 @@ var vehicle_id:="truck"
 var garage:Control
 var flight:=preload("res://scripts/sleigh_flight.gd").new()
 var flight_button:Button
+var sleigh_snow:MultiMeshInstance3D
 var automated_run:=false
 var has_started:=false
 
@@ -117,6 +118,8 @@ func _ready() -> void:
 	vehicle_visuals.van = van
 	vehicle_visuals.process_mode = Node.PROCESS_MODE_PAUSABLE
 	add_child(vehicle_visuals)
+	if vehicle_id=="sleigh":
+		sleigh_snow=preload("res://scripts/sleigh_snow.gd").new();sleigh_snow.game=self;add_child(sleigh_snow)
 	tire_marks = preload("res://scripts/tire_marks.gd").new()
 	tire_marks.van = van
 	add_child(tire_marks)
@@ -448,9 +451,10 @@ func build_van() -> void:
 				if hull is CollisionShape3D:
 					if hull.shape is BoxShape3D:hull.shape.size.z=3.8;hull.position.z=.2
 					elif hull.shape is CylinderShape3D:hull.position.z=-1.7 if hull.position.z<0 else 2.1
-		elif vehicle_id in ["tank","turkey"]:
-			van.vehicle_bounds=Vector3(4.5,4.2,7.0) if vehicle_id=="tank" else Vector3(4.0,4.65,6.0)
-			pedestrian_box.size=van.vehicle_bounds;pedestrian_shape.position.y=van.vehicle_bounds.y*.5
+		elif vehicle_id in ["tank","turkey","sleigh"]:
+			van.vehicle_bounds=Vector3(2.5,3.5,8.5) if vehicle_id=="sleigh" else (Vector3(4.5,4.2,7.0) if vehicle_id=="tank" else Vector3(4.0,4.65,6.0))
+			if vehicle_id=="sleigh":van.vehicle_center.z=-1.25
+			pedestrian_box.size=van.vehicle_bounds;pedestrian_shape.position=van.vehicle_center+Vector3.UP*van.vehicle_bounds.y*.5
 			for hull in van.get_children():
 				if hull is CollisionShape3D:
 					hull.position.y=van.vehicle_bounds.y*.5
@@ -458,6 +462,7 @@ func build_van() -> void:
 					elif hull.shape is CylinderShape3D:
 						hull.shape.radius=van.vehicle_bounds.x*.5;hull.shape.height=van.vehicle_bounds.y
 						hull.position.z=signf(hull.position.z)*(van.vehicle_bounds.z-van.vehicle_bounds.x)*.5
+					hull.position.z+=van.vehicle_center.z
 		preload("res://scripts/fleet_models.gd").new().build(body,vehicle_id,fleet_style)
 		return
 	if ResourceLoader.exists("res://assets/models/fedup_van.glb"):

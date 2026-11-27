@@ -1,5 +1,6 @@
 extends CharacterBody3D
 var vehicle_bounds:=Vector3(2.5,3.15,5.5)
+var vehicle_center:=Vector3.ZERO
 
 signal telemetry(speed_kph: float, gear: String, distance: float)
 var speed := 0.0
@@ -172,7 +173,8 @@ func recovery_space_clear(at: Vector3, heading: float) -> bool:
 	hull.size = vehicle_bounds+Vector3(.2,.15,0)
 	var query := PhysicsShapeQueryParameters3D.new()
 	query.shape = hull
-	query.transform = Transform3D(Basis(Vector3.UP,heading),at+Vector3(0,hull.size.y*.5+.05,0))
+	var orientation:=Basis(Vector3.UP,heading)
+	query.transform = Transform3D(orientation,at+orientation*vehicle_center+Vector3(0,hull.size.y*.5+.05,0))
 	query.exclude = [get_rid()]
 	if is_instance_valid(roll_body):
 		query.exclude = [get_rid(),roll_body.get_rid()]
